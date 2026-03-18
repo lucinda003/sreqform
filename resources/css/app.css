@@ -1,0 +1,168 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+	:root {
+		--auth-ink: #131525;
+		--auth-deep: #0b1020;
+		--auth-blue: #67c4ff;
+		--auth-amber: #ffca7a;
+		--auth-frost: rgba(255, 255, 255, 0.82);
+		--auth-border: rgba(255, 255, 255, 0.5);
+	}
+
+	.auth-body {
+		min-height: 100vh;
+		color: var(--auth-ink);
+		font-family: 'Space Grotesk', sans-serif;
+		background:
+			radial-gradient(circle at 12% 15%, rgba(103, 196, 255, 0.32), transparent 34%),
+			radial-gradient(circle at 88% 20%, rgba(255, 202, 122, 0.32), transparent 32%),
+			linear-gradient(145deg, #eef8ff 0%, #f9f3ea 46%, #e7edff 100%);
+		overflow-x: hidden;
+	}
+
+	.app-body {
+		min-height: 100vh;
+		color: var(--auth-ink);
+		font-family: 'Space Grotesk', sans-serif;
+		background:
+			radial-gradient(circle at 8% 10%, rgba(103, 196, 255, 0.24), transparent 30%),
+			radial-gradient(circle at 92% 16%, rgba(255, 202, 122, 0.24), transparent 26%),
+			linear-gradient(145deg, #eef6ff 0%, #f8f4ee 45%, #ecf0ff 100%);
+	}
+}
+
+@layer components {
+	.app-shell {
+		@apply relative;
+	}
+
+	.auth-shell {
+		@apply relative mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-5 py-8 md:px-8;
+	}
+
+	.auth-blob {
+		@apply pointer-events-none absolute -z-10 rounded-full blur-3xl;
+		animation: authFloat 10s ease-in-out infinite;
+	}
+
+	.auth-blob-one {
+		@apply -left-16 top-8 h-56 w-56 bg-cyan-300/40 md:h-72 md:w-72;
+	}
+
+	.auth-blob-two {
+		@apply -bottom-20 right-0 h-64 w-64 bg-amber-200/50 md:h-80 md:w-80;
+		animation-delay: 1.5s;
+	}
+
+	.auth-hero {
+		@apply hidden rounded-3xl border border-white/45 bg-slate-900/90 p-8 text-slate-100 shadow-2xl md:block;
+	}
+
+	.auth-brand-link {
+		@apply inline-block rounded-full border border-slate-400/40 px-4 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-slate-200;
+	}
+
+	.auth-hero-title {
+		margin-top: 1rem;
+		font-family: 'Fraunces', serif;
+		@apply text-4xl leading-tight text-white;
+	}
+
+	.auth-hero-copy {
+		@apply mt-4 max-w-md text-sm leading-relaxed text-slate-200/90;
+	}
+
+	.auth-hero-pills {
+		@apply mt-6 flex flex-wrap gap-2;
+	}
+
+	.auth-hero-pills span {
+		@apply rounded-full border border-slate-400/30 bg-slate-800/60 px-3 py-1 text-xs text-slate-100;
+	}
+
+	.auth-card {
+		@apply w-full max-w-md rounded-3xl border border-white/70 bg-white/75 p-6 shadow-xl backdrop-blur-xl md:p-8;
+		animation: authRise 600ms ease-out both;
+	}
+
+	.auth-logo-wrap {
+		@apply mb-5 flex justify-center;
+	}
+
+	.auth-logo {
+		@apply h-[4.5rem] w-[4.5rem] text-slate-700;
+	}
+
+	.auth-title {
+		font-family: 'Fraunces', serif;
+		@apply text-2xl leading-tight text-slate-900;
+	}
+
+	.auth-subtitle {
+		@apply mt-2 text-sm text-slate-600;
+	}
+
+	.auth-label {
+		@apply mb-1 block text-sm font-semibold text-slate-700;
+	}
+
+	.auth-input {
+		@apply w-full rounded-xl border border-slate-200 bg-white/90 px-3 py-2.5 text-sm text-slate-900 shadow-sm transition focus:border-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-200;
+	}
+
+	.auth-button {
+		@apply inline-flex items-center justify-center rounded-xl border border-slate-900 bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white transition hover:-translate-y-0.5 hover:bg-slate-700;
+	}
+
+	.auth-link {
+		@apply text-sm font-medium text-slate-700 underline decoration-slate-400 underline-offset-4 transition hover:text-slate-900;
+	}
+
+	.auth-note {
+		@apply rounded-xl border border-cyan-200 bg-cyan-50 px-3 py-2 text-sm text-cyan-900;
+	}
+
+	.auth-success {
+		@apply rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700;
+	}
+
+	.auth-stagger > * {
+		animation: authRise 500ms ease-out both;
+	}
+
+	.auth-stagger > *:nth-child(2) {
+		animation-delay: 70ms;
+	}
+
+	.auth-stagger > *:nth-child(3) {
+		animation-delay: 130ms;
+	}
+}
+
+@keyframes authRise {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+@keyframes authFloat {
+	0%,
+	100% {
+		transform: translateY(0px);
+	}
+
+	50% {
+		transform: translateY(-12px);
+	}
+}
