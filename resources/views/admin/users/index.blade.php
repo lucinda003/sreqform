@@ -3,7 +3,7 @@
         <div class="flex items-center justify-between gap-3">
             <div>
                 <h2 class="auth-title">Account Management</h2>
-                <p class="auth-subtitle">Select a user first, then edit department and approval details.</p>
+                <p class="auth-subtitle">Select a user first, then edit department role and approval.</p>
             </div>
             <button
                 type="button"
@@ -23,6 +23,7 @@
         <div class="grid gap-5 lg:grid-cols-[minmax(280px,320px)_1fr]">
             <div class="rounded-2xl border border-white/70 bg-white/85 p-5 shadow-lg backdrop-blur-xl">
                 <h3 class="text-base font-semibold text-slate-900">Select User</h3>
+
                 <form method="GET" action="{{ route('admin.users.index') }}" class="mt-4 space-y-3">
                     <div>
                         <label class="auth-label" for="user_id">Account</label>
@@ -40,8 +41,8 @@
                 <div class="mt-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
                     <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Quick Summary</p>
                     <p class="mt-2 text-sm text-slate-700">Total Accounts: {{ $users->count() }}</p>
-                    <p class="mt-1 text-sm text-slate-700">Admins (ADMIN): {{ $users->where('department', 'ADMIN')->count() }}</p>
-                    <p class="mt-1 text-sm text-slate-700">Approved Departments: {{ $users->where('department_status', 'approved')->count() }}</p>
+                    <p class="mt-1 text-sm text-slate-700">ADMIN: {{ $users->where('department', 'ADMIN')->count() }}</p>
+                    <p class="mt-1 text-sm text-slate-700">Approved: {{ $users->where('department_status', 'approved')->count() }}</p>
                 </div>
             </div>
 
@@ -49,49 +50,60 @@
                 <div class="rounded-2xl border border-white/70 bg-white/85 p-5 shadow-lg backdrop-blur-xl sm:p-8">
                     <h3 class="text-base font-semibold text-slate-900">Edit Selected Account</h3>
 
-                        @if ($selectedUser)
-                            <form method="POST" action="{{ route('admin.users.update', $selectedUser) }}" class="mt-4 space-y-4">
-                                @csrf
-                                @method('PUT')
+                    @if ($selectedUser)
+                        <form method="POST" action="{{ route('admin.users.update', $selectedUser) }}" class="mt-4 space-y-4">
+                            @csrf
+                            @method('PUT')
 
-                                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                                    <div>
-                                        <label class="auth-label" for="selected_name">Name</label>
-                                        <input class="auth-input" id="selected_name" name="name" type="text" value="{{ $selectedUser->name }}" required>
-                                    </div>
-
-                                    <div>
-                                        <label class="auth-label" for="selected_email">Email</label>
-                                        <input class="auth-input" id="selected_email" name="email" type="email" value="{{ $selectedUser->email }}" required>
-                                    </div>
-
-                                    <div>
-                                        <label class="auth-label" for="selected_department">Department</label>
-                                        <input class="auth-input" id="selected_department" name="department" type="text" value="{{ $selectedUser->department }}">
-                                    </div>
-
-                                    <div>
-                                        <label class="auth-label" for="selected_department_status">Department Status</label>
-                                        <select class="auth-input" id="selected_department_status" name="department_status" required>
-                                            <option value="pending" @selected($selectedUser->department_status === 'pending')>Pending</option>
-                                            <option value="approved" @selected($selectedUser->department_status === 'approved')>Approved</option>
-                                        </select>
-                                    </div>
-
-                                    <div>
-                                        <label class="auth-label" for="selected_password">New Password (optional)</label>
-                                        <input class="auth-input" id="selected_password" name="password" type="password">
-                                    </div>
+                            <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                                <div>
+                                    <label class="auth-label" for="selected_name">Name</label>
+                                    <input class="auth-input" id="selected_name" name="name" type="text" value="{{ $selectedUser->name }}" required>
                                 </div>
 
-                                <div class="flex items-center justify-between gap-3">
-                                    <p class="text-xs text-slate-500">User ID: {{ $selectedUser->id }}</p>
-                                    <button type="submit" class="auth-button">Save Changes</button>
+                                <div>
+                                    <label class="auth-label" for="selected_email">Email</label>
+                                    <input class="auth-input" id="selected_email" name="email" type="email" value="{{ $selectedUser->email }}" required>
                                 </div>
-                            </form>
-                        @else
-                            <p class="mt-4 text-sm text-slate-500">Select a user first to show the edit form.</p>
-                        @endif
+
+                                <div>
+                                    <label class="auth-label" for="selected_department">Department Role</label>
+                                    <select class="auth-input" id="selected_department" name="department" required>
+                                        <option value="ADMIN" @selected($selectedUser->department === 'ADMIN')>ADMIN</option>
+                                        <option value="Role 1" @selected($selectedUser->department === 'Role 1')>Role 1</option>
+                                        <option value="Role 2" @selected($selectedUser->department === 'Role 2')>Role 2</option>
+                                        <option value="Role 3" @selected($selectedUser->department === 'Role 3')>Role 3</option>
+                                        <option value="Role 4" @selected($selectedUser->department === 'Role 4')>Role 4</option>
+                                        <option value="Role 5" @selected($selectedUser->department === 'Role 5')>Role 5</option>
+                                        <option value="Role 6" @selected($selectedUser->department === 'Role 6')>Role 6</option>
+                                        <option value="Role 7" @selected($selectedUser->department === 'Role 7')>Role 7</option>
+                                        <option value="Role 8" @selected($selectedUser->department === 'Role 8')>Role 8</option>
+                                        <option value="Role 9" @selected($selectedUser->department === 'Role 9')>Role 9</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="auth-label" for="selected_department_status">Department Status</label>
+                                    <select class="auth-input" id="selected_department_status" name="department_status" required>
+                                        <option value="pending" @selected($selectedUser->department_status === 'pending')>Pending</option>
+                                        <option value="approved" @selected($selectedUser->department_status === 'approved')>Approved</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label class="auth-label" for="selected_password">New Password (optional)</label>
+                                    <input class="auth-input" id="selected_password" name="password" type="password">
+                                </div>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3">
+                                <p class="text-xs text-slate-500">User ID: {{ $selectedUser->id }}</p>
+                                <button type="submit" class="auth-button">Save Changes</button>
+                            </div>
+                        </form>
+                    @else
+                        <p class="mt-4 text-sm text-slate-500">Select a user first to show the edit form.</p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -100,7 +112,13 @@
             <div class="rounded-2xl bg-white p-5 sm:p-8">
                 <div class="flex items-center justify-between gap-3">
                     <h3 class="text-base font-semibold text-slate-900">Create Account</h3>
-                    <button type="button" class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600" onclick="document.getElementById('create-account-dialog').close()">Close</button>
+                    <button
+                        type="button"
+                        class="rounded-lg border border-slate-300 px-2.5 py-1.5 text-xs font-semibold uppercase tracking-[0.12em] text-slate-600"
+                        onclick="document.getElementById('create-account-dialog').close()"
+                    >
+                        Close
+                    </button>
                 </div>
 
                 <form method="POST" action="{{ route('admin.users.store') }}" class="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -122,8 +140,19 @@
                     </div>
 
                     <div>
-                        <label class="auth-label" for="department">Department</label>
-                        <input class="auth-input" id="department" name="department" type="text" placeholder="e.g. DOH-NCR or ADMIN" required>
+                        <label class="auth-label" for="department">Department Role</label>
+                        <select class="auth-input" id="department" name="department" required>
+                            <option value="Role 1">Role 1</option>
+                            <option value="Role 2">Role 2</option>
+                            <option value="Role 3">Role 3</option>
+                            <option value="Role 4">Role 4</option>
+                            <option value="Role 5">Role 5</option>
+                            <option value="Role 6">Role 6</option>
+                            <option value="Role 7">Role 7</option>
+                            <option value="Role 8">Role 8</option>
+                            <option value="Role 9">Role 9</option>
+                            <option value="ADMIN">ADMIN</option>
+                        </select>
                     </div>
 
                     <div>

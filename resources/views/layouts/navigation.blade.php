@@ -3,7 +3,7 @@
         <div class="flex items-center gap-5">
             <a href="{{ route('dashboard') }}" class="inline-flex items-center gap-2 text-slate-800">
                 <x-application-logo class="h-11 w-11" />
-                <span class="text-sm font-semibold uppercase tracking-[0.18em]">{{ config('app.name', 'Laravel') }}</span>
+                <span class="text-sm font-semibold uppercase tracking-[0.18em]">TEST</span>
             </a>
 
             <div class="hidden items-center gap-2 sm:flex">

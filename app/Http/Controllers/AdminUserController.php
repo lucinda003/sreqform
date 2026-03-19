@@ -41,11 +41,11 @@ class AdminUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'department' => ['required', 'string', 'max:30'],
-            'department_status' => ['required', 'in:pending,approved'],
+                        'department' => ['required', 'string', 'max:30', 'in:ADMIN,Role 1,Role 2,Role 3,Role 4,Role 5,Role 6,Role 7,Role 8,Role 9'],
+                        'department_status' => ['required', 'in:pending,approved'],
         ]);
 
-        $department = strtoupper(trim($validated['department']));
+                $department = trim($validated['department']);
         $departmentStatus = $validated['department_status'];
 
         if ($department === 'ADMIN') {
@@ -71,12 +71,12 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'department' => ['required', 'string', 'max:30'],
+            'department' => ['required', 'string', 'max:30', 'in:ADMIN,Role 1,Role 2,Role 3,Role 4,Role 5,Role 6,Role 7,Role 8,Role 9'],
             'department_status' => ['required', 'in:pending,approved'],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
 
-        $department = strtoupper(trim($validated['department']));
+        $department = trim($validated['department']);
         $departmentStatus = $validated['department_status'];
 
         if ($department === 'ADMIN') {

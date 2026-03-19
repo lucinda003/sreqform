@@ -1,7 +1,6 @@
 <x-app-layout>
     @php
         $isAdmin = strtoupper((string) auth()->user()?->department) === 'ADMIN';
-        $userDepartment = auth()->user()?->department;
     @endphp
 
     <x-slot name="header">
@@ -24,10 +23,14 @@
                     <div class="mt-3 grid gap-4 sm:grid-cols-2">
                         <div>
                             <label for="department_code" class="auth-label">Department Code</label>
-                            <input id="department_code" name="department_code" type="text" class="auth-input" value="{{ old('department_code', $isAdmin ? $serviceRequest->department_code : $userDepartment) }}" @readonly(! $isAdmin) required>
+                            <select id="department_code" name="department_code" class="auth-input" required>
+                                @foreach ($departmentOptions as $departmentOption)
+                                    <option value="{{ $departmentOption }}" @selected(old('department_code', $serviceRequest->department_code) === $departmentOption)>{{ $departmentOption }}</option>
+                                @endforeach
+                            </select>
                             <x-input-error :messages="$errors->get('department_code')" class="mt-2" />
                             @if (! $isAdmin)
-                                <p class="mt-1 text-xs text-slate-500">Staff department code comes from your profile setting.</p>
+                                <p class="mt-1 text-xs text-slate-500">Only approved department roles are shown in this list.</p>
                             @endif
                         </div>
                         <div>
@@ -136,24 +139,22 @@
                     </div>
 
                     <div class="mt-4 overflow-x-auto rounded-xl border border-slate-200 bg-white">
-                        <table class="min-w-full text-sm text-slate-700">
+                        <table class="min-w-full w-full table-fixed text-sm text-slate-700">
                             <thead class="bg-slate-100 text-xs uppercase tracking-[0.08em] text-slate-600">
                                 <tr>
-                                    <th class="px-3 py-2 text-left">Date</th>
-                                    <th class="px-3 py-2 text-left">Time</th>
-                                    <th class="px-3 py-2 text-left">Action Taken</th>
-                                    <th class="px-3 py-2 text-left">Action Officer</th>
-                                    <th class="px-3 py-2 text-left">Signature</th>
+                                    <th class="px-3 py-2 text-center">Date</th>
+                                    <th class="px-3 py-2 text-center">Time</th>
+                                    <th class="px-3 py-2 text-center">Action Taken</th>
+                                    <th class="px-3 py-2 text-center">Action Officer</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @for ($i = 0; $i < 5; $i++)
                                     <tr class="border-t border-slate-100">
-                                        <td class="px-2 py-2"><input name="action_log_date[]" type="date" class="auth-input !min-h-0 py-2" value="{{ old('action_log_date.' . $i, data_get($serviceRequest->action_logs, $i . '.date')) }}"></td>
-                                        <td class="px-2 py-2"><input name="action_log_time[]" type="time" class="auth-input !min-h-0 py-2" value="{{ old('action_log_time.' . $i, data_get($serviceRequest->action_logs, $i . '.time')) }}"></td>
-                                        <td class="px-2 py-2"><input name="action_log_action_taken[]" type="text" class="auth-input !min-h-0 py-2" value="{{ old('action_log_action_taken.' . $i, data_get($serviceRequest->action_logs, $i . '.action_taken')) }}"></td>
-                                        <td class="px-2 py-2"><input name="action_log_action_officer[]" type="text" class="auth-input !min-h-0 py-2" value="{{ old('action_log_action_officer.' . $i, data_get($serviceRequest->action_logs, $i . '.action_officer')) }}"></td>
-                                        <td class="px-3 py-2 text-xs text-slate-500">Manual signature</td>
+                                        <td class="px-2 py-2"><input name="action_log_date[]" type="date" class="auth-input !min-h-0 w-full py-2" value="{{ old('action_log_date.' . $i, data_get($serviceRequest->action_logs, $i . '.date')) }}"></td>
+                                        <td class="px-2 py-2"><input name="action_log_time[]" type="time" class="auth-input !min-h-0 w-full py-2" value="{{ old('action_log_time.' . $i, data_get($serviceRequest->action_logs, $i . '.time')) }}"></td>
+                                        <td class="px-2 py-2"><input name="action_log_action_taken[]" type="text" class="auth-input !min-h-0 w-full py-2" value="{{ old('action_log_action_taken.' . $i, data_get($serviceRequest->action_logs, $i . '.action_taken')) }}"></td>
+                                        <td class="px-2 py-2"><input name="action_log_action_officer[]" type="text" class="auth-input !min-h-0 w-full py-2" value="{{ old('action_log_action_officer.' . $i, data_get($serviceRequest->action_logs, $i . '.action_officer')) }}"></td>
                                     </tr>
                                 @endfor
                             </tbody>

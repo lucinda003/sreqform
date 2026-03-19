@@ -7,250 +7,205 @@
     <style>
         @page {
             size: A4;
-            margin: 14mm;
+            margin: 8mm;
         }
 
-        * {
-            box-sizing: border-box;
-        }
-
+        * { box-sizing: border-box; }
         body {
-            font-family: Arial, sans-serif;
-            color: #111827;
             margin: 0;
+            font-family: Arial, sans-serif;
             font-size: 12px;
-            line-height: 1.4;
-            background: #ffffff;
+            color: #111;
+            background: #fff;
         }
 
         .sheet {
             width: 100%;
-            max-width: 190mm;
+            max-width: 194mm;
             margin: 0 auto;
         }
 
-        .header {
-            border: 1px solid #111827;
-            padding: 10px;
-            margin-bottom: 10px;
-        }
-
-        .title {
-            font-size: 18px;
-            font-weight: 700;
-            text-align: center;
-            margin: 0;
-        }
-
-        .reference {
-            margin-top: 8px;
-            font-size: 12px;
-        }
-
-        .grid-two {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-        }
-
-        .field {
-            border: 1px solid #374151;
-            padding: 8px;
-            min-height: 52px;
-        }
-
-        .label {
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.04em;
-            color: #374151;
-            margin-bottom: 4px;
-            display: block;
-        }
-
-        .value {
-            font-size: 12px;
-            color: #111827;
-            white-space: pre-line;
-        }
-
-        .section-title {
-            margin: 12px 0 6px;
-            font-size: 12px;
-            font-weight: 700;
-            text-transform: uppercase;
-            color: #111827;
-        }
-
-        .footer-note {
-            margin-top: 10px;
-            font-size: 10px;
-            color: #4b5563;
-        }
-
-        .print-controls {
-            margin: 12px 0;
+        .controls {
             text-align: right;
+            margin-bottom: 6px;
         }
 
-        .print-btn {
+        .btn {
             border: 1px solid #111827;
             background: #111827;
-            color: #ffffff;
-            padding: 8px 12px;
-            font-size: 12px;
-            border-radius: 6px;
+            color: #fff;
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 11px;
             cursor: pointer;
         }
 
+        table { width: 100%; border-collapse: collapse; }
+        td, th { border: 1px solid #4b5563; padding: 4px 6px; vertical-align: top; }
+
+        .noborder { border: 0 !important; }
+        .center { text-align: center; }
+        .right { text-align: right; }
+        .bold { font-weight: 700; }
+        .small { font-size: 11px; }
+        .tiny { font-size: 10px; }
+        .gray { background: #e5e7eb; }
+        .desc-box { min-height: 420px; }
+        .action-row { height: 34px; }
+        .logo { width: 38px; height: 38px; object-fit: contain; }
+
         @media print {
-            .print-controls {
-                display: none;
-            }
+            .controls { display: none; }
         }
     </style>
 </head>
 <body>
     <div class="sheet">
-        <div class="print-controls">
-            <button class="print-btn" onclick="window.print()">Print</button>
+        <div class="controls">
+            <button class="btn" onclick="window.print()">Print</button>
         </div>
 
-        <div class="header">
-            <h1 class="title">Service Request Form</h1>
-            <div class="reference">
-                <strong>Reference Code:</strong> {{ $serviceRequest->reference_code }}<br>
-                <strong>Date:</strong> {{ $serviceRequest->request_date->format('F d, Y') }}<br>
-                <strong>Status:</strong> {{ strtoupper($serviceRequest->status) }}
-            </div>
-        </div>
-
-        <div class="section-title">Contact Person</div>
-        <div class="grid-two">
-            <div class="field">
-                <span class="label">Last Name</span>
-                <div class="value">{{ $serviceRequest->contact_last_name }}</div>
-            </div>
-            <div class="field">
-                <span class="label">First Name</span>
-                <div class="value">{{ $serviceRequest->contact_first_name }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Middle Name</span>
-                <div class="value">{{ $serviceRequest->contact_middle_name ?: '-' }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Office</span>
-                <div class="value">{{ $serviceRequest->office }}</div>
-            </div>
-            <div class="field" style="grid-column: 1 / -1;">
-                <span class="label">Address</span>
-                <div class="value">{{ $serviceRequest->address }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Landline</span>
-                <div class="value">{{ $serviceRequest->landline ?: '-' }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Fax No.</span>
-                <div class="value">{{ $serviceRequest->fax_no ?: '-' }}</div>
-            </div>
-            <div class="field" style="grid-column: 1 / -1;">
-                <span class="label">Mobile No.</span>
-                <div class="value">{{ $serviceRequest->mobile_no }}</div>
-            </div>
-        </div>
-
-        <div class="section-title">Description Request</div>
-        <div class="field" style="min-height: 110px;">
-            <span class="label">Please clarify and write down the details of the request.</span>
-            <div class="value">{{ $serviceRequest->description_request }}</div>
-        </div>
-
-        <div class="section-title">Approved By</div>
-        <div class="grid-two">
-            <div class="field">
-                <span class="label">Name of Head of Office</span>
-                <div class="value">{{ $serviceRequest->approved_by_name }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Position</span>
-                <div class="value">{{ $serviceRequest->approved_by_position }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Signature</span>
-                <div class="value">__________________________</div>
-            </div>
-            <div class="field">
-                <span class="label">Date Signed</span>
-                <div class="value">{{ $serviceRequest->approved_date->format('F d, Y') }}</div>
-            </div>
-        </div>
-
-        <div class="section-title">For knowledge management and information technology service only</div>
-        <div class="grid-two">
-            <div class="field">
-                <span class="label">10. Date</span>
-                <div class="value">{{ optional($serviceRequest->kmits_date)->format('F d, Y') ?: '-' }}</div>
-            </div>
-            <div class="field">
-                <span class="label">11. Time Received</span>
-                <div class="value">{{ $serviceRequest->time_received ?: '-' }}</div>
-            </div>
-        </div>
-
-        <div class="field" style="margin-top: 10px; min-height: 70px;">
-            <span class="label">12. Actions Taken (use separate if necessary)</span>
-            <div class="value">{{ $serviceRequest->actions_taken ?: '-' }}</div>
-        </div>
-
-        <div class="section-title">Action Log</div>
-        <table style="width:100%; border-collapse: collapse; font-size: 11px;">
-            <thead>
-                <tr>
-                    <th style="border:1px solid #374151; padding:6px; text-align:left;">Date</th>
-                    <th style="border:1px solid #374151; padding:6px; text-align:left;">Time</th>
-                    <th style="border:1px solid #374151; padding:6px; text-align:left;">Action Taken</th>
-                    <th style="border:1px solid #374151; padding:6px; text-align:left;">Action Officer</th>
-                    <th style="border:1px solid #374151; padding:6px; text-align:left;">Signature</th>
-                </tr>
-            </thead>
-            <tbody>
-                @php $logs = $serviceRequest->action_logs ?? []; @endphp
-                @for ($i = 0; $i < 5; $i++)
-                    <tr>
-                        <td style="border:1px solid #374151; padding:6px;">{{ data_get($logs, $i . '.date', '-') }}</td>
-                        <td style="border:1px solid #374151; padding:6px;">{{ data_get($logs, $i . '.time', '-') }}</td>
-                        <td style="border:1px solid #374151; padding:6px;">{{ data_get($logs, $i . '.action_taken', '-') }}</td>
-                        <td style="border:1px solid #374151; padding:6px;">{{ data_get($logs, $i . '.action_officer', '-') }}</td>
-                        <td style="border:1px solid #374151; padding:6px;">________________</td>
-                    </tr>
-                @endfor
-            </tbody>
+        <table>
+            <tr>
+                <td style="width:32px" class="center"><img src="{{ asset('images/dohlogo.svg') }}" alt="DOH" class="logo"></td>
+                <td>
+                    <div class="center bold" style="font-size:18px;">Knowledge Management and Information Technology Service</div>
+                    <div class="center bold=" style="margin-top:8px; font-size:15px;">Service Request Form</div>
+                </td>
+            </tr>
         </table>
 
-        <div class="grid-two" style="margin-top: 10px;">
-            <div class="field">
-                <span class="label">13. Noted by (Name of Supervisor)</span>
-                <div class="value">{{ $serviceRequest->noted_by_name ?: '-' }}</div>
-            </div>
-            <div class="field">
-                <span class="label">14. Position</span>
-                <div class="value">{{ $serviceRequest->noted_by_position ?: '-' }}</div>
-            </div>
-            <div class="field">
-                <span class="label">Signature</span>
-                <div class="value">__________________________</div>
-            </div>
-            <div class="field">
-                <span class="label">15. Date Signed</span>
-                <div class="value">{{ optional($serviceRequest->noted_by_date_signed)->format('F d, Y') ?: '-' }}</div>
-            </div>
-        </div>
+        <table>
+            <tr>
+                <td class="noborder"></td>
+                <td class="noborder right bold">Reference Code: {{ $serviceRequest->reference_code }}</td>
+            </tr>
+            <tr>
+                <td class="noborder"></td>
+                <td class="noborder right">1.) Date of Request (mm/dd/yyyy): {{ $serviceRequest->request_date->format('m/d/Y') }}</td>
+            </tr>
+        </table>
 
-        <div class="footer-note">
-            Generated from DOH Service Request module.
-        </div>
+        <table>
+            <tr>
+                <td style="width:24px;">2)</td>
+                <td colspan="4">
+                    Name of Contact Person :
+                    <table style="display:inline-table; width75%; margin-left:px; vertical-align:top; border-collapse:collapse; table-layout:fixed;">
+                        <tr>
+                            <td class="noborder center" style="white-space:nowrap; padding:0 10px;">{{ $serviceRequest->contact_last_name ?: 'dqwdwq' }}</td>
+                            <td class="noborder center" style="white-space:nowrap; padding:0 10px;">{{ $serviceRequest->contact_first_name ?: 'dqwdq' }}</td>
+                            <td class="noborder center" style="white-space:nowrap; padding:0 10px;">{{ $serviceRequest->contact_middle_name ?: 'dqdqw' }}</td>
+                        </tr>
+                        <tr>
+                            <td class="noborder center tiny" style="border-top:1px solid #4b5563 !important; padding-top:2px;">Last Name</td>
+                            <td class="noborder center tiny" style="border-top:1px solid #4b5563 !important; padding-top:2px;">First Name</td>
+                            <td class="noborder center tiny" style="border-top:1px solid #4b5563 !important; padding-top:2px;">Middle Name</td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+            <tr>
+                <td>3)</td>
+                <td>Office:</td>
+                <td colspan="3">{{ $serviceRequest->office }}</td>
+            </tr>
+            <tr>
+                <td>4)</td>
+                <td>Address:</td>
+                <td colspan="3">{{ $serviceRequest->address }}</td>
+            </tr>
+            <tr>
+                <td>5)</td>
+                <td>Landline:</td>
+                <td>{{ $serviceRequest->landline ?: '-' }}</td>
+                <td>6.) Fax No.</td>
+                <td>
+                    {{ $serviceRequest->fax_no ?: '-' }}
+                    <span style="margin-left:14px;">7) Mobile No.: {{ $serviceRequest->mobile_no }}</span>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="5" class="bold" style="padding:0;">
+                    <div style="padding:1px 4px;">8.) <span style="text-decoration: underline;">DESCRIPTION OF REQUEST:</span> <span style="font-style:italic; font-weight:400;">(Please clearly write down the details of the request.)</span></div>
+                    <div style="height:5px; border-top:1px solid #1e3a8a; border-bottom:1px solid #1e3a8a; background:#d1d5db;"></div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="5" class="desc-box">
+                    <div style="height:300px; white-space:pre-wrap; font-size:12px; line-height:1.6;">{{ $serviceRequest->description_request }}</div>
+                </td>
+            </tr>
+        </table>
+
+        <table>
+            <tr>
+                <td style="width:120px; border-right:0;" class="bold">9. APPROVED BY:</td>
+                <td colspan="2" style="padding:6px 10px; border-left:0;">
+                    <div style="display:flex; gap:16px; align-items:flex-start;">
+                        <div style="flex:1;">
+                            <div style="min-height:18px; border-bottom:1px solid #4b5563; padding:0 4px;">{{ $serviceRequest->approved_by_name }}</div>
+                            <div class="small" style="padding-top:2px;">Name &amp; Signature of Head of Office</div>
+
+                            <div style="margin-top:8px; min-height:18px; border-bottom:1px solid #4b5563; padding:0 4px;">{{ $serviceRequest->approved_by_position }}</div>
+                            <div class="small" style="padding-top:2px;">Position</div>
+                        </div>
+
+                        <div style="width:38%;">
+                            <div style="min-height:18px; border-bottom:1px solid #4b5563; padding:0 4px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
+                            <div class="small" style="padding-top:2px;">Date Signed</div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+            <tr>
+                <td colspan="3" class="center gray bold">(For Knowledge Management and Information Technology Service only)</td>
+            </tr>
+            <tr>
+                <td colspan="2">10. Date Received (mm/dd/yyyy): {{ optional($serviceRequest->kmits_date)->format('m/d/Y') ?: '-' }}</td>
+                <td>11. Time Received (hh:mm): {{ $serviceRequest->time_received ?: '-' }}</td>
+            </tr>
+            <tr>
+                <td colspan="3" class="bold">12. ACTIONS TAKEN: <span style="font-style:italic; font-weight:400;">(Use separate sheet if necessary)</span></td>
+            </tr>
+        </table>
+
+        <table>
+            <tr class="gray center bold">
+                <td style="width:80px;">DATE<br><span class="tiny">(a)</span></td>
+                <td style="width:80px;">TIME<br><span class="tiny">(b)</span></td>
+                <td>ACTION TAKEN<br><span class="tiny">(c)</span></td>
+                <td style="width:200px;">ACTION OFFICER<br><span class="tiny">(d)</span></td>
+                <td style="width:85px;">SIGNATURE<br><span class="tiny">(e)</span></td>
+            </tr>
+            @php $logs = $serviceRequest->action_logs ?? []; @endphp
+            @for ($i = 0; $i < 5; $i++)
+                <tr class="action-row">
+                    <td>{{ data_get($logs, $i . '.date', '') }}</td>
+                    <td>{{ data_get($logs, $i . '.time', '') }}</td>
+                    <td>{{ data_get($logs, $i . '.action_taken', '') }}</td>
+                    <td>{{ data_get($logs, $i . '.action_officer', '') }}</td>
+                    <td></td>
+                </tr>
+            @endfor
+        </table>
+
+        <table>
+            <tr>
+                <td style="width:92px;">13. NOTED BY:</td>
+                <td>{{ $serviceRequest->noted_by_name ?: '' }}</td>
+                <td style="width:95px;" class="center">14.</td>
+                <td style="width:95px;" class="center">15.</td>
+            </tr>
+            <tr>
+                <td></td>
+                <td class="center small">Name and Signature of Supervisor</td>
+                <td class="center small">Position</td>
+                <td class="center small">Date Signed</td>
+            </tr>
+        </table>
+
+        <div class="tiny" style="text-align:right; margin-top:2px;">DOH-KMITS-SRF</div>
     </div>
 </body>
 </html>

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceRequest;
+use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
@@ -26,7 +27,11 @@ class ServiceRequestController extends Controller
 
     public function create(): View
     {
-        return view('service-requests.create');
+        $currentDepartment = trim((string) Auth::user()?->department);
+
+        return view('service-requests.create', [
+            'departmentOptions' => $this->approvedDepartmentOptions(true, $currentDepartment !== '' ? $currentDepartment : null),
+        ]);
     }
 
     public function store(Request $request): RedirectResponse
@@ -34,20 +39,10 @@ class ServiceRequestController extends Controller
         $validated = $this->validatedData($request);
 
         $authUser = Auth::user();
-        if (! $this->isAdmin()) {
-            if (blank($authUser?->department)) {
-                return back()
-                    ->withErrors(['department_code' => 'Set your department first in Profile before creating requests.'])
-                    ->withInput();
-            }
-
-            if ($authUser?->department_status !== 'approved') {
-                return back()
-                    ->withErrors(['department_code' => 'Your department is pending admin approval.'])
-                    ->withInput();
-            }
-
-            $validated['department_code'] = (string) $authUser->department;
+        if (! $this->isAdmin() && $authUser?->department_status !== 'approved') {
+            return back()
+                ->withErrors(['department_code' => 'Your department is pending admin approval.'])
+                ->withInput();
         }
 
         $validated['reference_code'] = $this->generateReferenceCode(
@@ -68,8 +63,10 @@ class ServiceRequestController extends Controller
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
+        $currentDepartment = trim((string) Auth::user()?->department);
         return view('service-requests.edit', [
             'serviceRequest' => $serviceRequest,
+            'departmentOptions' => $this->approvedDepartmentOptions(true, $currentDepartment !== '' ? $currentDepartment : null),
         ]);
     }
 
@@ -80,20 +77,10 @@ class ServiceRequestController extends Controller
         $validated = $this->validatedData($request);
 
         $authUser = Auth::user();
-        if (! $this->isAdmin()) {
-            if (blank($authUser?->department)) {
-                return back()
-                    ->withErrors(['department_code' => 'Set your department first in Profile before updating requests.'])
-                    ->withInput();
-            }
-
-            if ($authUser?->department_status !== 'approved') {
-                return back()
-                    ->withErrors(['department_code' => 'Your department is pending admin approval.'])
-                    ->withInput();
-            }
-
-            $validated['department_code'] = (string) $authUser->department;
+        if (! $this->isAdmin() && $authUser?->department_status !== 'approved') {
+            return back()
+                ->withErrors(['department_code' => 'Your department is pending admin approval.'])
+                ->withInput();
         }
 
         $serviceRequest->update($validated);
@@ -168,7 +155,7 @@ class ServiceRequestController extends Controller
     {
         $validated = $request->validate([
             'request_date' => ['required', 'date'],
-            'department_code' => ['required', 'string', 'max:30'],
+            'department_code' => ['required', 'string', 'max:30', 'in:ADMIN,Role 1,Role 2,Role 3,Role 4,Role 5,Role 6,Role 7,Role 8,Role 9'],
             'contact_last_name' => ['required', 'string', 'max:255'],
             'contact_first_name' => ['required', 'string', 'max:255'],
             'contact_middle_name' => ['nullable', 'string', 'max:255'],
@@ -243,11 +230,11 @@ class ServiceRequestController extends Controller
             return $query->whereRaw('1 = 0');
         }
 
-        if (filled($user?->department)) {
-            return $query->where('department_code', (string) $user->department);
+        if (blank($user?->department)) {
+            return $query->whereRaw('1 = 0');
         }
 
-        return $query->whereRaw('1 = 0');
+        return $query->where('department_code', (string) $user->department);
     }
 
     private function canAccess(ServiceRequest $serviceRequest): bool
@@ -258,11 +245,11 @@ class ServiceRequestController extends Controller
             return true;
         }
 
-        if (blank($user?->department)) {
+        if ($user?->department_status !== 'approved') {
             return false;
         }
 
-        if ($user?->department_status !== 'approved') {
+        if (blank($user?->department)) {
             return false;
         }
 
@@ -272,5 +259,39 @@ class ServiceRequestController extends Controller
     private function isAdmin(): bool
     {
         return strtoupper((string) Auth::user()?->department) === 'ADMIN';
+    }
+
+    private function approvedDepartmentOptions(bool $excludeAdmin = false, ?string $excludeDepartment = null): array
+    {
+        $options = User::query()
+            ->where('department_status', 'approved')
+            ->whereNotNull('department')
+            ->pluck('department')
+            ->map(fn (string $department): string => trim($department))
+            ->filter(fn (string $department): bool => $department !== '')
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        if ($excludeAdmin) {
+            $options = array_values(array_filter(
+                $options,
+                fn (string $department): bool => strtoupper($department) !== 'ADMIN'
+            ));
+        }
+
+        if ($excludeDepartment !== null && $excludeDepartment !== '') {
+            $options = array_values(array_filter(
+                $options,
+                fn (string $department): bool => $department !== $excludeDepartment
+            ));
+        }
+
+        if ($options === []) {
+            return ['Role 1', 'Role 2', 'Role 3', 'Role 4', 'Role 5', 'Role 6', 'Role 7', 'Role 8', 'Role 9'];
+        }
+
+        return $options;
     }
 }
