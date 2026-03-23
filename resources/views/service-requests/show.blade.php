@@ -33,16 +33,18 @@
                     {{ $serviceRequest->status }}
                 </span>
 
-                <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="ms-auto flex flex-wrap items-center gap-2">
-                    @csrf
-                    @method('PATCH')
-                    <select name="status" class="auth-input !w-auto">
-                        <option value="pending" @selected($serviceRequest->status === 'pending')>Pending</option>
-                        <option value="approved" @selected($serviceRequest->status === 'approved')>Approved</option>
-                        <option value="rejected" @selected($serviceRequest->status === 'rejected')>Rejected</option>
-                    </select>
-                    <button type="submit" class="auth-button">Update Status</button>
-                </form>
+                @if ($canManageStatus)
+                    <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="ms-auto flex flex-wrap items-center gap-2">
+                        @csrf
+                        @method('PATCH')
+                        <select name="status" class="auth-input !w-auto">
+                            <option value="pending" @selected($serviceRequest->status === 'pending')>Pending</option>
+                            <option value="approved" @selected($serviceRequest->status === 'approved')>Approved</option>
+                            <option value="rejected" @selected($serviceRequest->status === 'rejected')>Rejected</option>
+                        </select>
+                        <button type="submit" class="auth-button">Update Status</button>
+                    </form>
+                @endif
             </div>
         </div>
 
@@ -69,7 +71,7 @@
 
         <div class="mt-4 rounded-2xl border border-white/70 bg-white/85 p-5 shadow-lg backdrop-blur-xl">
             <h3 class="text-sm font-semibold uppercase tracking-[0.12em] text-slate-600">Description Request</h3>
-            <p class="mt-2 whitespace-pre-line text-sm leading-relaxed text-slate-700">{{ $serviceRequest->description_request }}</p>
+            <p class="mt-2 whitespace-pre-line break-all text-sm leading-relaxed text-slate-700">{{ $serviceRequest->description_request }}</p>
         </div>
 
         <div class="mt-4 rounded-2xl border border-white/70 bg-white/85 p-5 shadow-lg backdrop-blur-xl">

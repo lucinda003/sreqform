@@ -112,7 +112,7 @@
         <tr>
             <td>
                 <span class="label">Please clarify and write down the details of the request.</span>
-                <div class="value">{{ $serviceRequest->description_request }}</div>
+                <div class="value" style="white-space: nowrap; word-break: keep-all; overflow-wrap: normal;">{{ $serviceRequest->description_request }}</div>
             </td>
         </tr>
     </table>

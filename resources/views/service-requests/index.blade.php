@@ -30,11 +30,11 @@
                     <tbody>
                         @forelse ($serviceRequests as $serviceRequest)
                             <tr class="border-t border-slate-200">
-                                <td class="px-4 py-3 text-center font-semibold text-slate-900">{{ $serviceRequest->reference_code }}</td>
-                                <td class="px-4 py-3 text-center text-slate-700">
+                                <td class="px-4 py-3 text-center font-semibold text-slate-900 break-all">{{ $serviceRequest->reference_code }}</td>
+                                <td class="px-4 py-3 text-center text-slate-700 break-all">
                                     {{ $serviceRequest->contact_last_name }}, {{ $serviceRequest->contact_first_name }} {{ $serviceRequest->contact_middle_name }}
                                 </td>
-                                <td class="px-4 py-3 text-center text-slate-700">{{ $serviceRequest->office }}</td>
+                                <td class="px-4 py-3 text-center text-slate-700 break-all">{{ $serviceRequest->office }}</td>
                                 <td class="px-4 py-3 text-center">
                                     @php
                                         $statusClasses = match ($serviceRequest->status) {

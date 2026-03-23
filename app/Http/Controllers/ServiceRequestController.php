@@ -83,6 +83,11 @@ class ServiceRequestController extends Controller
                 ->withInput();
         }
 
+        // Keep department stable for non-admin users so requests remain in their scoped view.
+        if (! $this->isAdmin()) {
+            $validated['department_code'] = (string) $serviceRequest->department_code;
+        }
+
         $serviceRequest->update($validated);
 
         return redirect()
@@ -96,6 +101,7 @@ class ServiceRequestController extends Controller
 
         return view('service-requests.show', [
             'serviceRequest' => $serviceRequest,
+            'canManageStatus' => $this->canManageStatus($serviceRequest),
         ]);
     }
 
@@ -121,7 +127,7 @@ class ServiceRequestController extends Controller
 
     public function updateStatus(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        abort_unless($this->canAccess($serviceRequest), 403);
+        abort_unless($this->canManageStatus($serviceRequest), 403);
 
         $validated = $request->validate([
             'status' => ['required', 'in:pending,approved,rejected'],
@@ -156,14 +162,20 @@ class ServiceRequestController extends Controller
         $validated = $request->validate([
             'request_date' => ['required', 'date'],
             'department_code' => ['required', 'string', 'max:30', 'in:ADMIN,Role 1,Role 2,Role 3,Role 4,Role 5,Role 6,Role 7,Role 8,Role 9'],
+            'request_category' => ['nullable', 'string', 'max:100'],
+            'application_system_name' => ['nullable', 'string', 'max:255'],
+            'expected_completion_date' => ['nullable', 'date'],
+            'expected_completion_time' => ['nullable', 'date_format:H:i'],
             'contact_last_name' => ['required', 'string', 'max:255'],
             'contact_first_name' => ['required', 'string', 'max:255'],
             'contact_middle_name' => ['nullable', 'string', 'max:255'],
+            'contact_suffix_name' => ['nullable', 'string', 'max:100'],
             'office' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
-            'landline' => ['nullable', 'string', 'max:50'],
-            'fax_no' => ['nullable', 'string', 'max:50'],
-            'mobile_no' => ['required', 'string', 'max:50'],
+            'landline' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]*$/'],
+            'fax_no' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]*$/'],
+            'mobile_no' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/'],
+            'email_address' => ['nullable', 'string', 'max:255'],
             'description_request' => ['required', 'string'],
             'approved_by_name' => ['required', 'string', 'max:255'],
             'approved_by_signature' => ['nullable', 'string', 'max:255'],
@@ -231,10 +243,14 @@ class ServiceRequestController extends Controller
         }
 
         if (blank($user?->department)) {
-            return $query->whereRaw('1 = 0');
+            return $query->where('user_id', $user?->id);
         }
 
-        return $query->where('department_code', (string) $user->department);
+        return $query->where(function (Builder $builder) use ($user): void {
+            $builder
+                ->where('department_code', (string) $user->department)
+                ->orWhere('user_id', $user?->id);
+        });
     }
 
     private function canAccess(ServiceRequest $serviceRequest): bool
@@ -249,6 +265,10 @@ class ServiceRequestController extends Controller
             return false;
         }
 
+        if ((int) $serviceRequest->user_id === (int) ($user?->id ?? 0)) {
+            return true;
+        }
+
         if (blank($user?->department)) {
             return false;
         }
@@ -259,6 +279,25 @@ class ServiceRequestController extends Controller
     private function isAdmin(): bool
     {
         return strtoupper((string) Auth::user()?->department) === 'ADMIN';
+    }
+
+    private function canManageStatus(ServiceRequest $serviceRequest): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        $user = Auth::user();
+
+        if ($user?->department_status !== 'approved') {
+            return false;
+        }
+
+        if (blank($user?->department)) {
+            return false;
+        }
+
+        return (string) $serviceRequest->department_code === (string) $user->department;
     }
 
     private function approvedDepartmentOptions(bool $excludeAdmin = false, ?string $excludeDepartment = null): array

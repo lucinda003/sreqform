@@ -92,11 +92,11 @@
                         <tbody>
                             @forelse ($recentRequests as $request)
                                 <tr class="border-t border-slate-200">
-                                    <td class="py-3 pe-4 font-semibold text-slate-900">
+                                    <td class="py-3 pe-4 font-semibold text-slate-900 break-all">
                                         <a href="{{ route('service-requests.show', $request) }}" class="auth-link">{{ $request->reference_code }}</a>
                                     </td>
-                                    <td class="py-3 pe-4 text-slate-700">{{ $request->office }}</td>
-                                    <td class="py-3 pe-4 text-slate-700">{{ $request->contact_last_name }}, {{ $request->contact_first_name }}</td>
+                                    <td class="py-3 pe-4 text-slate-700 break-all">{{ $request->office }}</td>
+                                    <td class="py-3 pe-4 text-slate-700 break-all">{{ $request->contact_last_name }}, {{ $request->contact_first_name }}</td>
                                     <td class="py-3 pe-4">
                                         @php
                                             $statusClasses = match ($request->status) {
