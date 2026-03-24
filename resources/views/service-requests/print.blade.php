@@ -7,22 +7,25 @@
     <style>
         @page {
             size: A4;
-            margin: 7mm;
+            margin: 9mm;
         }
 
-        * { box-sizing: border-box; }
+        * {
+            box-sizing: border-box;
+        }
+
         body {
             margin: 0;
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 11px;
             color: #111827;
             background: #fff;
         }
 
         .sheet {
             width: 100%;
-            max-width: 196mm;
-            margin: 0 auto;
+            max-width: 200mm;
+            margin: 0 auto 12px;
         }
 
         .controls {
@@ -31,46 +34,286 @@
         }
 
         .btn {
-            border: 1px solid #0f172a;
+            border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            padding: 6px 10px;
-            border-radius: 4px;
-            font-size: 12px;
+            padding: 5px 10px;
+            border-radius: 3px;
+            font-size: 11px;
             cursor: pointer;
         }
 
-        table { width: 100%; border-collapse: collapse; }
-        td, th { border: 1px solid #111827; padding: 4px 6px; vertical-align: top; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
 
-        .noborder { border: 0 !important; }
-        .center { text-align: center !important; }
-        .right { text-align: right; }
-        .bold { font-weight: 700; }
-        .small { font-size: 11px; }
-        .tiny { font-size: 10px; }
-        .action-row { height: 28px; }
-        .logo { width: 46px; height: 46px; object-fit: contain; }
-        .line-label { text-align: center; font-size: 11px; margin-top: 2px; }
+        td,
+        th {
+            border: 1px solid #111827;
+            padding: 5px 7px;
+            vertical-align: top;
+            font-size: 11px;
+        }
+
+        .noborder {
+            border: 0 !important;
+        }
+
+        .center {
+            text-align: center !important;
+        }
+
+        .bold {
+            font-weight: 700;
+        }
+
+        .small {
+            font-size: 10px;
+        }
+
+        .tiny {
+            font-size: 9px;
+        }
+
+        .logo-cell {
+            width: 100px;
+        }
+
+        .logo {
+            margin-top: 4px;
+            width: 50px;
+            height: 50px;
+            
+        }
+
+        .header-main {
+            padding-top: 6px;
+            font-size: 10px;
+            font-weight: 1000;
+            text-align: center;
+        }
+
+        .header-sub {
+            font-size: 12px;
+            font-weight: 700;
+            text-align: center;
+            border-top: 1px solid #111827;
+            margin-top: 15px;
+            padding-top: 4px;
+        }
+
+        .reference-wrap {
+            width: 100%;
+            margin-left: 500px;
+            margin-top: 7px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .reference-label {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 1px;
+        }
+
+        .reference-code {
+            display: inline-block;
+            min-width: auto;
+            border-bottom: 1px solid #111827;
+            text-align: center;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .datetime-wrap {
+            width: 100%;
+            margin-left: 420px;
+            margin-top: 7px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        .datetime-line {
+            margin-top: 0;
+            font-size: 12px;
+            margin-bottom: 1px;
+        }
+
+        .datetime-value {
+            width:auto;
+            display: block;
+            border-bottom: 1px solid #111827;
+            text-align: center;
+            font-weight: 700;
+        }
 
         .desc-title {
             border-top: 1px solid #111827;
             border-bottom: 4px solid #111827;
-            padding: 6px 2px;
+            padding: 6px 7px;
+            font-size: 11px;
         }
 
         .desc-body {
-            min-height: 150px;
+            min-height: 130px;
             border-bottom: 4px solid #111827;
             padding: 10px 8px;
             white-space: pre-line;
             word-break: break-word;
             overflow-wrap: anywhere;
-            line-height: 1.45;
+            line-height: 1.35;
+        }
+
+        .line-value {
+            min-height: 18px;
+            border-bottom: 1px solid #111827;
+            padding: 0 3px;
+        }
+
+        .line-caption {
+            margin-top: 2px;
+            text-align: center;
+            font-size: 11px;
+        }
+
+        .action-row {
+            height: 26px;
+        }
+
+        .version {
+            margin-top: 2px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: 700;
         }
 
         @media print {
-            .controls { display: none; }
+            .controls {
+                display: none;
+            }
+
+            .sheet {
+                max-width: auto;
+                width: 70%;
+                transform: scale(1.3);
+                margin-top: 200px;
+            }
+
+            td,
+            th {
+                padding: 7px 9px;
+                font-size: 13px;
+            }
+
+            .small {
+                font-size: 12px;
+            }
+
+            .tiny {
+                font-size: 11px;
+            }
+
+            .header-main {
+                font-size: 18px;
+            }
+
+            .logo {
+                margin-top: 4px;
+                width: 70px;
+                height: 70px;
+            }
+
+            .header-sub {
+                font-size: 16px;
+                margin-top: 8px;
+            }
+        
+            .reference-label {
+                font-size: 20px;
+            }
+
+            .reference-code {
+                font-size: 22px;
+            }
+
+            .reference-wrap {
+                width: 100%;
+                margin-left: 500px;
+                margin-top: 7px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .reference-label {
+                font-size: 15px;
+                font-weight: 700;
+                margin-bottom: 1px;
+            }
+
+            .reference-code {
+                display: inline-block;
+                min-width: auto;
+                border-bottom: 1px solid #111827;
+                text-align: center;
+                font-size: 13px;
+                font-weight: 700;
+            }
+
+            .datetime-line,
+            .datetime-value {
+                font-size: 14px;
+            }
+
+            .datetime-wrap {
+                width: 100%;
+                margin-left: 400px;
+                margin-top: 7px;
+                display: flex;
+                align-items: center;
+                gap: 5px;
+            }
+
+            .datetime-line {
+                margin-top: 0;
+                font-size: 12px;
+                margin-bottom: 1px;
+            }
+
+            .datetime-value {
+                width: auto;
+                display: block;
+                border-bottom: 1px solid #111827;
+                text-align: center;
+                font-weight: 700;
+            }
+
+            .desc-title {
+                font-size: 13px;
+            }
+
+            .desc-body {
+                min-height: 180px;
+                font-size: 13px;
+                line-height: 1.4;
+            }
+
+            .line-value {
+                min-height: 22px;
+            }
+
+            .line-caption {
+                font-size: 12px;
+            }
+
+            .action-row {
+                height: 34px;
+            }
+
+            .version {
+                font-size: 14px;
+            }
         }
 
     </style>
@@ -83,30 +326,25 @@
 
         <table>
             <tr>
-                <td style="width:62px" class="center"><img src="{{ asset('images/dohlogo.svg') }}" alt="DOH" class="logo"></td>
+                <td class="center logo-cell"><img src="{{ asset('images/dohlogo.svg') }}" alt="DOH" class="logo"></td>
                 <td>
-                    <div class="center bold" style="font-size:17px;">Knowledge Management and Information Technology Service</div>
-                    <div class="center bold" style="margin-top:6px; font-size:15px; border-top:1px solid #111827; padding-top:4px;">Service Request Form</div>
+                    <div class="header-main">Knowledge Management and Information Technology Service</div>
+                    <div class="header-sub">Service Request Form</div>
                 </td>
             </tr>
         </table>
 
-        <table style="margin-left:120px; margin-top:4px;">
-            <tr>
-                <td class="noborder"></td>
-                <td class="noborder center bold" style="font-size:14px;">Reference Code : <span style="font-size:16px;">{{ $serviceRequest->reference_code }}</span></td>
-            </tr>
-            <tr>
-                <td class="noborder"></td>
-                <td class="noborder center">1) Date/Time of Request (mm/dd/yyyy h:m:s) :
-                    <span style="display:inline-block; min-width:210px; border-bottom:1px solid #111827; text-align:center;">
-                        {{ $serviceRequest->request_date->format('m/d/Y') }} {{ $serviceRequest->time_received ?: '' }}
-                    </span>
-                </td>
-            </tr>
-        </table>
+        <div class="reference-wrap">
+            <div class="reference-label">Reference Code :</div>
+            <div class="reference-code">{{ $serviceRequest->reference_code }}</div>
+        </div>
 
-        <table style="margin-top:4px;">
+        <div class="datetime-wrap">
+            <div class="datetime-line">1) Date/Time of Request (mm/dd/yyyy h:m:s) :</div>
+            <div class="datetime-value">{{ $serviceRequest->request_date->format('m/d/Y') }} {{ $serviceRequest->time_received ?: '' }}</div>
+        </div>
+
+        <table style="margin-top:8px;">
             <tr>
                 <td>2) Request Category : {{ data_get($serviceRequest, 'request_category', '') }}</td>
             </tr>
@@ -167,16 +405,16 @@
                 <td style="padding:6px 10px;">
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div style="flex:1;">
-                            <div style="min-height:18px; border-bottom:1px solid #111827; padding:0 4px;">{{ $serviceRequest->approved_by_name }}</div>
-                            <div class="line-label">Name &amp; Signature of Head of Office</div>
+                            <div class="line-value">{{ $serviceRequest->approved_by_name }}</div>
+                            <div class="line-caption">Name &amp; Signature of Head of Office</div>
 
-                            <div style="margin-top:8px; min-height:18px; border-bottom:1px solid #111827; padding:0 4px;">{{ $serviceRequest->approved_by_position }}</div>
-                            <div class="line-label">Position</div>
+                            <div style="margin-top:8px;" class="line-value">{{ $serviceRequest->approved_by_position }}</div>
+                            <div class="line-caption">Position</div>
                         </div>
 
                         <div style="width:38%;">
-                            <div style="min-height:18px; border-bottom:1px solid #111827; padding:0 4px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
-                            <div class="line-label">Date Signed</div>
+                            <div class="line-value">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
+                            <div class="line-caption">Date Signed</div>
                         </div>
                     </div>
                 </td>
@@ -191,16 +429,17 @@
 
         <table>
             <tr class="center">
-                <td colspan="2" style="width:180px;">Received</td>
-                <td colspan="3">Action</td>
-                <td rowspan="2" style="width:110px; vertical-align:middle;">Signature<br><span class="tiny">(g)</span></td>
+                <td colspan="2" style="width:190px;">Received</td>
+                <td colspan="4">Action</td>
+                <td rowspan="2" style="width:90px; vertical-align:middle;">Signature<br><span class="tiny">(g)</span></td>
             </tr>
             <tr class="center">
-                <td style="width:90px;">Date<br><span class="tiny">(a)</span></td>
-                <td style="width:90px;">Time<br><span class="tiny">(b)</span></td>
-                <td style="width:90px;">Date<br><span class="tiny">(c)</span></td>
-                <td style="width:90px;">Time<br><span class="tiny">(d)</span></td>
-                <td>Taken<br><span class="tiny">(e)</span>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Officer<br><span class="tiny">(f)</span></td>
+                <td style="width:95px;">Date<br><span class="tiny">(a)</span></td>
+                <td style="width:95px;">Time<br><span class="tiny">(b)</span></td>
+                <td style="width:95px;">Date<br><span class="tiny">(c)</span></td>
+                <td style="width:95px;">Time<br><span class="tiny">(d)</span></td>
+                <td style="width:120px;">Taken<br><span class="tiny">(e)</span></td>
+                <td style="width:120px;">Officer<br><span class="tiny">(f)</span></td>
             </tr>
             @php $logs = $serviceRequest->action_logs ?? []; @endphp
             @for ($i = 0; $i < 5; $i++)
@@ -209,14 +448,8 @@
                     <td>{{ data_get($logs, $i . '.time', '') }}</td>
                     <td></td>
                     <td></td>
-                    <td>
-                        <table style="width:100%; border-collapse:collapse; border:0;">
-                            <tr>
-                                <td class="noborder" style="width:60%; border-right:1px solid #111827 !important; padding:0 4px;">{{ data_get($logs, $i . '.action_taken', '') }}</td>
-                                <td class="noborder" style="padding:0 4px;">{{ data_get($logs, $i . '.action_officer', '') }}</td>
-                            </tr>
-                        </table>
-                    </td>
+                    <td>{{ data_get($logs, $i . '.action_taken', '') }}</td>
+                    <td>{{ data_get($logs, $i . '.action_officer', '') }}</td>
                     <td></td>
                 </tr>
             @endfor
@@ -235,7 +468,7 @@
             </tr>
         </table>
 
-        <div class="bold" style="text-align:right; margin-top:2px; font-size:14px;">DOH-KMITS-SRF Ver. 1</div>
+        <div class="version">DOH-KMITS-SRF Ver. 1</div>
     </div>
 </body>
 </html>

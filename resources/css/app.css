@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Poppins:wght@400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap');
 
 @tailwind base;
 @tailwind components;
@@ -43,6 +43,406 @@
 
 	.auth-shell {
 		@apply relative mx-auto flex min-h-screen w-full max-w-7xl items-center justify-center px-5 py-8 md:px-8;
+	}
+
+	.auth-login-body {
+		font-family: 'Poppins', 'Space Grotesk', sans-serif;
+		background:
+			radial-gradient(circle at 15% 24%, rgba(182, 245, 196, 0.78), transparent 33%),
+			radial-gradient(circle at 83% 19%, rgba(82, 195, 188, 0.82), transparent 30%),
+			linear-gradient(120deg, #d9f3dd 0%, #6fd3b7 44%, #3bbec8 100%);
+	}
+
+	.auth-login-shell {
+		@apply relative min-h-screen overflow-hidden px-5 py-3 md:px-9;
+	}
+
+	.auth-login-aurora {
+		@apply pointer-events-none absolute inset-0;
+		background:
+			radial-gradient(circle at 16% 58%, rgba(255, 255, 255, 0.46), transparent 35%),
+			radial-gradient(circle at 70% 62%, rgba(255, 255, 255, 0.22), transparent 34%);
+	}
+
+	.auth-login-wave {
+		@apply pointer-events-none absolute left-0 right-0;
+		height: 300px;
+		border-radius: 100% 100% 0 0;
+		background: rgba(242, 252, 251, 0.55);
+	}
+
+	.auth-login-wave-one {
+		bottom: 92px;
+		transform: translateX(-7%) scaleX(1.23);
+	}
+
+	.auth-login-wave-two {
+		bottom: -46px;
+		background: rgba(255, 255, 255, 0.78);
+		transform: translateX(7%) scaleX(1.33);
+	}
+
+	.auth-login-topbar {
+		@apply relative z-10 flex w-full items-center justify-between pt-1;
+	}
+
+	.auth-login-brand {
+		@apply flex items-center gap-3;
+	}
+
+	.auth-login-brand-logo {
+		height: 76px;
+		width: 76px;
+	}
+
+	.auth-login-brand-title {
+		font-size: 1.85rem;
+		letter-spacing: 0.03em;
+		@apply font-semibold text-slate-800;
+	}
+
+	.auth-login-brand-subtitle {
+		@apply -mt-1 text-[0.95rem] text-slate-700/70;
+	}
+
+	.auth-login-register {
+		@apply rounded-2xl bg-white px-6 py-1.5 text-lg font-semibold text-teal-700 shadow-[0_4px_10px_rgba(15,23,42,0.16)] transition hover:-translate-y-0.5;
+	}
+
+	.auth-login-top-actions {
+		@apply flex items-center gap-2;
+	}
+
+	.auth-login-card-wrap {
+		@apply relative z-10 mx-auto mt-16 w-full;
+		max-width: 620px;
+	}
+
+	.auth-login-card {
+		@apply rounded-3xl border p-8 shadow-[0_10px_22px_rgba(15,23,42,0.2)] backdrop-blur-sm;
+		border-color: rgba(147, 176, 173, 0.6);
+		background: rgba(207, 231, 228, 0.76);
+	}
+
+	.auth-login-card-head {
+		@apply flex items-center gap-4;
+	}
+
+	.auth-login-card-logo {
+		height: 92px;
+		width: 92px;
+	}
+
+	.auth-login-card-title {
+		font-size: 3.2rem;
+		line-height: 1.12;
+		letter-spacing: 0.01em;
+		@apply font-semibold text-slate-700;
+	}
+
+	.auth-login-divider {
+		@apply my-4 h-px w-full bg-slate-600/30;
+	}
+
+	.auth-login-form {
+		@apply space-y-4;
+	}
+
+	.auth-login-label {
+		@apply mb-1 block text-[2.2rem] text-slate-700;
+	}
+
+	.auth-login-input-wrap {
+		@apply relative;
+	}
+
+	.auth-login-input-icon {
+		@apply pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-teal-700/75;
+	}
+
+	.auth-login-input {
+		@apply w-full rounded-xl border border-transparent bg-white/90 py-3 pl-12 pr-4 text-[1.65rem] text-slate-700 outline-none transition placeholder:text-slate-400 focus:border-teal-300 focus:ring-2 focus:ring-teal-100;
+	}
+
+	.auth-login-meta {
+		@apply mt-2.5 flex items-center justify-between;
+	}
+
+	.auth-login-remember {
+		@apply inline-flex items-center gap-2 text-[1.2rem] text-slate-700;
+	}
+
+	.auth-login-remember input {
+		@apply h-4 w-4 rounded border-slate-300 text-teal-700 focus:ring-teal-300;
+	}
+
+	.auth-login-forgot {
+		@apply text-[1.2rem] text-rose-500 transition hover:text-rose-600;
+	}
+
+	.auth-login-button {
+		@apply mt-3 inline-flex w-full items-center justify-center rounded-[1.1rem] border border-teal-700 bg-teal-600 px-4 py-4 text-[2.3rem] font-semibold tracking-[0.02em] text-white shadow-[0_8px_16px_rgba(15,118,110,0.35)] transition hover:bg-teal-700;
+	}
+
+	.auth-login-secondary {
+		@apply mt-2 inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white/85 px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white;
+	}
+
+	.auth-login-page .auth-login-brand-logo {
+		height: 62px;
+		width: 62px;
+	}
+
+	.auth-login-page .auth-login-brand-title,
+	.auth-register-page .auth-login-brand-title,
+	.auth-forgot-page .auth-login-brand-title {
+		font-size: 2.05rem;
+	}
+
+	.auth-login-page .auth-login-brand-subtitle,
+	.auth-register-page .auth-login-brand-subtitle,
+	.auth-forgot-page .auth-login-brand-subtitle {
+		font-size: 1.05rem;
+	}
+
+	.auth-login-page .auth-login-card-wrap {
+		max-width: 370px;
+		margin-top: 2rem;
+	}
+
+	.auth-login-page .auth-login-card {
+		padding: 0.9rem;
+	}
+
+	.auth-login-page .auth-login-card-logo {
+		height: 50px;
+		width: 50px;
+	}
+
+	.auth-login-page .auth-login-card-title {
+		font-size: 1.36rem;
+	}
+
+	.auth-login-page .auth-login-label {
+		font-size: 0.92rem;
+	}
+
+	.auth-login-page .auth-login-input {
+		font-size: 0.8rem;
+		padding-top: 0.34rem;
+		padding-bottom: 0.34rem;
+		padding-left: 2rem;
+	}
+
+	.auth-login-page .auth-login-input-icon {
+		height: 14px;
+		width: 14px;
+		left: 0.6rem;
+	}
+
+	.auth-login-page .auth-login-remember,
+	.auth-login-page .auth-login-forgot {
+		font-size: 0.75rem;
+	}
+
+	.auth-login-page .auth-login-button {
+		font-size: 0.92rem;
+		padding-top: 0.42rem;
+		padding-bottom: 0.42rem;
+	}
+
+	.auth-login-page .auth-login-secondary {
+		font-size: 0.78rem;
+		padding-top: 0.34rem;
+		padding-bottom: 0.34rem;
+	}
+
+	.auth-track-page .auth-login-brand-logo {
+		height: 62px;
+		width: 62px;
+	}
+
+	.auth-track-page .auth-login-brand-title {
+		font-size: 2.05rem;
+	}
+
+	.auth-track-page .auth-login-brand-subtitle {
+		font-size: 1.05rem;
+	}
+
+	.auth-track-page .auth-login-card-wrap {
+		max-width: 370px;
+		margin-top: 2rem;
+	}
+
+	.auth-track-page .auth-login-card {
+		padding: 0.9rem;
+	}
+
+	.auth-track-page .auth-login-card-logo {
+		height: 50px;
+		width: 50px;
+	}
+
+	.auth-track-page .auth-login-card-title {
+		font-size: 1.36rem;
+	}
+
+	.auth-track-page .auth-login-label {
+		font-size: 0.92rem;
+	}
+
+	.auth-track-page .auth-login-input {
+		font-size: 0.8rem;
+		padding-top: 0.34rem;
+		padding-bottom: 0.34rem;
+		padding-left: 1rem;
+	}
+
+	.auth-track-page .auth-login-button {
+		font-size: 0.92rem;
+		padding-top: 0.42rem;
+		padding-bottom: 0.42rem;
+	}
+
+	.auth-register-page .auth-login-brand-logo,
+	.auth-forgot-page .auth-login-brand-logo {
+		height: 62px;
+		width: 62px;
+	}
+
+	.auth-register-page .auth-register-card-wrap,
+	.auth-forgot-page .auth-register-card-wrap {
+		max-width: 370px;
+		margin-top: 2rem;
+	}
+
+	.auth-register-page .auth-register-card,
+	.auth-forgot-page .auth-register-card {
+		padding: 0.9rem;
+	}
+
+	.auth-register-page .auth-register-card-logo,
+	.auth-forgot-page .auth-register-card-logo {
+		height: 50px;
+		width: 50px;
+	}
+
+	.auth-register-page .auth-register-card-title,
+	.auth-forgot-page .auth-register-card-title {
+		font-size: 1.36rem;
+	}
+
+	.auth-register-page .auth-register-label,
+	.auth-forgot-page .auth-register-label {
+		font-size: 0.92rem;
+	}
+
+	.auth-register-page .auth-register-input,
+	.auth-forgot-page .auth-register-input {
+		font-size: 0.8rem;
+		padding-top: 0.34rem;
+		padding-bottom: 0.34rem;
+		padding-left: 2rem;
+	}
+
+	.auth-register-page .auth-login-input-icon,
+	.auth-forgot-page .auth-login-input-icon {
+		height: 14px;
+		width: 14px;
+		left: 0.6rem;
+	}
+
+	.auth-register-page .auth-login-remember,
+	.auth-register-page .auth-login-forgot,
+	.auth-forgot-page .auth-login-remember,
+	.auth-forgot-page .auth-login-forgot {
+		font-size: 0.75rem;
+	}
+
+	.auth-register-page .auth-register-button,
+	.auth-forgot-page .auth-register-button {
+		font-size: 0.92rem;
+		padding-top: 0.42rem;
+		padding-bottom: 0.42rem;
+	}
+
+	.auth-forgot-page .auth-aux-title {
+		font-size: 1.36rem;
+	}
+
+	.auth-forgot-page .auth-aux-copy {
+		font-size: 0.78rem;
+		line-height: 1.35;
+	}
+
+	.auth-register-card-wrap {
+		max-width: 600px;
+	}
+
+	.auth-register-card {
+		padding: 1.55rem 1.6rem 1.45rem;
+	}
+
+	.auth-register-card-logo {
+		height: 72px;
+		width: 72px;
+	}
+
+	.auth-register-card-title {
+		font-size: 2.85rem;
+	}
+
+	.auth-register-form {
+		gap: 0.75rem;
+	}
+
+	.auth-register-label {
+		font-size: 1.9rem;
+	}
+
+	.auth-register-input {
+		font-size: 1.35rem;
+		padding-top: 0.62rem;
+		padding-bottom: 0.62rem;
+	}
+
+	.auth-register-button {
+		font-size: 2.1rem;
+		padding-top: 0.86rem;
+		padding-bottom: 0.86rem;
+	}
+
+	.auth-aux-title {
+		font-size: 2.45rem;
+		line-height: 1.2;
+		@apply font-semibold text-slate-900;
+	}
+
+	.auth-aux-copy {
+		max-width: 33rem;
+		font-size: 1.1rem;
+		line-height: 1.6;
+		@apply mt-2 text-slate-600;
+	}
+
+	.auth-code-boxes {
+		@apply mt-5 flex items-center justify-center gap-3;
+	}
+
+	.auth-code-boxes span {
+		height: 58px;
+		width: 58px;
+		@apply rounded-md border border-slate-500/70 bg-white/70;
+	}
+
+	.auth-verify-meta {
+		@apply mt-3 flex items-center justify-center gap-2 text-slate-600;
+		font-size: 1.1rem;
+	}
+
+	.auth-verify-resend {
+		@apply text-slate-500 transition hover:text-slate-700;
 	}
 
 	.auth-blob {
@@ -141,6 +541,78 @@
 
 	.auth-stagger > *:nth-child(3) {
 		animation-delay: 130ms;
+	}
+
+	@media (max-width: 768px) {
+		.auth-login-brand-title {
+			font-size: 1rem;
+		}
+
+		.auth-login-brand-logo {
+			height: 58px;
+			width: 58px;
+		}
+
+		.auth-login-register {
+			@apply px-5 py-2 text-base;
+		}
+
+		.auth-login-top-actions {
+			gap: 0.45rem;
+		}
+
+		.auth-login-card-wrap {
+			@apply mt-10;
+		}
+
+		.auth-login-card {
+			@apply p-5;
+		}
+
+		.auth-login-card-title {
+			font-size: 1.75rem;
+		}
+
+		.auth-login-label {
+			font-size: 1rem;
+		}
+
+		.auth-login-input {
+			font-size: 1rem;
+		}
+
+		.auth-login-button {
+			font-size: 1.15rem;
+		}
+
+		.auth-register-label {
+			font-size: 1rem;
+		}
+
+		.auth-register-input {
+			font-size: 1rem;
+		}
+
+		.auth-register-button {
+			font-size: 1.15rem;
+		}
+
+		.auth-aux-title {
+			font-size: 1.45rem;
+		}
+
+		.auth-aux-copy {
+			font-size: 0.95rem;
+		}
+
+		.auth-code-boxes span {
+			height: 44px;
+			width: 44px;
+		}
+
+		.auth-verify-meta {
+			font-size: 0.9rem;
+		}
 	}
 }
 

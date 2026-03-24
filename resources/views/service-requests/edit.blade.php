@@ -61,15 +61,9 @@
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">Department for Reference :
-                                <select id="department_code" name="department_code" class="auth-input !min-h-0 !w-[260px] !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
-                                    @foreach ($departmentOptions as $departmentOption)
-                                        <option value="{{ $departmentOption }}" @selected(old('department_code', $serviceRequest->department_code) === $departmentOption)>{{ $departmentOption }}</option>
-                                    @endforeach
-                                </select>
+                                <span class="inline-block min-w-40 border-b border-slate-400 px-1 py-0.5 text-center">ADMIN</span>
+                                <input type="hidden" id="department_code" name="department_code" value="ADMIN">
                                 <x-input-error :messages="$errors->get('department_code')" class="mt-1" />
-                                @if (! $isAdmin)
-                                    <p class="mt-1 text-xs text-slate-500">Department stays fixed for non-admin updates to keep request visibility consistent.</p>
-                                @endif
                             </td>
                         </tr>
                         <tr>
@@ -197,74 +191,6 @@
                                     </div>
                                 </div>
                             </td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" class="border border-slate-400 px-2 py-1 text-center font-semibold">(For Knowledge Management and Information Technology Service only)</td>
-                        </tr>
-                        <tr>
-                            <td colspan="2" class="border border-slate-400 px-2 py-1 font-semibold">14) ACTION TAKEN <span class="font-normal italic">(Use separate sheet if necessary)</span></td>
-                        </tr>
-                    </table>
-
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
-                        <thead>
-                            <tr>
-                                <th colspan="2" class="border border-slate-400 px-2 py-1 text-center font-normal">Received</th>
-                                <th colspan="3" class="border border-slate-400 px-2 py-1 text-center font-normal">Action</th>
-                                <th rowspan="2" class="border border-slate-400 px-2 py-1 text-center font-normal">Signature<br>(g)</th>
-                            </tr>
-                            <tr>
-                                <th class="border border-slate-400 px-2 py-1 text-center font-normal">Date<br>(a)</th>
-                                <th class="border border-slate-400 px-2 py-1 text-center font-normal">Time<br>(b)</th>
-                                <th class="border border-slate-400 px-2 py-1 text-center font-normal">Date<br>(c)</th>
-                                <th class="border border-slate-400 px-2 py-1 text-center font-normal">Time<br>(d)</th>
-                                <th class="border border-slate-400 px-2 py-1 text-center font-normal">Taken (e) / Officer (f)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @for ($i = 0; $i < 5; $i++)
-                                <tr>
-                                    <td class="border border-slate-300 px-1 py-1">
-                                        <input name="action_log_date[]" type="date" value="{{ old('action_log_date.' . $i, data_get($serviceRequest->action_logs, $i . '.date')) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                                    </td>
-                                    <td class="border border-slate-300 px-1 py-1">
-                                        <input name="action_log_time[]" type="time" value="{{ old('action_log_time.' . $i, data_get($serviceRequest->action_logs, $i . '.time')) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                                    </td>
-                                    <td class="border border-slate-300 px-1 py-1"></td>
-                                    <td class="border border-slate-300 px-1 py-1"></td>
-                                    <td class="border border-slate-300 px-1 py-1">
-                                        <div class="grid grid-cols-2 gap-1">
-                                            <input name="action_log_action_taken[]" type="text" value="{{ old('action_log_action_taken.' . $i, data_get($serviceRequest->action_logs, $i . '.action_taken')) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                                            <input name="action_log_action_officer[]" type="text" value="{{ old('action_log_action_officer.' . $i, data_get($serviceRequest->action_logs, $i . '.action_officer')) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                                        </div>
-                                    </td>
-                                    <td class="border border-slate-300 px-1 py-1"></td>
-                                </tr>
-                            @endfor
-                        </tbody>
-                    </table>
-
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1" style="width:34%;">15) NOTED BY :</td>
-                            <td class="border border-slate-400 px-2 py-1" style="width:33%;">16)</td>
-                            <td class="border border-slate-400 px-2 py-1" style="width:33%;">17)</td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">
-                                <input name="noted_by_name" value="{{ old('noted_by_name', $serviceRequest->noted_by_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                            </td>
-                            <td class="border border-slate-400 px-2 py-1">
-                                <input name="noted_by_position" value="{{ old('noted_by_position', $serviceRequest->noted_by_position) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                            </td>
-                            <td class="border border-slate-400 px-2 py-1">
-                                <input name="noted_by_date_signed" type="date" value="{{ old('noted_by_date_signed', optional($serviceRequest->noted_by_date_signed)->toDateString()) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1 text-center">Name and Signature of Supervisor</td>
-                            <td class="border border-slate-400 px-2 py-1 text-center">Position</td>
-                            <td class="border border-slate-400 px-2 py-1 text-center">Date Signed</td>
                         </tr>
                     </table>
 

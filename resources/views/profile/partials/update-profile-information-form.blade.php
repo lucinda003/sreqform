@@ -50,19 +50,10 @@
         <div>
             <label for="department" class="auth-label">Department Code</label>
             <select id="department" name="department" class="auth-input" required>
-                <option value="Role 1" @selected(old('department', $user->department) === 'Role 1')>Role 1</option>
-                <option value="Role 2" @selected(old('department', $user->department) === 'Role 2')>Role 2</option>
-                <option value="Role 3" @selected(old('department', $user->department) === 'Role 3')>Role 3</option>
-                <option value="Role 4" @selected(old('department', $user->department) === 'Role 4')>Role 4</option>
-                <option value="Role 5" @selected(old('department', $user->department) === 'Role 5')>Role 5</option>
-                <option value="Role 6" @selected(old('department', $user->department) === 'Role 6')>Role 6</option>
-                <option value="Role 7" @selected(old('department', $user->department) === 'Role 7')>Role 7</option>
-                <option value="Role 8" @selected(old('department', $user->department) === 'Role 8')>Role 8</option>
-                <option value="Role 9" @selected(old('department', $user->department) === 'Role 9')>Role 9</option>
                 <option value="ADMIN" @selected(old('department', $user->department) === 'ADMIN')>ADMIN</option>
             </select>
             <x-input-error class="mt-2" :messages="$errors->get('department')" />
-            <p class="mt-1 text-xs text-slate-500">Role-based users can access requests for their own department role only.</p>
+            <p class="mt-1 text-xs text-slate-500">ADMIN-only access is enabled.</p>
             @php
                 $departmentStatusClasses = $user->department_status === 'approved'
                     ? 'border-emerald-300 bg-emerald-100 text-emerald-800'

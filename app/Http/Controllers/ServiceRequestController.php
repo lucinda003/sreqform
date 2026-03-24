@@ -9,6 +9,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -34,12 +36,47 @@ class ServiceRequestController extends Controller
         ]);
     }
 
+    public function track(Request $request): View|RedirectResponse
+    {
+        $referenceCode = trim((string) $request->query('reference_code'));
+        $serviceRequest = null;
+
+        if ($referenceCode !== '') {
+            $serviceRequest = ServiceRequest::query()
+                ->where('reference_code', $referenceCode)
+                ->first();
+
+            if ($serviceRequest && $request->query('view') === '1') {
+                return redirect()->route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]);
+            }
+        }
+
+        return view('service-requests.track', [
+            'referenceCode' => $referenceCode,
+            'serviceRequest' => $serviceRequest,
+        ]);
+    }
+
+    public function trackView(string $referenceCode): View
+    {
+        $serviceRequest = ServiceRequest::query()
+            ->where('reference_code', trim($referenceCode))
+            ->firstOrFail();
+
+        return view('service-requests.print', [
+            'serviceRequest' => $serviceRequest,
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validatedData($request);
 
+        // Public requesters and admin-submitted requests are all routed to ADMIN queue.
+        $validated['department_code'] = 'ADMIN';
+
         $authUser = Auth::user();
-        if (! $this->isAdmin() && $authUser?->department_status !== 'approved') {
+        if ($authUser && ! $this->isAdmin() && $authUser->department_status !== 'approved') {
             return back()
                 ->withErrors(['department_code' => 'Your department is pending admin approval.'])
                 ->withInput();
@@ -54,9 +91,59 @@ class ServiceRequestController extends Controller
 
         $serviceRequest = ServiceRequest::create($validated);
 
+        if ($this->isAdmin()) {
+            return redirect()
+                ->route('service-requests.show', $serviceRequest)
+                ->with('status', 'Service Request submitted successfully.');
+        }
+
+        $signedEmailUrl = URL::temporarySignedRoute(
+            'service-requests.capture-email',
+            now()->addMinutes(60),
+            ['serviceRequest' => $serviceRequest->id]
+        );
+
+        return redirect($signedEmailUrl);
+    }
+
+    public function captureEmailForm(ServiceRequest $serviceRequest): View
+    {
+        return view('service-requests.capture-email', [
+            'serviceRequest' => $serviceRequest,
+            'signedActionUrl' => URL::signedRoute('service-requests.capture-email.store', ['serviceRequest' => $serviceRequest->id]),
+        ]);
+    }
+
+    public function captureEmailStore(Request $request, ServiceRequest $serviceRequest): RedirectResponse
+    {
+        $validated = $request->validate([
+            'email_address' => ['required', 'string', 'email', 'max:255'],
+        ]);
+
+        $serviceRequest->update([
+            'email_address' => $validated['email_address'],
+        ]);
+
+        $statusMessage = 'Reference Code saved. Check your email inbox for updates.';
+
+        try {
+            $referenceCode = $serviceRequest->reference_code;
+            Mail::raw(
+                "Your DOH service request reference code is {$referenceCode}.\n\nUse this code to track your request status at the Track Your Request page.",
+                function ($message) use ($validated, $referenceCode): void {
+                    $message
+                        ->to($validated['email_address'])
+                        ->subject("DOH Service Request Reference Code: {$referenceCode}");
+                }
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+            $statusMessage = 'Email saved, but sending failed. You can still track using your reference code.';
+        }
+
         return redirect()
-            ->route('service-requests.show', $serviceRequest)
-            ->with('status', 'Service Request submitted successfully.');
+            ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+            ->with('status', $statusMessage);
     }
 
     public function edit(ServiceRequest $serviceRequest): View
@@ -144,24 +231,17 @@ class ServiceRequestController extends Controller
 
     private function generateReferenceCode(string $departmentCode, string $requestDate): string
     {
-        $cleanDepartment = strtoupper(preg_replace('/[^A-Za-z0-9]/', '', $departmentCode) ?? '');
-        $cleanDepartment = $cleanDepartment !== '' ? $cleanDepartment : 'GEN';
+        $datePart = date('dmY', strtotime($requestDate));
+        $sequence = ((int) ServiceRequest::query()->max('id')) + 1;
 
-        $datePart = date('Ymd', strtotime($requestDate));
-
-        $sequence = ServiceRequest::query()
-            ->whereDate('request_date', $requestDate)
-            ->where('department_code', $departmentCode)
-            ->count() + 1;
-
-        return sprintf('%s-%s-%03d', $cleanDepartment, $datePart, $sequence);
+        return sprintf('SRF-%s-%05d', $datePart, $sequence);
     }
 
     private function validatedData(Request $request): array
     {
         $validated = $request->validate([
             'request_date' => ['required', 'date'],
-            'department_code' => ['required', 'string', 'max:30', 'in:ADMIN,Role 1,Role 2,Role 3,Role 4,Role 5,Role 6,Role 7,Role 8,Role 9'],
+            'department_code' => ['nullable', 'string', 'max:30', 'in:ADMIN'],
             'request_category' => ['nullable', 'string', 'max:100'],
             'application_system_name' => ['nullable', 'string', 'max:255'],
             'expected_completion_date' => ['nullable', 'date'],
@@ -328,7 +408,7 @@ class ServiceRequestController extends Controller
         }
 
         if ($options === []) {
-            return ['Role 1', 'Role 2', 'Role 3', 'Role 4', 'Role 5', 'Role 6', 'Role 7', 'Role 8', 'Role 9'];
+            return ['ADMIN'];
         }
 
         return $options;

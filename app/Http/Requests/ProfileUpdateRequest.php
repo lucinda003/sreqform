@@ -26,7 +26,7 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'department' => ['required', 'string', 'max:30', 'in:ADMIN,Role 1,Role 2,Role 3,Role 4,Role 5,Role 6,Role 7,Role 8,Role 9'],
+            'department' => ['required', 'string', 'max:30', 'in:ADMIN'],
         ];
     }
 }

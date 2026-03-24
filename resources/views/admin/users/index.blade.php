@@ -70,22 +70,12 @@
                                     <label class="auth-label" for="selected_department">Department Role</label>
                                     <select class="auth-input" id="selected_department" name="department" required>
                                         <option value="ADMIN" @selected($selectedUser->department === 'ADMIN')>ADMIN</option>
-                                        <option value="Role 1" @selected($selectedUser->department === 'Role 1')>Role 1</option>
-                                        <option value="Role 2" @selected($selectedUser->department === 'Role 2')>Role 2</option>
-                                        <option value="Role 3" @selected($selectedUser->department === 'Role 3')>Role 3</option>
-                                        <option value="Role 4" @selected($selectedUser->department === 'Role 4')>Role 4</option>
-                                        <option value="Role 5" @selected($selectedUser->department === 'Role 5')>Role 5</option>
-                                        <option value="Role 6" @selected($selectedUser->department === 'Role 6')>Role 6</option>
-                                        <option value="Role 7" @selected($selectedUser->department === 'Role 7')>Role 7</option>
-                                        <option value="Role 8" @selected($selectedUser->department === 'Role 8')>Role 8</option>
-                                        <option value="Role 9" @selected($selectedUser->department === 'Role 9')>Role 9</option>
                                     </select>
                                 </div>
 
                                 <div>
                                     <label class="auth-label" for="selected_department_status">Department Status</label>
                                     <select class="auth-input" id="selected_department_status" name="department_status" required>
-                                        <option value="pending" @selected($selectedUser->department_status === 'pending')>Pending</option>
                                         <option value="approved" @selected($selectedUser->department_status === 'approved')>Approved</option>
                                     </select>
                                 </div>
@@ -142,15 +132,6 @@
                     <div>
                         <label class="auth-label" for="department">Department Role</label>
                         <select class="auth-input" id="department" name="department" required>
-                            <option value="Role 1">Role 1</option>
-                            <option value="Role 2">Role 2</option>
-                            <option value="Role 3">Role 3</option>
-                            <option value="Role 4">Role 4</option>
-                            <option value="Role 5">Role 5</option>
-                            <option value="Role 6">Role 6</option>
-                            <option value="Role 7">Role 7</option>
-                            <option value="Role 8">Role 8</option>
-                            <option value="Role 9">Role 9</option>
                             <option value="ADMIN">ADMIN</option>
                         </select>
                     </div>
@@ -158,7 +139,6 @@
                     <div>
                         <label class="auth-label" for="department_status">Department Status</label>
                         <select class="auth-input" id="department_status" name="department_status" required>
-                            <option value="pending">Pending</option>
                             <option value="approved">Approved</option>
                         </select>
                     </div>

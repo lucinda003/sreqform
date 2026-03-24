@@ -1,33 +1,56 @@
 <x-guest-layout>
-    <div>
-        <h2 class="auth-title">Verify your email</h2>
-        <p class="auth-subtitle">
-            Before continuing, open your inbox and click the verification link we sent.
-            If it did not arrive, you can send a new one below.
-        </p>
-    </div>
-
-    @if (session('status') == 'verification-link-sent')
-        <div class="auth-success mt-4">
-            A new verification link has been sent to your email address.
-        </div>
-    @endif
-
-    <div class="mt-6 space-y-3">
-        <form method="POST" action="{{ route('verification.send') }}">
-            @csrf
-
+    <header class="auth-login-topbar">
+        <div class="auth-login-brand">
+            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
             <div>
-                <button type="submit" class="auth-button w-full">Resend Verification Email</button>
+                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
+                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
             </div>
-        </form>
+        </div>
 
-        <form method="POST" action="{{ route('logout') }}">
-            @csrf
+        <a href="{{ route('login') }}" class="auth-login-register">Login</a>
+    </header>
 
-            <button type="submit" class="auth-link w-full text-center">
-                Log out
-            </button>
-        </form>
-    </div>
+    <section class="auth-login-card-wrap auth-register-card-wrap">
+        <div class="auth-login-card auth-register-card">
+            <div class="auth-login-card-head">
+                <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-card-logo auth-register-card-logo">
+                <h2 class="auth-login-card-title auth-register-card-title">DEPARTMENT OF<br>HEALTH</h2>
+            </div>
+
+            <div class="auth-login-divider"></div>
+
+            <h3 class="auth-aux-title">Verify Email Address</h3>
+            <p class="auth-aux-copy">Verification code is sent to {{ auth()->user()?->email ?? 'your email address' }}</p>
+
+            @if (session('status') == 'verification-link-sent')
+                <div class="auth-success mt-3">A new verification link has been sent to your email address.</div>
+            @endif
+
+            <div class="auth-code-boxes" aria-hidden="true">
+                <span></span>
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+
+            <form method="POST" action="{{ route('verification.send') }}" class="mt-3">
+                @csrf
+                <button type="submit" class="auth-login-button auth-register-button">Confirm Code</button>
+            </form>
+
+            <div class="auth-verify-meta">
+                <span>00: 28</span>
+                <form method="POST" action="{{ route('verification.send') }}">
+                    @csrf
+                    <button type="submit" class="auth-verify-resend">Resend Confirmation Code</button>
+                </form>
+            </div>
+
+            <form method="POST" action="{{ route('logout') }}" class="mt-2 text-center">
+                @csrf
+                <button type="submit" class="auth-link">Log out</button>
+            </form>
+        </div>
+    </section>
 </x-guest-layout>
