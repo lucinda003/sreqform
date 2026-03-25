@@ -39,18 +39,43 @@
         ];
     @endphp
 
-    <x-slot name="header">
-        <div>
-            <h2 class="auth-title">Edit Service Request</h2>
-            <p class="auth-subtitle">Reference: {{ $serviceRequest->reference_code }}</p>
-        </div>
-    </x-slot>
-
     <div class="mx-auto w-full max-w-6xl py-6">
+        <div class="mb-4 rounded-2xl border border-white/70 bg-white/85 p-4 shadow-lg backdrop-blur-xl">
+            <div class="flex flex-wrap items-center gap-3">
+                <p class="text-sm font-semibold text-slate-700">Status :</p>
+                @php
+                    $statusClasses = match ($serviceRequest->status) {
+                        'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
+                        'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
+                        'rejected' => 'border-rose-300 bg-rose-100 text-rose-800',
+                        default => 'border-amber-300 bg-amber-100 text-amber-800',
+                    };
+                @endphp
+                <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase {{ $statusClasses }}">
+                    {{ $serviceRequest->status }}
+                </span>
+
+                @if ($isAdmin)
+                    <div class="ms-auto flex flex-wrap items-center gap-2">
+                        <a href="{{ route('service-requests.print', $serviceRequest) }}" target="_blank" class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase text-slate-800 transition hover:bg-slate-100">Print</a>
+                        <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2">
+                            @csrf
+                            @method('PATCH')
+                            <button type="submit" name="status" value="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
+                            <button type="submit" name="status" value="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
+                            <button type="submit" name="status" value="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                        </form>
+                    </div>
+                @endif
+            </div>
+        </div>
+
         <div class="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-lg">
-            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" class="space-y-0">
+            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="space-y-0">
                 @csrf
                 @method('PUT')
+
+                <fieldset @if ($isAdmin) disabled @endif>
 
                 <div class="px-4 pb-3">
                     <table class="w-full border-collapse text-[12px] text-slate-900">
@@ -168,6 +193,26 @@
                     <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
                         <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
                             <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
+
+                            @if ($isAdmin)
+                                <div class="mt-3 border-t border-slate-300 pt-2">
+                                    <p class="text-[12px] font-semibold text-slate-700">Uploaded Photos</p>
+
+                                    <div id="uploaded-photos-content" class="mt-2">
+                                        @if (is_array($serviceRequest->description_photos) && count($serviceRequest->description_photos) > 0)
+                                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                                                @foreach ($serviceRequest->description_photos as $photoPath)
+                                                    <a href="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" target="_blank" class="block overflow-hidden rounded-lg border border-slate-300 bg-white">
+                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" alt="Service Request Photo" class="h-32 w-full object-cover">
+                                                    </a>
+                                                @endforeach
+                                            </div>
+                                        @else
+                                            <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">No uploaded photos for this request yet.</p>
+                                        @endif
+                                    </div>
+                                </div>
+                            @endif
                     </div>
                     <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
                 </div>
@@ -193,13 +238,112 @@
                             </td>
                         </tr>
                     </table>
-
-                    <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
-                    <x-input-error :messages="$errors->get('kmits_date')" class="mt-1" />
                 </div>
+                </fieldset>
+
+                @if ($isAdmin)
+                    @php
+                        $existingLogs = $serviceRequest->action_logs ?? [];
+                        $logDates = old('action_log_date', collect($existingLogs)->pluck('date')->pad(5, '')->values()->all());
+                        $logTimes = old('action_log_time', collect($existingLogs)->pluck('time')->pad(5, '')->values()->all());
+                        $logActionDates = old('action_log_action_date', collect($existingLogs)->pluck('action_date')->pad(5, '')->values()->all());
+                        $logActionTimes = old('action_log_action_time', collect($existingLogs)->pluck('action_time')->pad(5, '')->values()->all());
+                        $logActions = old('action_log_action_taken', collect($existingLogs)->pluck('action_taken')->pad(5, '')->values()->all());
+                        $logOfficers = old('action_log_action_officer', collect($existingLogs)->pluck('action_officer')->pad(5, '')->values()->all());
+                    @endphp
+
+                    <div class="px-4 pb-3">
+                        <div class="rounded-xl border border-slate-300 bg-slate-50 p-3">
+                            <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For knowledge management and information technology service only</h3>
+
+                            <div class="mt-3 grid gap-3 md:grid-cols-3">
+                                <label class="block text-[12px] text-slate-700">
+                                    <span class="font-semibold">10. Date</span>
+                                    <input type="date" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                </label>
+
+                                <label class="block text-[12px] text-slate-700">
+                                    <span class="font-semibold">11. Time Received</span>
+                                    <input type="time" name="time_received" value="{{ old('time_received', $serviceRequest->time_received) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                </label>
+
+                                <label class="block text-[12px] text-slate-700 md:col-span-3">
+                                    <span class="font-semibold">12. Actions Taken</span>
+                                    <textarea name="actions_taken" rows="2" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('actions_taken', $serviceRequest->actions_taken) }}</textarea>
+                                </label>
+                            </div>
+
+                            <div class="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white">
+                                <table class="min-w-full border-collapse text-[12px] text-slate-800">
+                                    <thead class="bg-slate-100">
+                                        <tr>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Date (a) Received</th>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Time (b) Received</th>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Date (c) Accomplish</th>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Time (d) Accomplish</th>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Action Taken</th>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Action Officer</th>
+                                            <th class="border border-slate-300 px-2 py-1 text-left">Signature</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @for ($i = 0; $i < 5; $i++)
+                                            <tr>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_action_date[]" value="{{ $logActionDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                                <td class="border border-slate-300 px-2 py-1 text-center text-[11px] text-slate-500">________________</td>
+                                            </tr>
+                                        @endfor
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="mt-4 grid gap-3 md:grid-cols-3">
+                                <label class="block text-[12px] text-slate-700 md:col-span-3">
+                                    <span class="font-semibold">13. Noted by (Name of Supervisor)</span>
+                                    <input type="text" name="noted_by_name" value="{{ old('noted_by_name', $serviceRequest->noted_by_name) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                </label>
+
+                                <div class="text-[12px] text-slate-700">
+                                    <span class="font-semibold">Signature</span>
+                                    <div class="mt-2 h-[34px] rounded-md border border-dashed border-slate-300 bg-slate-50"></div>
+                                </div>
+
+                                <label class="block text-[12px] text-slate-700">
+                                    <span class="font-semibold">14. Position</span>
+                                    <input type="text" name="noted_by_position" value="{{ old('noted_by_position', $serviceRequest->noted_by_position) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                </label>
+
+                                <label class="block text-[12px] text-slate-700">
+                                    <span class="font-semibold">15. Date Signed</span>
+                                    <input type="date" name="noted_by_date_signed" value="{{ old('noted_by_date_signed', optional($serviceRequest->noted_by_date_signed)->toDateString()) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                </label>
+                            </div>
+
+                            <x-input-error :messages="$errors->get('kmits_date')" class="mt-2" />
+                            <x-input-error :messages="$errors->get('time_received')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('actions_taken')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_date')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_time')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_action_date')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_action_time')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_action_taken')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_action_officer')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('noted_by_name')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
+                        </div>
+                    </div>
+                @else
+                    <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
+                @endif
 
                 <div class="flex items-center justify-between border-t border-slate-300 bg-slate-50 px-4 py-3">
-                    <a href="{{ route('service-requests.show', $serviceRequest) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-500">Cancel</a>
+                    <a href="{{ route('service-requests.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-500">Cancel</a>
                     <button type="submit" class="auth-button">Update Service Request</button>
                 </div>
             </form>
@@ -274,5 +418,6 @@
             officeInput.addEventListener('change', syncAddress);
             officeInput.addEventListener('blur', syncAddress);
         });
+
     </script>
 </x-app-layout>

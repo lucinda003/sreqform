@@ -10,6 +10,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\URL;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
@@ -42,13 +43,10 @@ class ServiceRequestController extends Controller
         $serviceRequest = null;
 
         if ($referenceCode !== '') {
+            $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
             $serviceRequest = ServiceRequest::query()
-                ->where('reference_code', $referenceCode)
+                ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
                 ->first();
-
-            if ($serviceRequest && $request->query('view') === '1') {
-                return redirect()->route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]);
-            }
         }
 
         return view('service-requests.track', [
@@ -59,8 +57,9 @@ class ServiceRequestController extends Controller
 
     public function trackView(string $referenceCode): View
     {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
         $serviceRequest = ServiceRequest::query()
-            ->where('reference_code', trim($referenceCode))
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
         return view('service-requests.print', [
@@ -71,6 +70,9 @@ class ServiceRequestController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validatedData($request);
+        if ($this->hasDescriptionPhotosColumn()) {
+            $validated['description_photos'] = $this->storeDescriptionPhotos($request);
+        }
 
         // Public requesters and admin-submitted requests are all routed to ADMIN queue.
         $validated['department_code'] = 'ADMIN';
@@ -93,7 +95,7 @@ class ServiceRequestController extends Controller
 
         if ($this->isAdmin()) {
             return redirect()
-                ->route('service-requests.show', $serviceRequest)
+                ->route('service-requests.edit', $serviceRequest)
                 ->with('status', 'Service Request submitted successfully.');
         }
 
@@ -146,9 +148,52 @@ class ServiceRequestController extends Controller
             ->with('status', $statusMessage);
     }
 
-    public function edit(ServiceRequest $serviceRequest): View
+    public function edit(Request $request, ServiceRequest $serviceRequest): View
     {
         abort_unless($this->canAccess($serviceRequest), 403);
+
+        if (
+            $this->isAdmin()
+            && $serviceRequest->status === 'pending'
+            && $request->query('skip_auto_checking') !== '1'
+        ) {
+            $serviceRequest->update(['status' => 'checking']);
+            $serviceRequest->refresh();
+        }
+
+        if ($this->isAdmin()) {
+            $now = now();
+            $updates = [];
+
+            $actionLogs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
+            $firstLog = is_array($actionLogs[0] ?? null) ? $actionLogs[0] : [];
+
+            if (blank($firstLog['date'] ?? null)) {
+                $firstLog['date'] = $now->toDateString();
+            }
+
+            if (blank($firstLog['time'] ?? null)) {
+                $firstLog['time'] = $now->format('H:i');
+            }
+
+            if (filled($firstLog['date'] ?? null) || filled($firstLog['time'] ?? null)) {
+                $actionLogs[0] = $firstLog;
+                $updates['action_logs'] = $actionLogs;
+            }
+
+            if (blank($serviceRequest->time_received)) {
+                $updates['time_received'] = $now->format('H:i');
+            }
+
+            if (blank($serviceRequest->kmits_date)) {
+                $updates['kmits_date'] = $now->toDateString();
+            }
+
+            if ($updates !== []) {
+                $serviceRequest->update($updates);
+                $serviceRequest->refresh();
+            }
+        }
 
         $currentDepartment = trim((string) Auth::user()?->department);
         return view('service-requests.edit', [
@@ -161,13 +206,22 @@ class ServiceRequestController extends Controller
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
-        $validated = $this->validatedData($request);
-
         $authUser = Auth::user();
         if (! $this->isAdmin() && $authUser?->department_status !== 'approved') {
             return back()
                 ->withErrors(['department_code' => 'Your department is pending admin approval.'])
                 ->withInput();
+        }
+
+        $validated = $this->isAdmin()
+            ? $this->validatedKmitsData($request)
+            : $this->validatedData($request);
+
+        if ($this->hasDescriptionPhotosColumn()) {
+            $validated['description_photos'] = $this->storeDescriptionPhotos(
+                $request,
+                $serviceRequest->description_photos
+            );
         }
 
         // Keep department stable for non-admin users so requests remain in their scoped view.
@@ -178,18 +232,15 @@ class ServiceRequestController extends Controller
         $serviceRequest->update($validated);
 
         return redirect()
-            ->route('service-requests.show', $serviceRequest)
+            ->route('service-requests.edit', $serviceRequest)
             ->with('status', 'Service Request updated successfully.');
     }
 
-    public function show(ServiceRequest $serviceRequest): View
+    public function show(ServiceRequest $serviceRequest): RedirectResponse
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
-        return view('service-requests.show', [
-            'serviceRequest' => $serviceRequest,
-            'canManageStatus' => $this->canManageStatus($serviceRequest),
-        ]);
+        return redirect()->route('service-requests.edit', $serviceRequest);
     }
 
     public function print(ServiceRequest $serviceRequest): View
@@ -217,15 +268,20 @@ class ServiceRequestController extends Controller
         abort_unless($this->canManageStatus($serviceRequest), 403);
 
         $validated = $request->validate([
-            'status' => ['required', 'in:pending,approved,rejected'],
+            'status' => ['required', 'in:pending,checking,approved,rejected'],
         ]);
 
         $serviceRequest->update([
             'status' => $validated['status'],
         ]);
 
+        $routeParams = ['serviceRequest' => $serviceRequest];
+        if ($validated['status'] === 'pending') {
+            $routeParams['skip_auto_checking'] = '1';
+        }
+
         return redirect()
-            ->route('service-requests.show', $serviceRequest)
+            ->route('service-requests.edit', $routeParams)
             ->with('status', 'Request status updated successfully.');
     }
 
@@ -235,6 +291,16 @@ class ServiceRequestController extends Controller
         $sequence = ((int) ServiceRequest::query()->max('id')) + 1;
 
         return sprintf('SRF-%s-%05d', $datePart, $sequence);
+    }
+
+    private function normalizeReferenceCode(string $referenceCode): string
+    {
+        return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim($referenceCode)));
+    }
+
+    private function hasDescriptionPhotosColumn(): bool
+    {
+        return Schema::hasColumn('service_requests', 'description_photos');
     }
 
     private function validatedData(Request $request): array
@@ -257,6 +323,8 @@ class ServiceRequestController extends Controller
             'mobile_no' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/'],
             'email_address' => ['nullable', 'string', 'max:255'],
             'description_request' => ['required', 'string'],
+            'description_photos' => ['nullable', 'array', 'max:3'],
+            'description_photos.*' => ['nullable', 'image', 'max:5120'],
             'approved_by_name' => ['required', 'string', 'max:255'],
             'approved_by_signature' => ['nullable', 'string', 'max:255'],
             'approved_by_position' => ['required', 'string', 'max:255'],
@@ -268,6 +336,10 @@ class ServiceRequestController extends Controller
             'action_log_date.*' => ['nullable', 'date'],
             'action_log_time' => ['nullable', 'array', 'max:5'],
             'action_log_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_action_date' => ['nullable', 'array', 'max:5'],
+            'action_log_action_date.*' => ['nullable', 'date'],
+            'action_log_action_time' => ['nullable', 'array', 'max:5'],
+            'action_log_action_time.*' => ['nullable', 'date_format:H:i'],
             'action_log_action_taken' => ['nullable', 'array', 'max:5'],
             'action_log_action_taken.*' => ['nullable', 'string', 'max:255'],
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
@@ -278,9 +350,12 @@ class ServiceRequestController extends Controller
         ]);
 
         $validated['approved_by_signature'] = $validated['approved_by_signature'] ?? '';
+        unset($validated['description_photos']);
 
         $dateRows = $validated['action_log_date'] ?? [];
         $timeRows = $validated['action_log_time'] ?? [];
+        $actionDateRows = $validated['action_log_action_date'] ?? [];
+        $actionTimeRows = $validated['action_log_action_time'] ?? [];
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
 
@@ -289,11 +364,20 @@ class ServiceRequestController extends Controller
             $row = [
                 'date' => $dateRows[$i] ?? null,
                 'time' => $timeRows[$i] ?? null,
+                'action_date' => $actionDateRows[$i] ?? null,
+                'action_time' => $actionTimeRows[$i] ?? null,
                 'action_taken' => $actionRows[$i] ?? null,
                 'action_officer' => $officerRows[$i] ?? null,
             ];
 
-            if (filled($row['date']) || filled($row['time']) || filled($row['action_taken']) || filled($row['action_officer'])) {
+            if (
+                filled($row['date'])
+                || filled($row['time'])
+                || filled($row['action_date'])
+                || filled($row['action_time'])
+                || filled($row['action_taken'])
+                || filled($row['action_officer'])
+            ) {
                 $actionLogs[] = $row;
             }
         }
@@ -303,6 +387,97 @@ class ServiceRequestController extends Controller
         unset(
             $validated['action_log_date'],
             $validated['action_log_time'],
+            $validated['action_log_action_date'],
+            $validated['action_log_action_time'],
+            $validated['action_log_action_taken'],
+            $validated['action_log_action_officer']
+        );
+
+        return $validated;
+    }
+
+    private function storeDescriptionPhotos(Request $request, ?array $existingPhotos = null): ?array
+    {
+        if (! $request->hasFile('description_photos')) {
+            return $existingPhotos !== [] ? $existingPhotos : null;
+        }
+
+        $stored = [];
+        foreach ((array) $request->file('description_photos') as $photo) {
+            if ($photo === null) {
+                continue;
+            }
+
+            $stored[] = $photo->store('service-request-photos', 'public');
+        }
+
+        return $stored !== [] ? $stored : ($existingPhotos !== [] ? $existingPhotos : null);
+    }
+
+    private function validatedKmitsData(Request $request): array
+    {
+        $validated = $request->validate([
+            'kmits_date' => ['required', 'date'],
+            'description_photos' => ['nullable', 'array', 'max:3'],
+            'description_photos.*' => ['nullable', 'image', 'max:5120'],
+            'time_received' => ['nullable', 'date_format:H:i'],
+            'actions_taken' => ['nullable', 'string'],
+            'action_log_date' => ['nullable', 'array', 'max:5'],
+            'action_log_date.*' => ['nullable', 'date'],
+            'action_log_time' => ['nullable', 'array', 'max:5'],
+            'action_log_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_action_date' => ['nullable', 'array', 'max:5'],
+            'action_log_action_date.*' => ['nullable', 'date'],
+            'action_log_action_time' => ['nullable', 'array', 'max:5'],
+            'action_log_action_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_action_taken' => ['nullable', 'array', 'max:5'],
+            'action_log_action_taken.*' => ['nullable', 'string', 'max:255'],
+            'action_log_action_officer' => ['nullable', 'array', 'max:5'],
+            'action_log_action_officer.*' => ['nullable', 'string', 'max:255'],
+            'noted_by_name' => ['nullable', 'string', 'max:255'],
+            'noted_by_position' => ['nullable', 'string', 'max:255'],
+            'noted_by_date_signed' => ['nullable', 'date'],
+        ]);
+
+        unset($validated['description_photos']);
+
+        $dateRows = $validated['action_log_date'] ?? [];
+        $timeRows = $validated['action_log_time'] ?? [];
+        $actionDateRows = $validated['action_log_action_date'] ?? [];
+        $actionTimeRows = $validated['action_log_action_time'] ?? [];
+        $actionRows = $validated['action_log_action_taken'] ?? [];
+        $officerRows = $validated['action_log_action_officer'] ?? [];
+
+        $actionLogs = [];
+        for ($i = 0; $i < 5; $i++) {
+            $row = [
+                'date' => $dateRows[$i] ?? null,
+                'time' => $timeRows[$i] ?? null,
+                'action_date' => $actionDateRows[$i] ?? null,
+                'action_time' => $actionTimeRows[$i] ?? null,
+                'action_taken' => $actionRows[$i] ?? null,
+                'action_officer' => $officerRows[$i] ?? null,
+            ];
+
+            if (
+                filled($row['date'])
+                || filled($row['time'])
+                || filled($row['action_date'])
+                || filled($row['action_time'])
+                || filled($row['action_taken'])
+                || filled($row['action_officer'])
+            ) {
+                $actionLogs[] = $row;
+            }
+        }
+
+        $validated['action_logs'] = $actionLogs !== [] ? $actionLogs : null;
+
+        unset(
+            $validated['action_log_date'],
+            $validated['action_log_time'],
+            $validated['action_log_action_date'],
+            $validated['action_log_action_time'],
             $validated['action_log_action_taken'],
             $validated['action_log_action_officer']
         );

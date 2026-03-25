@@ -18,7 +18,6 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->name('dashboard');
 
 Route::get('/service-requests/create', [ServiceRequestController::class, 'create'])->name('service-requests.create');
-Route::view('/service-requests/create-preview', 'service-requests.create-preview')->name('service-requests.create-preview');
 Route::post('/service-requests', [ServiceRequestController::class, 'store'])->name('service-requests.store');
 Route::get('/track-your-request', [ServiceRequestController::class, 'track'])->name('service-requests.track');
 Route::get('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackView'])->name('service-requests.track.view');

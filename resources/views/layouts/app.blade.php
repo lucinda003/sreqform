@@ -10,7 +10,7 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="app-body antialiased">
+    <body class="app-body {{ request()->routeIs('dashboard') ? 'dashboard-login-bg' : '' }} antialiased">
         <div class="app-shell min-h-screen">
             @include('layouts.navigation')
 

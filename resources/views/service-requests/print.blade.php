@@ -19,13 +19,65 @@
             font-family: Arial, sans-serif;
             font-size: 11px;
             color: #111827;
-            background: #fff;
+            background:
+                radial-gradient(circle at 15% 24%, rgba(182, 245, 196, 0.78), transparent 33%),
+                radial-gradient(circle at 83% 19%, rgba(82, 195, 188, 0.82), transparent 30%),
+                linear-gradient(120deg, #d9f3dd 0%, #6fd3b7 44%, #3bbec8 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        .screen-shell {
+            position: relative;
+            min-height: 100vh;
+            padding: 24px 12px 32px;
+            z-index: 1;
+        }
+
+        .screen-aurora,
+        .screen-wave {
+            position: fixed;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        .screen-aurora {
+            width: 520px;
+            height: 520px;
+            top: -160px;
+            right: -120px;
+            border-radius: 999px;
+            background: radial-gradient(circle at center, rgba(255, 255, 255, 0.46), rgba(255, 255, 255, 0) 70%);
+        }
+
+        .screen-wave {
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.56);
+        }
+
+        .screen-wave-one {
+            width: 560px;
+            height: 560px;
+            left: -220px;
+            bottom: -260px;
+        }
+
+        .screen-wave-two {
+            width: 360px;
+            height: 360px;
+            left: -120px;
+            top: 220px;
+            background: rgba(255, 255, 255, 0.72);
         }
 
         .sheet {
             width: 100%;
             max-width: 200mm;
             margin: 0 auto 12px;
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 18px 44px rgba(7, 32, 66, 0.34);
+            padding: 10px;
         }
 
         .controls {
@@ -105,7 +157,7 @@
 
         .reference-wrap {
             width: 100%;
-            margin-left: 500px;
+            margin-left: auto;
             margin-top: 7px;
             display: flex;
             align-items: center;
@@ -126,9 +178,49 @@
             font-weight: 700;
         }
 
+        .status-label {
+            padding-left: 300px;
+            font-size: 13px;
+            font-weight: 700;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 999px;
+            border: 1px solid #0f172a;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+        }
+
+        .status-badge.status-approved {
+            background: #dcfce7;
+            color: #166534;
+            border-color: #16a34a;
+        }
+
+        .status-badge.status-checking {
+            background: #e0f2fe;
+            color: #075985;
+            border-color: #38bdf8;
+        }
+
+        .status-badge.status-pending {
+            background: #fef9c3;
+            color: #854d0e;
+            border-color: #eab308;
+        }
+
+        .status-badge.status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #ef4444;
+        }
+
         .datetime-wrap {
             width: 100%;
-            margin-left: 420px;
+            margin-left: auto;
             margin-top: 7px;
             display: flex;
             align-items: center;
@@ -189,6 +281,22 @@
         }
 
         @media print {
+            body {
+                background: #fff;
+                min-height: auto;
+                overflow: visible;
+            }
+
+            .screen-shell {
+                min-height: auto;
+                padding: 0;
+            }
+
+            .screen-aurora,
+            .screen-wave {
+                display: none;
+            }
+
             .controls {
                 display: none;
             }
@@ -198,6 +306,10 @@
                 width: 70%;
                 transform: scale(1.3);
                 margin-top: 200px;
+                background: #fff;
+                border-radius: 0;
+                box-shadow: none;
+                padding: 0;
             }
 
             td,
@@ -228,7 +340,7 @@
                 font-size: 16px;
                 margin-top: 8px;
             }
-        
+
             .reference-label {
                 font-size: 20px;
             }
@@ -319,6 +431,11 @@
     </style>
 </head>
 <body>
+    <div class="screen-aurora"></div>
+    <div class="screen-wave screen-wave-one"></div>
+    <div class="screen-wave screen-wave-two"></div>
+
+    <div class="screen-shell">
     <div class="sheet">
         <div class="controls">
             <button class="btn" onclick="window.print()">Print</button>
@@ -337,11 +454,36 @@
         <div class="reference-wrap">
             <div class="reference-label">Reference Code :</div>
             <div class="reference-code">{{ $serviceRequest->reference_code }}</div>
+            @php
+                $isAdminViewer = strtoupper((string) auth()->user()?->department) === 'ADMIN';
+                $status = strtolower((string) data_get($serviceRequest, 'status', 'pending'));
+                $statusClass = in_array($status, ['approved', 'checking', 'pending', 'rejected'], true) ? $status : 'pending';
+                $formatClock = function ($value): string {
+                    $value = trim((string) $value);
+                    if ($value === '') {
+                        return '';
+                    }
+
+                    foreach (['H:i:s', 'H:i', 'g:i A', 'g:i a'] as $format) {
+                        try {
+                            return \Carbon\Carbon::createFromFormat($format, $value)->format('g:i:s A');
+                        } catch (\Throwable $exception) {
+                            // Keep trying formats until one matches.
+                        }
+                    }
+
+                    return $value;
+                };
+            @endphp
+            @unless ($isAdminViewer)
+                <div class="status-label">Status :</div>
+                <div class="status-badge status-{{ $statusClass }}">{{ strtoupper($statusClass) }}</div>
+            @endunless
         </div>
 
         <div class="datetime-wrap">
             <div class="datetime-line">1) Date/Time of Request (mm/dd/yyyy h:m:s) :</div>
-            <div class="datetime-value">{{ $serviceRequest->request_date->format('m/d/Y') }} {{ $serviceRequest->time_received ?: '' }}</div>
+            <div class="datetime-value">{{ $serviceRequest->request_date->format('m/d/Y') }}{{ $serviceRequest->time_received ? ' - ' : '' }}{{ $formatClock($serviceRequest->time_received) }}</div>
         </div>
 
         <table style="margin-top:8px;">
@@ -352,7 +494,7 @@
                 <td>3) Application System Name : {{ data_get($serviceRequest, 'application_system_name', '') }}</td>
             </tr>
             <tr>
-                <td>4) Expected Date / Time of Completion : {{ optional($serviceRequest->expected_completion_date)->format('m/d/Y') }}{{ $serviceRequest->expected_completion_date && $serviceRequest->expected_completion_time ? ' - ' : '' }}{{ $serviceRequest->expected_completion_time ?: '' }}</td>
+                <td>4) Expected Date / Time of Completion : {{ optional($serviceRequest->expected_completion_date)->format('m/d/Y') }}{{ $serviceRequest->expected_completion_date && $serviceRequest->expected_completion_time ? ' - ' : '' }}{{ $formatClock($serviceRequest->expected_completion_time) }}</td>
             </tr>
             <tr>
                 <td style="padding:0;">
@@ -405,15 +547,15 @@
                 <td style="padding:6px 10px;">
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div style="flex:1;">
-                            <div class="line-value">{{ $serviceRequest->approved_by_name }}</div>
+                            <div class="line-value center">{{ $serviceRequest->approved_by_name }}</div>
                             <div class="line-caption">Name &amp; Signature of Head of Office</div>
 
-                            <div style="margin-top:8px;" class="line-value">{{ $serviceRequest->approved_by_position }}</div>
+                            <div style="margin-top:8px;" class="line-value center">{{ $serviceRequest->approved_by_position }}</div>
                             <div class="line-caption">Position</div>
                         </div>
 
                         <div style="width:38%;">
-                            <div class="line-value">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
+                            <div class="line-value center">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
                             <div class="line-caption">Date Signed</div>
                         </div>
                     </div>
@@ -441,13 +583,31 @@
                 <td style="width:120px;">Taken<br><span class="tiny">(e)</span></td>
                 <td style="width:120px;">Officer<br><span class="tiny">(f)</span></td>
             </tr>
-            @php $logs = $serviceRequest->action_logs ?? []; @endphp
+            @php
+                $logs = $serviceRequest->action_logs ?? [];
+                $formatLogTime = function ($value): string {
+                    $value = trim((string) $value);
+                    if ($value === '') {
+                        return '';
+                    }
+
+                    foreach (['H:i:s', 'H:i', 'g:i A', 'g:i a'] as $format) {
+                        try {
+                            return \Carbon\Carbon::createFromFormat($format, $value)->format('g:i A');
+                        } catch (\Throwable $exception) {
+                            // Keep trying the next format.
+                        }
+                    }
+
+                    return $value;
+                };
+            @endphp
             @for ($i = 0; $i < 5; $i++)
                 <tr class="action-row">
                     <td>{{ data_get($logs, $i . '.date', '') }}</td>
-                    <td>{{ data_get($logs, $i . '.time', '') }}</td>
-                    <td></td>
-                    <td></td>
+                    <td>{{ $formatLogTime(data_get($logs, $i . '.time', '')) }}</td>
+                    <td>{{ data_get($logs, $i . '.action_date', '') }}</td>
+                    <td>{{ $formatLogTime(data_get($logs, $i . '.action_time', '')) }}</td>
                     <td>{{ data_get($logs, $i . '.action_taken', '') }}</td>
                     <td>{{ data_get($logs, $i . '.action_officer', '') }}</td>
                     <td></td>
@@ -457,18 +617,28 @@
 
         <table>
             <tr>
-                <td style="width:34%;">15) NOTED BY :</td>
-                <td style="width:33%;">16)</td>
-                <td style="width:33%;">17)</td>
+                <td style="width:34%; border-bottom:0 !important;">15) NOTED BY :</td>
+                <td style="width:33%; border-bottom:0 !important;">16)</td>
+                <td style="width:33%; border-bottom:0 !important;">17)</td>
             </tr>
             <tr>
-                <td class="center" style="padding:2px 6px;">Name and Signature of Supervisor</td>
-                <td class="center" style="padding:2px 6px;">Position</td>
-                <td class="center" style="padding:2px 6px;">Date Signed</td>
+                <td style="padding:1px 6px; border-top:0 !important;">
+                    <div class="line-value center">{{ $serviceRequest->noted_by_name ?: '' }}</div>
+                    <div class="center" style="padding-top:1px;">Name and Signature of Supervisor</div>
+                </td>
+                <td style="padding:1px 6px; border-top:0 !important;">
+                    <div class="line-value center">{{ $serviceRequest->noted_by_position ?: '' }}</div>
+                    <div class="center" style="padding-top:1px;">Position</div>
+                </td>
+                <td style="padding:1px 6px; border-top:0 !important;">
+                    <div class="line-value center">{{ optional($serviceRequest->noted_by_date_signed)->format('m/d/Y') ?: '' }}</div>
+                    <div class="center" style="padding-top:1px;">Date Signed</div>
+                </td>
             </tr>
         </table>
 
         <div class="version">DOH-KMITS-SRF Ver. 1</div>
+    </div>
     </div>
 </body>
 </html>

@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-guest-layout>
     @php
         $hospitalOfficeMap = [
             'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
@@ -37,12 +37,25 @@
             'Maguindanao Provincial Hospital' => 'Shariff Aguak, Maguindanao',
         ];
     @endphp
+    <header class="auth-login-topbar">
+        <div class="auth-login-brand">
+            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
+            <div>
+                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
+                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
+            </div>
+        </div>
 
+        <div class="auth-login-top-actions">
+            <a href="{{ route('service-requests.track') }}" class="auth-login-register">Track Request</a>
+            <a href="{{ route('login') }}" class="auth-login-register">Admin Login</a>
+        </div>
+    </header>
 
-
-    <div class="mx-auto w-full max-w-6xl py-6">
+    <section class="auth-login-card-wrap" style="max-width: 1120px; margin-top: 1.4rem;">
+        <div class="mx-auto w-full py-2">
         <div class="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-lg">
-            <form method="POST" action="{{ route('service-requests.store') }}" class="space-y-0">
+            <form method="POST" action="{{ route('service-requests.store') }}" enctype="multipart/form-data" class="space-y-0">
                 @csrf
 
                 <div class="px-4 pb-3">
@@ -154,6 +167,14 @@
                     <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
                     <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
                         <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request') }}</textarea>
+
+                        <div class="mt-3 border-t border-slate-300 pt-2">
+                            <label for="description_photos" class="block text-[12px] font-semibold text-slate-700">Attach Photos (1 to 3)</label>
+                            <input id="description_photos" name="description_photos[]" type="file" accept="image/*" multiple class="mt-1 block w-full text-[12px] text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-slate-700">
+                            <p class="mt-1 text-[11px] text-slate-500">You can upload up to 3 images. Max 5MB each.</p>
+                            <x-input-error :messages="$errors->get('description_photos')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('description_photos.*')" class="mt-1" />
+                        </div>
                     </div>
                     <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
                 </div>
@@ -191,6 +212,7 @@
             </form>
         </div>
     </div>
+    </section>
     <datalist id="hospital-office-options">
         @foreach (array_keys($hospitalOfficeMap) as $hospitalOfficeOption)
             <option value="{{ $hospitalOfficeOption }}"></option>
@@ -261,4 +283,4 @@
             officeInput.addEventListener('blur', syncAddress);
         });
     </script>
-</x-app-layout>
+</x-guest-layout>

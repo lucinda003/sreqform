@@ -38,6 +38,7 @@
                                 <td class="px-4 py-3 text-center">
                                     @php
                                         $statusClasses = match ($serviceRequest->status) {
+                                            'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
                                             'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
                                             'rejected' => 'border-rose-300 bg-rose-100 text-rose-800',
                                             default => 'border-amber-300 bg-amber-100 text-amber-800',
@@ -50,8 +51,7 @@
                                 <td class="px-4 py-3 text-center text-slate-700">{{ $serviceRequest->request_date->format('M d, Y') }}</td>
                                 <td class="px-4 py-3 text-center whitespace-nowrap">
                                     <div class="flex items-center justify-center gap-3">
-                                        <a href="{{ route('service-requests.show', $serviceRequest) }}" class="auth-link">View</a>
-                                        <a href="{{ route('service-requests.edit', $serviceRequest) }}" class="auth-link">Edit</a>
+                                        <a href="{{ route('service-requests.show', $serviceRequest) }}" class="auth-link">Open</a>
                                     </div>
                                 </td>
                             </tr>

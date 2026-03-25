@@ -34,6 +34,13 @@
 			radial-gradient(circle at 92% 16%, rgba(255, 202, 122, 0.24), transparent 26%),
 			linear-gradient(145deg, #eef6ff 0%, #f8f4ee 45%, #ecf0ff 100%);
 	}
+
+	.dashboard-login-bg {
+		background:
+			radial-gradient(circle at 15% 24%, rgba(182, 245, 196, 0.78), transparent 33%),
+			radial-gradient(circle at 83% 19%, rgba(82, 195, 188, 0.82), transparent 30%),
+			linear-gradient(120deg, #d9f3dd 0%, #6fd3b7 44%, #3bbec8 100%);
+	}
 }
 
 @layer components {
@@ -271,7 +278,7 @@
 	}
 
 	.auth-track-page .auth-login-card-wrap {
-		max-width: 370px;
+		max-width: 720px;
 		margin-top: 2rem;
 	}
 

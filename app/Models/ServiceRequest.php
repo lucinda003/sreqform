@@ -24,6 +24,7 @@ use Illuminate\Database\Eloquent\Model;
     'mobile_no',
     'email_address',
     'description_request',
+    'description_photos',
     'status',
     'approved_by_name',
     'approved_by_signature',
@@ -47,6 +48,7 @@ class ServiceRequest extends Model
             'expected_completion_date' => 'date',
             'approved_date' => 'date',
             'kmits_date' => 'date',
+            'description_photos' => 'array',
             'action_logs' => 'array',
             'noted_by_date_signed' => 'date',
         ];
