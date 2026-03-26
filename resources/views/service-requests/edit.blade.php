@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-guest-layout>
     @php
         $isAdmin = strtoupper((string) auth()->user()?->department) === 'ADMIN';
         $hospitalOfficeMap = [
@@ -39,7 +39,23 @@
         ];
     @endphp
 
-    <div class="mx-auto w-full max-w-6xl py-6">
+    <header class="auth-login-topbar">
+        <div class="auth-login-brand">
+            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
+            <div>
+                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
+                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
+            </div>
+        </div>
+
+        <div class="auth-login-top-actions">
+            <a href="{{ route('service-requests.track') }}" class="auth-login-register">Track Request</a>
+            <a href="{{ route('login') }}" class="auth-login-register">Admin Login</a>
+        </div>
+    </header>
+
+    <section class="auth-login-card-wrap" style="max-width: 1280px; margin-top: 1.4rem;">
+    <div class="mx-auto w-full py-2">
         <div class="mb-4 rounded-2xl border border-white/70 bg-white/85 p-4 shadow-lg backdrop-blur-xl">
             <div class="flex flex-wrap items-center gap-3">
                 <p class="text-sm font-semibold text-slate-700">Status :</p>
@@ -70,8 +86,8 @@
             </div>
         </div>
 
-        <div class="overflow-hidden rounded-2xl border border-slate-300 bg-white shadow-lg">
-            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="space-y-0">
+        <div class="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-lg">
+            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0">
                 @csrf
                 @method('PUT')
 
@@ -224,7 +240,52 @@
                             <td class="border border-slate-400 px-2 py-1">
                                 <div class="grid grid-cols-10 gap-3">
                                     <div class="col-span-6">
-                                        <input name="approved_by_name" value="{{ old('approved_by_name', $serviceRequest->approved_by_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
+                                        @if (! $isAdmin)
+                                            <div class="mb-0 rounded-md border border-slate-300 bg-slate-50 p-1 pb-0">
+                                                <div class="mb-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-700">
+                                                    <label class="inline-flex items-center gap-1">
+                                                        <input type="radio" name="approved_by_signature_mode" value="draw" @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
+                                                        Draw Signature
+                                                    </label>
+                                                    <label class="inline-flex items-center gap-1">
+                                                        <input type="radio" name="approved_by_signature_mode" value="upload" @checked(old('approved_by_signature_mode') === 'upload')>
+                                                        Upload Signature
+                                                    </label>
+                                                </div>
+
+                                                @if (!empty($serviceRequest->approved_by_signature) && old('approved_by_signature_drawn') === null)
+                                                    <div class="mb-2">
+                                                        <p class="mb-1 text-[11px] text-slate-600">Current Signature</p>
+                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Current Signature" class="h-16 rounded border border-slate-300 bg-white px-2 py-1">
+                                                    </div>
+                                                @endif
+
+                                                <div id="edit-signature-draw-wrap" class="space-y-1">
+                                                    <canvas id="edit-signature-canvas" class="h-24 w-full rounded border border-slate-300 bg-white"></canvas>
+                                                    <input type="hidden" name="approved_by_signature_drawn" id="edit-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
+                                                    <input type="hidden" name="approved_by_signature_clear" id="edit-signature-clear-flag" value="0">
+                                                    <button type="button" id="edit-signature-clear" class="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">Clear</button>
+                                                </div>
+
+                                                <div id="edit-signature-upload-wrap" class="hidden">
+                                                    <input type="file" name="approved_by_signature_upload" accept="image/*" class="block w-full text-[11px] text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-[11px] file:font-medium file:text-white">
+                                                </div>
+
+                                                <x-input-error :messages="$errors->get('approved_by_signature_upload')" class="mt-1" />
+                                                <x-input-error :messages="$errors->get('approved_by_signature_drawn')" class="mt-1" />
+                                            </div>
+                                        @else
+                                            <div class="mb-1 rounded-md border border-slate-300 bg-slate-50 p-2">
+                                                <p class="text-[11px] font-semibold text-slate-700">Requester Signature (Read Only)</p>
+                                                @if (!empty($serviceRequest->approved_by_signature))
+                                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Requester Signature" class="mt-1 h-14 rounded border border-slate-300 bg-white px-2 py-1">
+                                                @else
+                                                    <p class="mt-1 text-[11px] text-slate-500">No signature provided.</p>
+                                                @endif
+                                            </div>
+                                        @endif
+
+                                        <input name="approved_by_name" value="{{ old('approved_by_name', $serviceRequest->approved_by_name) }}" class="auth-input !-mt-2 !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
                                         <p class="text-center">Name &amp; Signature of Head of Office</p>
 
                                         <input name="approved_by_position" value="{{ old('approved_by_position', $serviceRequest->approved_by_position) }}" class="mt-2 auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
@@ -349,6 +410,8 @@
             </form>
         </div>
     </div>
+    </section>
+
     <datalist id="hospital-office-options">
         @foreach (array_keys($hospitalOfficeMap) as $hospitalOfficeOption)
             <option value="{{ $hospitalOfficeOption }}"></option>
@@ -417,7 +480,122 @@
 
             officeInput.addEventListener('change', syncAddress);
             officeInput.addEventListener('blur', syncAddress);
+
+            const initSignatureInput = function () {
+                const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');
+                const drawWrap = document.getElementById('edit-signature-draw-wrap');
+                const uploadWrap = document.getElementById('edit-signature-upload-wrap');
+                const canvas = document.getElementById('edit-signature-canvas');
+                const hiddenDrawn = document.getElementById('edit-signature-drawn');
+                const clearFlag = document.getElementById('edit-signature-clear-flag');
+                const clearBtn = document.getElementById('edit-signature-clear');
+
+                if (!drawWrap || !uploadWrap || !canvas || !hiddenDrawn) {
+                    return;
+                }
+
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return;
+                }
+
+                const resizeCanvas = function () {
+                    const ratio = window.devicePixelRatio || 1;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+                    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+                    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#0f172a';
+                };
+
+                resizeCanvas();
+                window.addEventListener('resize', resizeCanvas);
+
+                if (hiddenDrawn.value) {
+                    const img = new Image();
+                    img.onload = function () {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
+                    };
+                    img.src = hiddenDrawn.value;
+                }
+
+                let drawing = false;
+
+                const pointFromEvent = function (event) {
+                    const rect = canvas.getBoundingClientRect();
+                    const source = event.touches ? event.touches[0] : event;
+                    return {
+                        x: source.clientX - rect.left,
+                        y: source.clientY - rect.top,
+                    };
+                };
+
+                const start = function (event) {
+                    drawing = true;
+                    const point = pointFromEvent(event);
+                    ctx.beginPath();
+                    ctx.moveTo(point.x, point.y);
+                    event.preventDefault();
+                };
+
+                const move = function (event) {
+                    if (!drawing) {
+                        return;
+                    }
+
+                    const point = pointFromEvent(event);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                    hiddenDrawn.value = canvas.toDataURL('image/png');
+                    if (clearFlag) {
+                        clearFlag.value = '0';
+                    }
+                    event.preventDefault();
+                };
+
+                const end = function () {
+                    drawing = false;
+                };
+
+                canvas.addEventListener('mousedown', start);
+                canvas.addEventListener('mousemove', move);
+                window.addEventListener('mouseup', end);
+                canvas.addEventListener('touchstart', start, { passive: false });
+                canvas.addEventListener('touchmove', move, { passive: false });
+                canvas.addEventListener('touchend', end);
+
+                if (clearBtn) {
+                    clearBtn.addEventListener('click', function () {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        hiddenDrawn.value = '';
+                        if (clearFlag) {
+                            clearFlag.value = '1';
+                        }
+                    });
+                }
+
+                const syncMode = function () {
+                    const selected = document.querySelector('input[name="approved_by_signature_mode"]:checked');
+                    const mode = selected ? selected.value : 'draw';
+                    drawWrap.classList.toggle('hidden', mode !== 'draw');
+                    uploadWrap.classList.toggle('hidden', mode !== 'upload');
+
+                    if (mode === 'upload' && clearFlag) {
+                        clearFlag.value = '0';
+                    }
+                };
+
+                modeInputs.forEach(function (input) {
+                    input.addEventListener('change', syncMode);
+                });
+                syncMode();
+            };
+
+            initSignatureInput();
         });
 
     </script>
-</x-app-layout>
+</x-guest-layout>

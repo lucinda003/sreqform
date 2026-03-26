@@ -11,7 +11,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 use Symfony\Component\HttpFoundation\Response;
 
@@ -67,12 +69,59 @@ class ServiceRequestController extends Controller
         ]);
     }
 
+    public function trackEdit(string $referenceCode): View
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        return view('service-requests.track-edit', [
+            'serviceRequest' => $serviceRequest,
+        ]);
+    }
+
+    public function trackUpdate(Request $request, string $referenceCode): RedirectResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        $validated = $this->validatedData($request);
+
+        if ($this->hasDescriptionPhotosColumn()) {
+            $validated['description_photos'] = $this->storeDescriptionPhotos(
+                $request,
+                $serviceRequest->description_photos
+            );
+        }
+
+        $validated['approved_by_signature'] = $this->storeApprovedSignature(
+            $request,
+            (string) ($serviceRequest->approved_by_signature ?? '')
+        );
+
+        // Keep immutable ownership/scoping fields unchanged for track-based edits.
+        $validated['department_code'] = (string) $serviceRequest->department_code;
+        $validated['user_id'] = $serviceRequest->user_id;
+        $validated['reference_code'] = (string) $serviceRequest->reference_code;
+        $validated['status'] = (string) $serviceRequest->status;
+
+        $serviceRequest->update($validated);
+
+        return redirect()
+            ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+            ->with('status', 'Request updated successfully. You can now print the updated form.');
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $validated = $this->validatedData($request);
         if ($this->hasDescriptionPhotosColumn()) {
             $validated['description_photos'] = $this->storeDescriptionPhotos($request);
         }
+        $validated['approved_by_signature'] = $this->storeApprovedSignature($request);
 
         // Public requesters and admin-submitted requests are all routed to ADMIN queue.
         $validated['department_code'] = 'ADMIN';
@@ -224,6 +273,13 @@ class ServiceRequestController extends Controller
             );
         }
 
+        if (! $this->isAdmin()) {
+            $validated['approved_by_signature'] = $this->storeApprovedSignature(
+                $request,
+                (string) ($serviceRequest->approved_by_signature ?? '')
+            );
+        }
+
         // Keep department stable for non-admin users so requests remain in their scoped view.
         if (! $this->isAdmin()) {
             $validated['department_code'] = (string) $serviceRequest->department_code;
@@ -327,6 +383,9 @@ class ServiceRequestController extends Controller
             'description_photos.*' => ['nullable', 'image', 'max:5120'],
             'approved_by_name' => ['required', 'string', 'max:255'],
             'approved_by_signature' => ['nullable', 'string', 'max:255'],
+            'approved_by_signature_mode' => ['nullable', 'in:draw,upload'],
+            'approved_by_signature_drawn' => ['nullable', 'string'],
+            'approved_by_signature_upload' => ['nullable', 'image', 'max:5120'],
             'approved_by_position' => ['required', 'string', 'max:255'],
             'approved_date' => ['required', 'date'],
             'kmits_date' => ['required', 'date'],
@@ -349,8 +408,8 @@ class ServiceRequestController extends Controller
             'noted_by_date_signed' => ['nullable', 'date'],
         ]);
 
-        $validated['approved_by_signature'] = $validated['approved_by_signature'] ?? '';
         unset($validated['description_photos']);
+        unset($validated['approved_by_signature_mode'], $validated['approved_by_signature_drawn'], $validated['approved_by_signature_upload']);
 
         $dateRows = $validated['action_log_date'] ?? [];
         $timeRows = $validated['action_log_time'] ?? [];
@@ -412,6 +471,39 @@ class ServiceRequestController extends Controller
         }
 
         return $stored !== [] ? $stored : ($existingPhotos !== [] ? $existingPhotos : null);
+    }
+
+    private function storeApprovedSignature(Request $request, ?string $existingSignature = null): ?string
+    {
+        $mode = trim((string) $request->input('approved_by_signature_mode'));
+        $clearRequested = (string) $request->input('approved_by_signature_clear') === '1';
+        $uploaded = $request->file('approved_by_signature_upload');
+
+        if ($clearRequested) {
+            return '';
+        }
+
+        if ($mode === 'upload' && $uploaded !== null) {
+            return $uploaded->store('service-request-signatures', 'public');
+        }
+
+        if ($mode === 'draw') {
+            $drawn = trim((string) $request->input('approved_by_signature_drawn'));
+
+            if ($drawn !== '' && preg_match('/^data:image\/(png|jpeg);base64,/', $drawn, $matches) === 1) {
+                $binary = base64_decode(substr($drawn, strpos($drawn, ',') + 1), true);
+
+                if ($binary !== false) {
+                    $extension = $matches[1] === 'jpeg' ? 'jpg' : 'png';
+                    $path = 'service-request-signatures/' . Str::uuid()->toString() . '.' . $extension;
+                    Storage::disk('public')->put($path, $binary);
+
+                    return $path;
+                }
+            }
+        }
+
+        return filled($existingSignature) ? $existingSignature : '';
     }
 
     private function validatedKmitsData(Request $request): array

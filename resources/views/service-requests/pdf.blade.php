@@ -132,7 +132,16 @@
         <tr>
             <td>
                 <span class="label">Signature</span>
-                <div class="value">__________________________</div>
+                @php
+                    $signatureFile = !empty($serviceRequest->approved_by_signature)
+                        ? public_path('storage/' . ltrim($serviceRequest->approved_by_signature, '/'))
+                        : null;
+                @endphp
+                @if ($signatureFile && file_exists($signatureFile))
+                    <div class="value"><img src="{{ $signatureFile }}" alt="Signature" style="max-height:48px; max-width:180px;"></div>
+                @else
+                    <div class="value">__________________________</div>
+                @endif
             </td>
             <td>
                 <span class="label">Date Signed</span>

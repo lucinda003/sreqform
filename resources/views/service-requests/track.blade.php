@@ -96,7 +96,8 @@
                                 </div>
                             </div>
 
-                            <div class="mt-3 flex justify-end">
+                            <div class="mt-3 flex items-center justify-end gap-2">
+                                <a href="{{ route('service-requests.track.edit', ['referenceCode' => $serviceRequest->reference_code]) }}" class="inline-flex items-center rounded-md border border-sky-300 bg-sky-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-900 transition hover:border-sky-400 hover:bg-sky-100">Edit Request</a>
                                 <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" target="_blank" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">Print Request Form</a>
                             </div>
                         </div>

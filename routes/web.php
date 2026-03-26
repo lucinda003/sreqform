@@ -10,7 +10,7 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return Auth::check()
         ? redirect()->route('dashboard')
-        : redirect()->route('login');
+    : view('welcome');
 });
 
 Route::get('/dashboard', [DashboardController::class, 'index'])
@@ -20,6 +20,8 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
 Route::get('/service-requests/create', [ServiceRequestController::class, 'create'])->name('service-requests.create');
 Route::post('/service-requests', [ServiceRequestController::class, 'store'])->name('service-requests.store');
 Route::get('/track-your-request', [ServiceRequestController::class, 'track'])->name('service-requests.track');
+Route::get('/track-your-request/{referenceCode}/edit', [ServiceRequestController::class, 'trackEdit'])->name('service-requests.track.edit');
+Route::put('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackUpdate'])->name('service-requests.track.update');
 Route::get('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackView'])->name('service-requests.track.view');
 Route::get('/service-requests/{serviceRequest}/capture-email', [ServiceRequestController::class, 'captureEmailForm'])
     ->middleware('signed')

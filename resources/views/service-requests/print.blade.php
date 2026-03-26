@@ -342,16 +342,16 @@
             }
 
             .reference-label {
-                font-size: 20px;
+                font-size: 10px;
             }
 
             .reference-code {
-                font-size: 22px;
+                font-size: 12px;
             }
 
             .reference-wrap {
                 width: 100%;
-                margin-left: 500px;
+                margin-left: 430px;
                 margin-top: 7px;
                 display: flex;
                 align-items: center;
@@ -359,7 +359,7 @@
             }
 
             .reference-label {
-                font-size: 15px;
+                font-size: 20px;
                 font-weight: 700;
                 margin-bottom: 1px;
             }
@@ -369,7 +369,7 @@
                 min-width: auto;
                 border-bottom: 1px solid #111827;
                 text-align: center;
-                font-size: 13px;
+                font-size: 15px;
                 font-weight: 700;
             }
 
@@ -380,7 +380,7 @@
 
             .datetime-wrap {
                 width: 100%;
-                margin-left: 400px;
+                margin-left: 340px;
                 margin-top: 7px;
                 display: flex;
                 align-items: center;
@@ -544,10 +544,17 @@
         <table style="margin-top:0;">
             <tr>
                 <td style="width:180px;" class="bold">13) APPROVED BY :</td>
-                <td style="padding:6px 10px;">
+                <td style="padding:0 10px 6px;">
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div style="flex:1;">
-                            <div class="line-value center">{{ $serviceRequest->approved_by_name }}</div>
+                            <div style="position:relative; min-height:52px; margin-top:10px;">
+                                <div class="line-value center" style="position:absolute; left:0; right:0; bottom:0; margin-top:0;">{{ $serviceRequest->approved_by_name }}</div>
+                                @if (!empty($serviceRequest->approved_by_signature))
+                                    <div class="center" style="position:absolute; left:0; right:0; bottom:-2px;">
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Signature" style="max-height:56px; max-width:220px; object-fit:contain; display:inline-block;">
+                                    </div>
+                                @endif
+                            </div>
                             <div class="line-caption">Name &amp; Signature of Head of Office</div>
 
                             <div style="margin-top:8px;" class="line-value center">{{ $serviceRequest->approved_by_position }}</div>
@@ -555,7 +562,7 @@
                         </div>
 
                         <div style="width:38%;">
-                            <div class="line-value center">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
+                            <div class="line-value center" style="margin-top:40px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
                             <div class="line-caption">Date Signed</div>
                         </div>
                     </div>
@@ -637,7 +644,7 @@
             </tr>
         </table>
 
-        <div class="version">DOH-KMITS-SRF Ver. 1</div>
+        <div class="version" style="margin-top: 20px;">DOH-KMITS-SRF Ver. 1</div>
     </div>
     </div>
 </body>
