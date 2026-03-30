@@ -9,36 +9,48 @@
         </div>
 
         <div class="auth-login-top-actions">
-            <a href="{{ route('service-requests.create') }}" class="auth-login-register">Service Request Form</a>
-            <a href="{{ route('login') }}" class="auth-login-register">Admin Login</a>
+            @if ($referenceCode === '')
+                <a href="{{ route('login') }}" class="auth-login-register">Login</a>
+            @else
+                <a href="{{ route('service-requests.create') }}" class="auth-login-register">Create Service Request</a>
+            @endif
         </div>
     </header>
 
-    <section class="auth-login-card-wrap" style="max-width: 450px; width: 100%;">
+    <section class="auth-login-card-wrap" style="max-width: 420px; width: 100%;">
         <div class="auth-login-card">
             <div class="auth-login-card-head">
-                <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-card-logo">
-                <h2 class="auth-login-card-title">TRACK YOUR REQUEST FORM</h2>
+                <h2 class="auth-login-card-title">TRACK REQUEST</h2>
             </div>
 
             <div class="auth-login-divider"></div>
 
             <form method="GET" action="{{ route('service-requests.track') }}" class="auth-login-form">
                 <div>
-                    <label for="reference_code" class="auth-login-label">Reference Code</label>
+                    <label for="reference_code" class="auth-login-label">Reference Number</label>
                     <div class="auth-login-input-wrap">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="auth-login-input-icon" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <circle cx="9" cy="9" r="5"></circle>
+                            <path d="M13 13l4 4"></path>
+                        </svg>
                         <input
                             id="reference_code"
                             name="reference_code"
                             value="{{ $referenceCode }}"
                             class="auth-login-input"
-                            placeholder="Enter reference code"
+                            placeholder="Enter reference number"
                             required
                         >
                     </div>
                 </div>
 
-                <button type="submit" class="auth-login-button">Track Request</button>
+                <button type="submit" class="auth-login-button">Proceed</button>
+
+                @if ($referenceCode === '')
+                    <p class="auth-track-separator"><span>No reference number yet?</span></p>
+
+                    <a href="{{ route('service-requests.create') }}" class="auth-login-secondary">Create Service Request</a>
+                @endif
             </form>
 
             @if (session('status'))
@@ -97,7 +109,10 @@
                             </div>
 
                             <div class="mt-3 flex items-center justify-end gap-2">
-                                <a href="{{ route('service-requests.track.edit', ['referenceCode' => $serviceRequest->reference_code]) }}" class="inline-flex items-center rounded-md border border-sky-300 bg-sky-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-900 transition hover:border-sky-400 hover:bg-sky-100">Edit Request</a>
+                                <form method="POST" action="{{ route('service-requests.track.send-edit-link', ['referenceCode' => $serviceRequest->reference_code]) }}">
+                                    @csrf
+                                    <button type="submit" class="inline-flex items-center rounded-md border border-sky-300 bg-sky-50 px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-sky-900 transition hover:border-sky-400 hover:bg-sky-100">Send Edit Link</button>
+                                </form>
                                 <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" target="_blank" class="inline-flex items-center rounded-md border border-slate-300 bg-white px-4 py-2 text-xs font-semibold uppercase tracking-[0.08em] text-slate-900 transition hover:border-slate-400 hover:bg-slate-50">Print Request Form</a>
                             </div>
                         </div>

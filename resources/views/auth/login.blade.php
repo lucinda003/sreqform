@@ -9,8 +9,6 @@
         </div>
 
         <div class="auth-login-top-actions">
-            <a href="{{ route('service-requests.create') }}" class="auth-login-register">Service Request Form</a>
-            <a href="{{ route('service-requests.track') }}" class="auth-login-register">Track Your Request</a>
         </div>
     </header>
 

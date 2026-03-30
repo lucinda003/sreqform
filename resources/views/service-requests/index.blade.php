@@ -5,7 +5,6 @@
                 <h2 class="auth-title">Service Requests</h2>
                 <p class="auth-subtitle">Track submitted DOH service request forms.</p>
             </div>
-            <a href="{{ route('service-requests.create') }}" class="auth-button">New Request</a>
         </div>
     </x-slot>
 

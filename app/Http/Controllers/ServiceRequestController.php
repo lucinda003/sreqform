@@ -43,18 +43,69 @@ class ServiceRequestController extends Controller
     {
         $referenceCode = trim((string) $request->query('reference_code'));
         $serviceRequest = null;
+        $trackEditUrl = null;
 
         if ($referenceCode !== '') {
             $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
             $serviceRequest = ServiceRequest::query()
                 ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
                 ->first();
+
+            if ($serviceRequest) {
+                $trackEditUrl = URL::temporarySignedRoute(
+                    'service-requests.track.edit',
+                    now()->addMinutes(30),
+                    ['referenceCode' => $serviceRequest->reference_code]
+                );
+            }
         }
 
         return view('service-requests.track', [
             'referenceCode' => $referenceCode,
             'serviceRequest' => $serviceRequest,
+            'trackEditUrl' => $trackEditUrl,
         ]);
+    }
+
+    public function sendTrackEditLink(string $referenceCode): RedirectResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        $recipientEmail = trim((string) ($serviceRequest->email_address ?? ''));
+        if ($recipientEmail === '') {
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', 'No email address found for this request. Please contact support to update your email.');
+        }
+
+        $trackEditUrl = URL::temporarySignedRoute(
+            'service-requests.track.edit',
+            now()->addMinutes(30),
+            ['referenceCode' => $serviceRequest->reference_code]
+        );
+
+        $statusMessage = 'Edit link has been sent to your email.';
+
+        try {
+            Mail::raw(
+                "Your DOH service request edit link is below:\n\n{$trackEditUrl}\n\nThis link expires in 30 minutes.",
+                function ($message) use ($recipientEmail, $serviceRequest): void {
+                    $message
+                        ->to($recipientEmail)
+                        ->subject('DOH Service Request Edit Link - ' . $serviceRequest->reference_code);
+                }
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+            $statusMessage = 'Unable to send edit link right now. Please try again later.';
+        }
+
+        return redirect()
+            ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+            ->with('status', $statusMessage);
     }
 
     public function trackView(string $referenceCode): View
@@ -76,8 +127,15 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
+        $signedUpdateUrl = URL::temporarySignedRoute(
+            'service-requests.track.update',
+            now()->addMinutes(30),
+            ['referenceCode' => $serviceRequest->reference_code]
+        );
+
         return view('service-requests.track-edit', [
             'serviceRequest' => $serviceRequest,
+            'signedUpdateUrl' => $signedUpdateUrl,
         ]);
     }
 
@@ -478,13 +536,18 @@ class ServiceRequestController extends Controller
         $mode = trim((string) $request->input('approved_by_signature_mode'));
         $clearRequested = (string) $request->input('approved_by_signature_clear') === '1';
         $uploaded = $request->file('approved_by_signature_upload');
+        $existingSignaturePath = trim((string) $existingSignature);
 
         if ($clearRequested) {
+            $this->deleteSignatureFile($existingSignaturePath);
             return '';
         }
 
         if ($mode === 'upload' && $uploaded !== null) {
-            return $uploaded->store('service-request-signatures', 'public');
+            $newPath = $uploaded->store('service-request-signatures', 'public');
+            $this->deleteSignatureFile($existingSignaturePath);
+
+            return $newPath;
         }
 
         if ($mode === 'draw') {
@@ -497,13 +560,27 @@ class ServiceRequestController extends Controller
                     $extension = $matches[1] === 'jpeg' ? 'jpg' : 'png';
                     $path = 'service-request-signatures/' . Str::uuid()->toString() . '.' . $extension;
                     Storage::disk('public')->put($path, $binary);
+                    $this->deleteSignatureFile($existingSignaturePath);
 
                     return $path;
                 }
             }
         }
 
-        return filled($existingSignature) ? $existingSignature : '';
+        return filled($existingSignaturePath) ? $existingSignaturePath : '';
+    }
+
+    private function deleteSignatureFile(?string $signaturePath): void
+    {
+        $path = trim((string) $signaturePath);
+
+        if ($path === '' || ! str_starts_with($path, 'service-request-signatures/')) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
     }
 
     private function validatedKmitsData(Request $request): array

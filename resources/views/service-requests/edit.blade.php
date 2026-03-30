@@ -48,10 +48,7 @@
             </div>
         </div>
 
-        <div class="auth-login-top-actions">
-            <a href="{{ route('service-requests.track') }}" class="auth-login-register">Track Request</a>
-            <a href="{{ route('login') }}" class="auth-login-register">Admin Login</a>
-        </div>
+        <div class="auth-login-top-actions"></div>
     </header>
 
     <section class="auth-login-card-wrap" style="max-width: 1280px; margin-top: 1.4rem;">

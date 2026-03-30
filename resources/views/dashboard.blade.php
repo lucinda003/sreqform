@@ -7,7 +7,6 @@
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('service-requests.index') }}" class="rounded-xl border border-teal-200 bg-white px-4 py-2.5 text-sm font-semibold text-teal-900 transition hover:bg-teal-50">Manage Requests</a>
-                <a href="{{ route('service-requests.create') }}" class="rounded-xl bg-teal-700 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-teal-600">New Request</a>
             </div>
         </div>
     </x-slot>
@@ -131,7 +130,6 @@
                 <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                     <h3 class="text-base font-semibold text-slate-900">Quick Actions</h3>
                     <div class="mt-3 space-y-2">
-                        <a href="{{ route('service-requests.create') }}" class="auth-button w-full">Create Request</a>
                         <a href="{{ route('service-requests.index') }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:border-slate-500 hover:text-slate-900">Manage Requests</a>
                         <a href="{{ route('profile.edit') }}" class="block w-full rounded-xl border border-slate-300 px-4 py-2.5 text-center text-sm font-medium text-slate-700 transition hover:border-slate-500 hover:text-slate-900">Profile Settings</a>
                     </div>

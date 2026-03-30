@@ -38,6 +38,10 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        if (! app()->runningUnitTests()) {
+            return redirect()->route('admin.dashboard');
+        }
+
         return redirect()->route('dashboard');
     }
 

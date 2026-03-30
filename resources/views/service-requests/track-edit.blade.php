@@ -45,17 +45,12 @@
                 <p class="auth-login-brand-subtitle">Secure Access Portal</p>
             </div>
         </div>
-
-        <div class="auth-login-top-actions">
-            <a href="{{ route('service-requests.track') }}" class="auth-login-register">Track Request</a>
-            <a href="{{ route('login') }}" class="auth-login-register">Admin Login</a>
-        </div>
     </header>
 
     <section class="auth-login-card-wrap" style="max-width: 1280px; margin-top: 1.4rem;">
         <div class="mx-auto w-full py-2">
         <div class="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-lg">
-            <form method="POST" action="{{ route('service-requests.track.update', ['referenceCode' => $serviceRequest->reference_code]) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0">
+            <form method="POST" action="{{ $signedUpdateUrl }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0">
                 @csrf
                 @method('PUT')
 
@@ -200,7 +195,7 @@
                                             </div>
 
                                             <div id="create-signature-draw-wrap" class="space-y-1">
-                                                <canvas id="create-signature-canvas" class="h-12 w-full rounded border border-slate-500 bg-white"></canvas>
+                                                <canvas id="create-signature-canvas" class="h-56 w-full rounded border border-slate-500 bg-white"></canvas>
                                                 <input type="hidden" name="approved_by_signature_drawn" id="create-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
                                                 <input type="hidden" name="approved_by_signature_clear" id="create-signature-clear-flag" value="0">
                                                 <button type="button" id="create-signature-clear" class="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">Clear</button>
