@@ -26,6 +26,11 @@ use Illuminate\Database\Eloquent\Model;
     'description_request',
     'description_photos',
     'status',
+    'pending_at',
+    'checking_at',
+    'approved_at',
+    'rejected_at',
+    'completed_at',
     'approved_by_name',
     'approved_by_signature',
     'approved_by_position',
@@ -51,6 +56,11 @@ class ServiceRequest extends Model
             'description_photos' => 'array',
             'action_logs' => 'array',
             'noted_by_date_signed' => 'date',
+            'pending_at' => 'datetime',
+            'checking_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'completed_at' => 'datetime',
         ];
     }
 }

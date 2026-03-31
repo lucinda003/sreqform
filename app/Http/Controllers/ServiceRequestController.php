@@ -196,6 +196,7 @@ class ServiceRequestController extends Controller
             $validated['request_date']
         );
         $validated['status'] = 'pending';
+        $validated['pending_at'] = now();
         $validated['user_id'] = Auth::id();
 
         $serviceRequest = ServiceRequest::create($validated);
@@ -264,7 +265,11 @@ class ServiceRequestController extends Controller
             && $serviceRequest->status === 'pending'
             && $request->query('skip_auto_checking') !== '1'
         ) {
-            $serviceRequest->update(['status' => 'checking']);
+            $serviceRequest->update([
+                'status' => 'checking',
+                'checking_at' => now(),
+                'pending_at' => $serviceRequest->pending_at ?? $serviceRequest->created_at,
+            ]);
             $serviceRequest->refresh();
         }
 
@@ -385,9 +390,44 @@ class ServiceRequestController extends Controller
             'status' => ['required', 'in:pending,checking,approved,rejected'],
         ]);
 
-        $serviceRequest->update([
+        $now = now();
+        $updates = [
             'status' => $validated['status'],
-        ]);
+        ];
+
+        if ($validated['status'] === 'pending') {
+            $updates['pending_at'] = $now;
+            $updates['checking_at'] = null;
+            $updates['approved_at'] = null;
+            $updates['rejected_at'] = null;
+            $updates['completed_at'] = null;
+        }
+
+        if ($validated['status'] === 'checking') {
+            $updates['checking_at'] = $now;
+            $updates['pending_at'] = $serviceRequest->pending_at ?? $serviceRequest->created_at;
+            $updates['approved_at'] = null;
+            $updates['rejected_at'] = null;
+            $updates['completed_at'] = null;
+        }
+
+        if ($validated['status'] === 'approved') {
+            $updates['approved_at'] = $now;
+            $updates['completed_at'] = $now;
+            $updates['pending_at'] = $serviceRequest->pending_at ?? $serviceRequest->created_at;
+            $updates['checking_at'] = $serviceRequest->checking_at ?? $serviceRequest->updated_at;
+            $updates['rejected_at'] = null;
+        }
+
+        if ($validated['status'] === 'rejected') {
+            $updates['rejected_at'] = $now;
+            $updates['completed_at'] = $now;
+            $updates['pending_at'] = $serviceRequest->pending_at ?? $serviceRequest->created_at;
+            $updates['checking_at'] = $serviceRequest->checking_at ?? $serviceRequest->updated_at;
+            $updates['approved_at'] = null;
+        }
+
+        $serviceRequest->update($updates);
 
         $routeParams = ['serviceRequest' => $serviceRequest];
         if ($validated['status'] === 'pending') {
@@ -423,7 +463,7 @@ class ServiceRequestController extends Controller
             'request_date' => ['required', 'date'],
             'department_code' => ['nullable', 'string', 'max:30', 'in:ADMIN'],
             'request_category' => ['nullable', 'string', 'max:100'],
-            'application_system_name' => ['nullable', 'string', 'max:255'],
+            'application_system_name' => ['required', 'string', 'max:255'],
             'expected_completion_date' => ['nullable', 'date'],
             'expected_completion_time' => ['nullable', 'date_format:H:i'],
             'contact_last_name' => ['required', 'string', 'max:255'],

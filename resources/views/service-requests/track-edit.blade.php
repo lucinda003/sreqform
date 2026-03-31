@@ -89,7 +89,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <td class="border border-slate-400 px-2 py-1">3) Application System Name : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]"></td>
+                            <td class="border border-slate-400 px-2 py-1">3) Application System Name * : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" required></td>
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of Completion :
@@ -160,7 +160,7 @@
                 </div>
 
                 <div class="px-4 pb-3">
-                    <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
+                    <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST * : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
                     <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
                         <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
 
