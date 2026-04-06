@@ -1,19 +1,36 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between gap-4">
-            <div>
-                <h2 class="auth-title">Service Requests</h2>
-                <p class="auth-subtitle">Track submitted DOH service request forms.</p>
-            </div>
-        </div>
-    </x-slot>
+    <x-slot name="header" style="display:none;"></x-slot>
 
-    <div class="mx-auto w-full max-w-6xl py-6">
+    @php
+        $isArchiveView = ($statusFilter ?? '') === 'archived';
+    @endphp
+
+    <x-db2-shell
+        :title="$isArchiveView ? 'Archive' : 'Service Requests'"
+        :subtitle="$isArchiveView ? 'Approved and rejected request records.' : 'Track submitted DOH service request forms.'"
+    >
         @if (session('status'))
-            <div class="auth-success mb-4">{{ session('status') }}</div>
+            <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+                {{ session('status') }}
+            </div>
         @endif
 
-        <div class="overflow-hidden rounded-2xl border border-white/70 bg-white/85 shadow-lg backdrop-blur-xl">
+        <div class="mb-4 inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
+            <a
+                href="{{ route('service-requests.index') }}"
+                class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ ! $isArchiveView ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
+            >
+                Active Requests
+            </a>
+            <a
+                href="{{ route('service-requests.index', ['status' => 'archived']) }}"
+                class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ $isArchiveView ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
+            >
+                Archive
+            </a>
+        </div>
+
+        <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
             <div class="overflow-x-auto">
                 <table class="min-w-full w-full text-sm">
                     <thead class="bg-slate-100 text-left text-xs uppercase tracking-[0.1em] text-slate-600">
@@ -28,7 +45,7 @@
                     </thead>
                     <tbody>
                         @forelse ($serviceRequests as $serviceRequest)
-                            <tr class="border-t border-slate-200">
+                            <tr class="border-t border-slate-200 hover:bg-slate-50">
                                 <td class="px-4 py-3 text-center font-semibold text-slate-900 break-all">{{ $serviceRequest->reference_code }}</td>
                                 <td class="px-4 py-3 text-center text-slate-700 break-all">
                                     {{ $serviceRequest->contact_last_name }}, {{ $serviceRequest->contact_first_name }} {{ $serviceRequest->contact_middle_name }}
@@ -56,7 +73,9 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="6" class="px-4 py-8 text-center text-slate-500">No service requests yet.</td>
+                                <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                    {{ $isArchiveView ? 'No archived requests yet.' : 'No service requests yet.' }}
+                                </td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -65,5 +84,5 @@
         </div>
 
         <div class="mt-4">{{ $serviceRequests->links() }}</div>
-    </div>
+    </x-db2-shell>
 </x-app-layout>

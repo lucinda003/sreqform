@@ -89,9 +89,10 @@
             border: 1px solid #111827;
             background: #111827;
             color: #fff;
-            padding: 5px 10px;
-            border-radius: 3px;
-            font-size: 11px;
+            padding: 7px 16px;
+            border-radius: 5px;
+            font-size: 13px;
+            font-weight: 700;
             cursor: pointer;
         }
 
@@ -547,22 +548,24 @@
                 <td style="padding:0 10px 6px;">
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div style="flex:1;">
-                            <div style="position:relative; min-height:52px; margin-top:10px;">
-                                <div class="line-value center" style="position:absolute; left:0; right:0; bottom:0; margin-top:0;">{{ $serviceRequest->approved_by_name }}</div>
+                            <div style="min-height:56px; margin-top:4px;">
                                 @if (!empty($serviceRequest->approved_by_signature))
-                                    <div class="center" style="position:absolute; left:0; right:0; bottom:-2px;">
-                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Signature" style="max-height:56px; max-width:220px; object-fit:contain; display:inline-block;">
+                                    <div style="width:100%; min-height:34px; margin-bottom:0; display:flex; align-items:flex-end; justify-content:center;">
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Signature" style="max-height:56px; max-width:220px; object-fit:contain; display:block; margin:0 auto;">
                                     </div>
+                                @else
+                                    <div style="min-height:34px;"></div>
                                 @endif
+                                <div class="line-value center" style="margin-top:0; min-height:16px; padding-left:0; padding-right:0;">{{ $serviceRequest->approved_by_name }}</div>
                             </div>
-                            <div class="line-caption">Name &amp; Signature of Head of Office</div>
+                            <div class="line-caption" style="margin-top:-1px;">Name &amp; Signature of Head of Office</div>
 
                             <div style="margin-top:8px;" class="line-value center">{{ $serviceRequest->approved_by_position }}</div>
                             <div class="line-caption">Position</div>
                         </div>
 
                         <div style="width:38%;">
-                            <div class="line-value center" style="margin-top:40px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
+                            <div class="line-value center" style="margin-top:36px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
                             <div class="line-caption">Date Signed</div>
                         </div>
                     </div>
@@ -647,5 +650,15 @@
         <div class="version" style="margin-top: 20px;">DOH-KMITS-SRF Ver. 1</div>
     </div>
     </div>
+
+    @if (request()->boolean('autoprint'))
+        <script>
+            window.addEventListener('load', function () {
+                setTimeout(function () {
+                    window.print();
+                }, 150);
+            });
+        </script>
+    @endif
 </body>
 </html>

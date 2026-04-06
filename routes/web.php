@@ -39,6 +39,12 @@ Route::get('/track-your-request/{referenceCode}/edit', [ServiceRequestController
     ->name('service-requests.track.edit');
 Route::post('/track-your-request/{referenceCode}/send-edit-link', [ServiceRequestController::class, 'sendTrackEditLink'])
     ->name('service-requests.track.send-edit-link');
+Route::post('/track-your-request/{referenceCode}/chat-request', [ServiceRequestController::class, 'requestTrackChat'])
+    ->name('service-requests.track.chat-request');
+Route::post('/track-your-request/{referenceCode}/messages', [ServiceRequestController::class, 'postTrackMessage'])
+    ->name('service-requests.track.messages.store');
+Route::get('/track-your-request/{referenceCode}/messages', [ServiceRequestController::class, 'trackMessages'])
+    ->name('service-requests.track.messages.index');
 Route::put('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackUpdate'])
     ->middleware('signed')
     ->name('service-requests.track.update');
@@ -60,6 +66,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/service-requests/{serviceRequest}/edit', [ServiceRequestController::class, 'edit'])->name('service-requests.edit');
     Route::put('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'update'])->name('service-requests.update');
     Route::patch('/service-requests/{serviceRequest}/status', [ServiceRequestController::class, 'updateStatus'])->name('service-requests.update-status');
+    Route::post('/service-requests/{serviceRequest}/chat-request-decision', [ServiceRequestController::class, 'decideChatRequest'])->name('service-requests.chat-request.decision');
+    Route::post('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'postAdminMessage'])->name('service-requests.messages.store');
+    Route::get('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'adminMessages'])->name('service-requests.messages.index');
     Route::get('/service-requests/{serviceRequest}/print', [ServiceRequestController::class, 'print'])->name('service-requests.print');
     Route::get('/service-requests/{serviceRequest}/pdf', [ServiceRequestController::class, 'downloadPdf'])->name('service-requests.pdf');
 

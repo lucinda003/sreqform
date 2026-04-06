@@ -10,21 +10,32 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
-    <body class="app-body {{ request()->routeIs('dashboard') ? 'dashboard-login-bg' : '' }} antialiased">
+    <body class="app-body {{ request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') ? 'dashboard-login-bg' : '' }} antialiased">
+        @php
+            $usesCustomDashboardLayout = request()->routeIs('dashboard')
+                || request()->routeIs('admin.dashboard')
+                || request()->routeIs('service-requests.index')
+                || request()->routeIs('profile.*')
+                || request()->routeIs('admin.users.*');
+        @endphp
         <div class="app-shell min-h-screen">
-            @include('layouts.navigation')
+            @unless ($usesCustomDashboardLayout)
+                @include('layouts.navigation')
+            @endunless
 
             <!-- Page Heading -->
             @isset($header)
+                @unless ($usesCustomDashboardLayout)
                 <header class="px-4 pb-3 pt-6 sm:px-6 lg:px-8">
                     <div class="mx-auto w-full max-w-6xl rounded-2xl border border-white/65 bg-white/70 px-5 py-4 shadow-lg backdrop-blur-xl sm:px-6">
                         {{ $header }}
                     </div>
                 </header>
+                @endunless
             @endisset
 
             <!-- Page Content -->
-            <main class="px-4 pb-8 sm:px-6 lg:px-8">
+            <main class="{{ $usesCustomDashboardLayout ? '' : 'px-4 pb-8 sm:px-6 lg:px-8' }}">
                 {{ $slot }}
             </main>
         </div>

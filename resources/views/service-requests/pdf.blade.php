@@ -164,15 +164,6 @@
         </tr>
     </table>
 
-    <table class="grid" style="margin-top: 8px;">
-        <tr>
-            <td>
-                <span class="label">12. Actions Taken (use separate if necessary)</span>
-                <div class="value">{{ $serviceRequest->actions_taken ?: '-' }}</div>
-            </td>
-        </tr>
-    </table>
-
     <div class="section-title">Action Log</div>
     <table class="grid">
         <tr>

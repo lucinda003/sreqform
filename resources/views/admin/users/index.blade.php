@@ -1,10 +1,11 @@
 <x-app-layout>
-    <x-slot name="header">
-        <div class="flex items-center justify-between gap-3">
-            <div>
-                <h2 class="auth-title">Account Management</h2>
-                <p class="auth-subtitle">Select a user first, then edit department role and approval.</p>
-            </div>
+    <x-slot name="header" style="display:none;"></x-slot>
+
+    <x-db2-shell
+        title="Account Management"
+        subtitle="Select a user first, then edit department role and approval."
+    >
+        <x-slot name="actions">
             <button
                 type="button"
                 class="rounded-xl border border-slate-300 px-3 py-2 text-xs font-semibold uppercase tracking-[0.12em] text-slate-700 transition hover:border-slate-500"
@@ -12,16 +13,14 @@
             >
                 Create Account
             </button>
-        </div>
-    </x-slot>
+        </x-slot>
 
-    <div class="mx-auto w-full max-w-6xl space-y-5 py-6">
         @if (session('status'))
-            <div class="auth-success">{{ session('status') }}</div>
+            <div class="mb-5 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">{{ session('status') }}</div>
         @endif
 
         <div class="grid gap-5 lg:grid-cols-[minmax(280px,320px)_1fr]">
-            <div class="rounded-2xl border border-white/70 bg-white/85 p-5 shadow-lg backdrop-blur-xl">
+            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <h3 class="text-base font-semibold text-slate-900">Select User</h3>
 
                 <form method="GET" action="{{ route('admin.users.index') }}" class="mt-4 space-y-3">
@@ -47,7 +46,7 @@
             </div>
 
             <div class="space-y-5">
-                <div class="rounded-2xl border border-white/70 bg-white/85 p-5 shadow-lg backdrop-blur-xl sm:p-8">
+                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
                     <h3 class="text-base font-semibold text-slate-900">Edit Selected Account</h3>
 
                     @if ($selectedUser)
@@ -149,5 +148,5 @@
                 </form>
             </div>
         </dialog>
-    </div>
+    </x-db2-shell>
 </x-app-layout>

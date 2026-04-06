@@ -323,6 +323,76 @@
                     return;
                 }
 
+                const getCenteredSignatureDataUrl = function () {
+                    const width = canvas.width;
+                    const height = canvas.height;
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+
+                    let minX = width;
+                    let minY = height;
+                    let maxX = -1;
+                    let maxY = -1;
+
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const alpha = data[(y * width + x) * 4 + 3];
+                            if (alpha > 0) {
+                                if (x < minX) minX = x;
+                                if (y < minY) minY = y;
+                                if (x > maxX) maxX = x;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    if (maxX < minX || maxY < minY) {
+                        return '';
+                    }
+
+                    const cropWidth = maxX - minX + 1;
+                    const cropHeight = maxY - minY + 1;
+
+                    const targetCanvas = document.createElement('canvas');
+                    targetCanvas.width = width;
+                    targetCanvas.height = height;
+
+                    const targetCtx = targetCanvas.getContext('2d');
+                    if (!targetCtx) {
+                        return canvas.toDataURL('image/png');
+                    }
+
+                    const scale = Math.min((width * 0.9) / cropWidth, (height * 0.8) / cropHeight, 1);
+                    const drawWidth = cropWidth * scale;
+                    const drawHeight = cropHeight * scale;
+                    const drawX = (width - drawWidth) / 2;
+                    const drawY = (height - drawHeight) / 2;
+
+                    targetCtx.clearRect(0, 0, width, height);
+                    targetCtx.drawImage(
+                        canvas,
+                        minX,
+                        minY,
+                        cropWidth,
+                        cropHeight,
+                        drawX,
+                        drawY,
+                        drawWidth,
+                        drawHeight
+                    );
+
+                    return targetCanvas.toDataURL('image/png');
+                };
+
+                const syncHiddenSignature = function () {
+                    const centeredSignature = getCenteredSignatureDataUrl();
+                    hiddenDrawn.value = centeredSignature;
+
+                    if (clearFlag && centeredSignature !== '') {
+                        clearFlag.value = '0';
+                    }
+                };
+
                 const resizeCanvas = function () {
                     const ratio = window.devicePixelRatio || 1;
                     const rect = canvas.getBoundingClientRect();
@@ -373,14 +443,13 @@
                     const point = pointFromEvent(event);
                     ctx.lineTo(point.x, point.y);
                     ctx.stroke();
-                    hiddenDrawn.value = canvas.toDataURL('image/png');
-                    if (clearFlag) {
-                        clearFlag.value = '0';
-                    }
                     event.preventDefault();
                 };
 
                 const end = function () {
+                    if (drawing) {
+                        syncHiddenSignature();
+                    }
                     drawing = false;
                 };
 
@@ -416,6 +485,17 @@
                     input.addEventListener('change', syncMode);
                 });
                 syncMode();
+
+                const form = canvas.closest('form');
+                if (form) {
+                    form.addEventListener('submit', function () {
+                        const selected = document.querySelector('input[name="approved_by_signature_mode"]:checked');
+                        const mode = selected ? selected.value : 'draw';
+                        if (mode === 'draw') {
+                            syncHiddenSignature();
+                        }
+                    });
+                }
             };
 
             initSignatureInput();

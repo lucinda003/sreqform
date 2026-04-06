@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceRequest;
+use App\Models\ServiceRequestMessage;
 use App\Models\User;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -19,14 +21,27 @@ use Symfony\Component\HttpFoundation\Response;
 
 class ServiceRequestController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $serviceRequests = $this->scopeForUser(ServiceRequest::query())
-            ->latest()
-            ->paginate(10);
+        $statusFilter = trim((string) $request->query('status'));
+
+        $serviceRequestsQuery = $this->scopeForUser(ServiceRequest::query())->latest();
+
+        if ($statusFilter === 'archived') {
+            $serviceRequestsQuery->whereIn('status', ['approved', 'rejected']);
+        } elseif (in_array($statusFilter, ['pending', 'checking', 'approved', 'rejected'], true)) {
+            $serviceRequestsQuery->where('status', $statusFilter);
+        } else {
+            $statusFilter = '';
+        }
+
+        $serviceRequests = $serviceRequestsQuery
+            ->paginate(10)
+            ->withQueryString();
 
         return view('service-requests.index', [
             'serviceRequests' => $serviceRequests,
+            'statusFilter' => $statusFilter,
         ]);
     }
 
@@ -44,6 +59,9 @@ class ServiceRequestController extends Controller
         $referenceCode = trim((string) $request->query('reference_code'));
         $serviceRequest = null;
         $trackEditUrl = null;
+        $chatMessages = collect();
+        $chatAccepted = false;
+        $chatStatus = null;
 
         if ($referenceCode !== '') {
             $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
@@ -57,6 +75,10 @@ class ServiceRequestController extends Controller
                     now()->addMinutes(30),
                     ['referenceCode' => $serviceRequest->reference_code]
                 );
+
+                $chatAccepted = $this->isChatAccepted($serviceRequest);
+                $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+                $chatMessages = $chatAccepted ? $this->chatMessagesFor($serviceRequest) : collect();
             }
         }
 
@@ -64,6 +86,9 @@ class ServiceRequestController extends Controller
             'referenceCode' => $referenceCode,
             'serviceRequest' => $serviceRequest,
             'trackEditUrl' => $trackEditUrl,
+            'chatMessages' => $chatMessages,
+            'chatAccepted' => $chatAccepted,
+            'chatStatus' => $chatStatus,
         ]);
     }
 
@@ -105,6 +130,203 @@ class ServiceRequestController extends Controller
 
         return redirect()
             ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+            ->with('status', $statusMessage);
+    }
+
+    public function requestTrackChat(Request $request, string $referenceCode): RedirectResponse|JsonResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+        $statusMessage = 'Chat request sent. Please wait for admin approval.';
+
+        if ($chatStatus === 'accepted') {
+            $statusMessage = 'Chat request already accepted by admin.';
+        } elseif ($chatStatus === 'pending') {
+            $statusMessage = 'Chat request already sent. Please wait for admin approval.';
+        } else {
+            $serviceRequest->update([
+                'contact_chat_status' => 'pending',
+                'contact_chat_requested_at' => now(),
+                'contact_chat_decided_at' => null,
+            ]);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => strtolower((string) ($serviceRequest->fresh()->contact_chat_status ?? $chatStatus)),
+                'message' => $statusMessage,
+            ]);
+        }
+
+        return redirect()
+            ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+            ->with('status', $statusMessage);
+    }
+
+    public function postTrackMessage(Request $request, string $referenceCode): RedirectResponse|JsonResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        if (! $this->isChatAccepted($serviceRequest)) {
+            $errorMessage = 'Chat is hidden until admin accepts your request.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $errorMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', $errorMessage);
+        }
+
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $message = trim((string) $validated['message']);
+        if ($message === '') {
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->withErrors(['message' => 'Message cannot be empty.'])
+                ->withInput();
+        }
+
+        ServiceRequestMessage::create([
+            'service_request_id' => $serviceRequest->id,
+            'sender_user_id' => null,
+            'sender_type' => 'requestor',
+            'message' => $message,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 'ok',
+                'messages' => $this->serializedChatMessages($this->chatMessagesFor($serviceRequest)),
+            ]);
+        }
+
+        return redirect()
+            ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+            ->with('status', 'Message sent to admin personnel.');
+    }
+
+    public function trackMessages(string $referenceCode): JsonResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+        $chatAccepted = $this->isChatAccepted($serviceRequest);
+
+        return response()->json([
+            'chat_status' => $chatStatus !== '' ? $chatStatus : null,
+            'chat_accepted' => $chatAccepted,
+            'messages' => $chatAccepted
+                ? $this->serializedChatMessages($this->chatMessagesFor($serviceRequest))
+                : [],
+        ]);
+    }
+
+    public function postAdminMessage(Request $request, ServiceRequest $serviceRequest): RedirectResponse|JsonResponse
+    {
+        abort_unless($this->isAdmin(), 403);
+
+        if (! $this->isChatAccepted($serviceRequest)) {
+            $errorMessage = 'Chat is not available yet. Accept the chat request first.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $errorMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.edit', $serviceRequest)
+                ->with('status', $errorMessage);
+        }
+
+        $validated = $request->validate([
+            'message' => ['required', 'string', 'max:1000'],
+        ]);
+
+        $message = trim((string) $validated['message']);
+        if ($message === '') {
+            return redirect()
+                ->route('service-requests.edit', $serviceRequest)
+                ->withErrors(['message' => 'Message cannot be empty.'])
+                ->withInput();
+        }
+
+        ServiceRequestMessage::create([
+            'service_request_id' => $serviceRequest->id,
+            'sender_user_id' => Auth::id(),
+            'sender_type' => 'admin',
+            'message' => $message,
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => 'ok',
+                'messages' => $this->serializedChatMessages($this->chatMessagesFor($serviceRequest, 150)),
+            ]);
+        }
+
+        return redirect()
+            ->route('service-requests.edit', $serviceRequest)
+            ->with('status', 'Message sent to requestor.');
+    }
+
+    public function adminMessages(ServiceRequest $serviceRequest): JsonResponse
+    {
+        abort_unless($this->isAdmin(), 403);
+
+        $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+        $chatAccepted = $this->isChatAccepted($serviceRequest);
+
+        return response()->json([
+            'chat_status' => $chatStatus !== '' ? $chatStatus : null,
+            'chat_accepted' => $chatAccepted,
+            'messages' => $chatAccepted
+                ? $this->serializedChatMessages($this->chatMessagesFor($serviceRequest, 150))
+                : [],
+        ]);
+    }
+
+    public function decideChatRequest(Request $request, ServiceRequest $serviceRequest): RedirectResponse
+    {
+        abort_unless($this->isAdmin(), 403);
+
+        $validated = $request->validate([
+            'decision' => ['required', 'in:accepted,rejected'],
+        ]);
+
+        $serviceRequest->update([
+            'contact_chat_status' => $validated['decision'],
+            'contact_chat_decided_at' => now(),
+            'contact_chat_requested_at' => $serviceRequest->contact_chat_requested_at ?? now(),
+        ]);
+
+        if ($validated['decision'] === 'rejected') {
+            $serviceRequest->chatMessages()->delete();
+        }
+
+        $statusMessage = $validated['decision'] === 'accepted'
+            ? 'Chat request accepted. Messaging is now available.'
+            : 'Chat request declined.';
+
+        return redirect()
+            ->route('service-requests.edit', $serviceRequest)
             ->with('status', $statusMessage);
     }
 
@@ -308,9 +530,14 @@ class ServiceRequestController extends Controller
         }
 
         $currentDepartment = trim((string) Auth::user()?->department);
+        $chatMessages = $this->isChatAccepted($serviceRequest)
+            ? $this->chatMessagesFor($serviceRequest, 150)
+            : collect();
+
         return view('service-requests.edit', [
             'serviceRequest' => $serviceRequest,
             'departmentOptions' => $this->approvedDepartmentOptions(true, $currentDepartment !== '' ? $currentDepartment : null),
+            'chatMessages' => $chatMessages,
         ]);
     }
 
@@ -401,6 +628,9 @@ class ServiceRequestController extends Controller
             $updates['approved_at'] = null;
             $updates['rejected_at'] = null;
             $updates['completed_at'] = null;
+            $updates['contact_chat_status'] = null;
+            $updates['contact_chat_requested_at'] = null;
+            $updates['contact_chat_decided_at'] = null;
         }
 
         if ($validated['status'] === 'checking') {
@@ -427,7 +657,17 @@ class ServiceRequestController extends Controller
             $updates['approved_at'] = null;
         }
 
+        if ($this->isChatLockedForStatus((string) $validated['status'])) {
+            $updates['contact_chat_status'] = null;
+            $updates['contact_chat_requested_at'] = null;
+            $updates['contact_chat_decided_at'] = null;
+        }
+
         $serviceRequest->update($updates);
+
+        if ($validated['status'] === 'pending' || $this->isChatLockedForStatus((string) $validated['status'])) {
+            $serviceRequest->chatMessages()->delete();
+        }
 
         $routeParams = ['serviceRequest' => $serviceRequest];
         if ($validated['status'] === 'pending') {
@@ -488,7 +728,6 @@ class ServiceRequestController extends Controller
             'approved_date' => ['required', 'date'],
             'kmits_date' => ['required', 'date'],
             'time_received' => ['nullable', 'date_format:H:i'],
-            'actions_taken' => ['nullable', 'string'],
             'action_log_date' => ['nullable', 'array', 'max:5'],
             'action_log_date.*' => ['nullable', 'date'],
             'action_log_time' => ['nullable', 'array', 'max:5'],
@@ -626,11 +865,8 @@ class ServiceRequestController extends Controller
     private function validatedKmitsData(Request $request): array
     {
         $validated = $request->validate([
-            'kmits_date' => ['required', 'date'],
             'description_photos' => ['nullable', 'array', 'max:3'],
             'description_photos.*' => ['nullable', 'image', 'max:5120'],
-            'time_received' => ['nullable', 'date_format:H:i'],
-            'actions_taken' => ['nullable', 'string'],
             'action_log_date' => ['nullable', 'array', 'max:5'],
             'action_log_date.*' => ['nullable', 'date'],
             'action_log_time' => ['nullable', 'array', 'max:5'],
@@ -762,6 +998,48 @@ class ServiceRequestController extends Controller
         }
 
         return (string) $serviceRequest->department_code === (string) $user->department;
+    }
+
+    private function isChatLockedForStatus(string $status): bool
+    {
+        return in_array(strtolower(trim($status)), ['approved', 'rejected', 'completed', 'closed'], true);
+    }
+
+    private function isChatAccepted(ServiceRequest $serviceRequest): bool
+    {
+        return strtolower((string) ($serviceRequest->contact_chat_status ?? '')) === 'accepted';
+    }
+
+    private function chatMessagesFor(ServiceRequest $serviceRequest, int $limit = 100): \Illuminate\Support\Collection
+    {
+        return $serviceRequest->chatMessages()
+            ->with(['senderUser:id,name'])
+            ->orderByDesc('created_at')
+            ->take($limit)
+            ->get()
+            ->reverse()
+            ->values();
+    }
+
+    private function serializedChatMessages(\Illuminate\Support\Collection $messages): array
+    {
+        return $messages
+            ->map(function (ServiceRequestMessage $chatMessage): array {
+                $isAdminMessage = strtolower((string) $chatMessage->sender_type) === 'admin';
+                $senderLabel = $isAdminMessage
+                    ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
+                    : 'Requestor';
+
+                return [
+                    'id' => (int) $chatMessage->id,
+                    'sender_type' => $isAdminMessage ? 'admin' : 'requestor',
+                    'sender_label' => $senderLabel,
+                    'message' => (string) $chatMessage->message,
+                    'created_at_label' => $chatMessage->created_at?->format('M j, Y g:i A') ?? '',
+                ];
+            })
+            ->values()
+            ->all();
     }
 
     private function approvedDepartmentOptions(bool $excludeAdmin = false, ?string $excludeDepartment = null): array

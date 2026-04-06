@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
     'reference_code',
@@ -26,6 +27,9 @@ use Illuminate\Database\Eloquent\Model;
     'description_request',
     'description_photos',
     'status',
+    'contact_chat_status',
+    'contact_chat_requested_at',
+    'contact_chat_decided_at',
     'pending_at',
     'checking_at',
     'approved_at',
@@ -56,11 +60,18 @@ class ServiceRequest extends Model
             'description_photos' => 'array',
             'action_logs' => 'array',
             'noted_by_date_signed' => 'date',
+            'contact_chat_requested_at' => 'datetime',
+            'contact_chat_decided_at' => 'datetime',
             'pending_at' => 'datetime',
             'checking_at' => 'datetime',
             'approved_at' => 'datetime',
             'rejected_at' => 'datetime',
             'completed_at' => 'datetime',
         ];
+    }
+
+    public function chatMessages(): HasMany
+    {
+        return $this->hasMany(ServiceRequestMessage::class);
     }
 }

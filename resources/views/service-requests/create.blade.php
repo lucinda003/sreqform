@@ -849,6 +849,76 @@
                 const ctx = canvas.getContext('2d');
                 if (!ctx) return;
 
+                const getCenteredSignatureDataUrl = function () {
+                    const width = canvas.width;
+                    const height = canvas.height;
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+
+                    let minX = width;
+                    let minY = height;
+                    let maxX = -1;
+                    let maxY = -1;
+
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const alpha = data[(y * width + x) * 4 + 3];
+                            if (alpha > 0) {
+                                if (x < minX) minX = x;
+                                if (y < minY) minY = y;
+                                if (x > maxX) maxX = x;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    if (maxX < minX || maxY < minY) {
+                        return '';
+                    }
+
+                    const cropWidth = maxX - minX + 1;
+                    const cropHeight = maxY - minY + 1;
+
+                    const targetCanvas = document.createElement('canvas');
+                    targetCanvas.width = width;
+                    targetCanvas.height = height;
+
+                    const targetCtx = targetCanvas.getContext('2d');
+                    if (!targetCtx) {
+                        return canvas.toDataURL('image/png');
+                    }
+
+                    const scale = Math.min((width * 0.9) / cropWidth, (height * 0.8) / cropHeight, 1);
+                    const drawWidth = cropWidth * scale;
+                    const drawHeight = cropHeight * scale;
+                    const drawX = (width - drawWidth) / 2;
+                    const drawY = (height - drawHeight) / 2;
+
+                    targetCtx.clearRect(0, 0, width, height);
+                    targetCtx.drawImage(
+                        canvas,
+                        minX,
+                        minY,
+                        cropWidth,
+                        cropHeight,
+                        drawX,
+                        drawY,
+                        drawWidth,
+                        drawHeight
+                    );
+
+                    return targetCanvas.toDataURL('image/png');
+                };
+
+                const syncHiddenSignature = function () {
+                    const centeredSignature = getCenteredSignatureDataUrl();
+                    hiddenDrawn.value = centeredSignature;
+
+                    if (centeredSignature !== '') {
+                        fillSignedDateIfEmpty();
+                    }
+                };
+
                 const resizeCanvas = function () {
                     const ratio = window.devicePixelRatio || 1;
                     const rect = canvas.getBoundingClientRect();
@@ -890,11 +960,17 @@
                     if (!drawing) return;
                     const p = pointFromEvent(e);
                     ctx.lineTo(p.x, p.y); ctx.stroke();
-                    hiddenDrawn.value = canvas.toDataURL('image/png');
-                    fillSignedDateIfEmpty();
                     e.preventDefault();
                 });
-                window.addEventListener('mouseup', function () { drawing = false; });
+
+                const endDrawing = function () {
+                    if (drawing) {
+                        syncHiddenSignature();
+                    }
+                    drawing = false;
+                };
+
+                window.addEventListener('mouseup', endDrawing);
                 canvas.addEventListener('touchstart', function (e) {
                     drawing = true;
                     const p = pointFromEvent(e);
@@ -905,11 +981,9 @@
                     if (!drawing) return;
                     const p = pointFromEvent(e);
                     ctx.lineTo(p.x, p.y); ctx.stroke();
-                    hiddenDrawn.value = canvas.toDataURL('image/png');
-                    fillSignedDateIfEmpty();
                     e.preventDefault();
                 }, { passive: false });
-                canvas.addEventListener('touchend', function () { drawing = false; });
+                canvas.addEventListener('touchend', endDrawing);
 
                 if (clearBtn) {
                     clearBtn.addEventListener('click', function () {
@@ -934,6 +1008,16 @@
 
                 modeInputs.forEach(i => i.addEventListener('change', syncMode));
                 syncMode();
+
+                const form = canvas.closest('form');
+                if (form) {
+                    form.addEventListener('submit', function () {
+                        const mode = document.querySelector('input[name="approved_by_signature_mode"]:checked')?.value || 'draw';
+                        if (mode === 'draw') {
+                            syncHiddenSignature();
+                        }
+                    });
+                }
             };
 
             initSignatureInput();

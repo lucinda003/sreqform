@@ -39,6 +39,400 @@
         ];
     @endphp
 
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap');
+
+        .srf-root {
+            position: relative;
+            z-index: 5;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: #000;
+        }
+
+        .srf-card {
+            background: #fff;
+            border-radius: 12px;
+            border: 1.5px solid #cbd5e1;
+            overflow: hidden;
+            box-shadow: 0 2px 16px 0 rgba(15, 118, 110, 0.07);
+        }
+
+        .srf-form-header {
+            background: #0f766e;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .srf-form-header-text {
+            font-size: 15px;
+            font-weight: 600;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            color: #fff;
+            margin: 0;
+        }
+
+        .srf-form-header-line {
+            flex: 1;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .srf-section {
+            padding: 16px 20px 0;
+        }
+
+        .srf-section-label {
+            font-size: 17px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: #000;
+            margin: 0 0 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .srf-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+
+        .srf-status-block {
+            padding-top: 14px;
+            padding-bottom: 14px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .srf-table {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .srf-table td {
+            border-color: #e2e8f0 !important;
+            vertical-align: top;
+        }
+
+        .srf-table input[type="text"],
+        .srf-table input[type="date"],
+        .srf-table input[type="time"],
+        .srf-table select,
+        .srf-table textarea {
+            font-family: 'DM Sans', sans-serif !important;
+            font-size: 13px !important;
+            color: #0f172a !important;
+            font-weight: 600 !important;
+            background: #f8fafc !important;
+            border: 1.5px solid #e2e8f0 !important;
+            border-radius: 6px !important;
+            padding: 6px 10px !important;
+            outline: none !important;
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s !important;
+        }
+
+        .srf-table input[type="text"]:focus,
+        .srf-table input[type="date"]:focus,
+        .srf-table input[type="time"]:focus,
+        .srf-table select:focus,
+        .srf-table textarea:focus {
+            border-color: #0f766e !important;
+            background: #fff !important;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1) !important;
+        }
+
+        .srf-footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-top: 1.5px solid #e2e8f0;
+        }
+
+        .srf-btn-back {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #475569;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 22px;
+            text-decoration: none;
+            transition: border-color 0.18s, color 0.18s;
+        }
+
+        .srf-btn-back:hover {
+            border-color: #94a3b8;
+            color: #1e293b;
+        }
+
+        .srf-btn-submit {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            font-weight: 700;
+            color: #fff;
+            background: #0f766e;
+            border: none;
+            border-radius: 8px;
+            padding: 11px 26px;
+            cursor: pointer;
+            letter-spacing: 0.03em;
+            transition: background 0.18s, box-shadow 0.18s;
+        }
+
+        .srf-btn-submit:hover {
+            background: #134e4a;
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
+        }
+
+        .srf-chat-list {
+            display: flex;
+            flex-direction: column;
+            gap: 0.55rem;
+            max-height: 280px;
+            overflow-y: auto;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+            padding: 0.8rem;
+        }
+
+        .srf-chat-item {
+            display: flex;
+        }
+
+        .srf-chat-item.admin {
+            justify-content: flex-end;
+        }
+
+        .srf-chat-item.requestor {
+            justify-content: flex-start;
+        }
+
+        .srf-chat-bubble {
+            max-width: min(680px, 92%);
+            border-radius: 10px;
+            border: 1px solid #cbd5e1;
+            padding: 0.5rem 0.72rem;
+            background: #fff;
+        }
+
+        .srf-chat-bubble.admin {
+            background: #ecfeff;
+            border-color: #99f6e4;
+        }
+
+        .srf-chat-bubble.requestor {
+            background: #fff;
+            border-color: #cbd5e1;
+        }
+
+        .srf-chat-meta {
+            margin: 0 0 0.2rem;
+            font-size: 10px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        .srf-chat-text {
+            margin: 0;
+            font-size: 13px;
+            color: #0f172a;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+
+        .srf-chat-locked {
+            margin-top: 0.7rem;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #f8fafc;
+            padding: 0.55rem 0.72rem;
+            font-size: 12px;
+            color: #334155;
+        }
+
+        .srf-notif-wrap {
+            position: relative;
+        }
+
+        .srf-notif-btn {
+            width: 38px;
+            height: 38px;
+            border-radius: 999px;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            color: #0f172a;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            transition: all 0.15s ease;
+        }
+
+        .srf-notif-btn:hover {
+            border-color: #94a3b8;
+            background: #f8fafc;
+        }
+
+        .srf-notif-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        .srf-notif-count {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            background: #dc2626;
+            color: #fff;
+            font-size: 10px;
+            font-weight: 700;
+            line-height: 18px;
+            text-align: center;
+            padding: 0 5px;
+            border: 2px solid #fff;
+        }
+
+        .srf-notif-panel {
+            position: absolute;
+            top: 46px;
+            right: 0;
+            width: min(360px, calc(100vw - 24px));
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 18px 36px rgba(15,23,42,0.25);
+            overflow: hidden;
+            z-index: 85;
+        }
+
+        .srf-notif-panel-head {
+            padding: 10px 12px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #0f172a;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .srf-notif-list {
+            max-height: 300px;
+            overflow-y: auto;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            gap: 7px;
+        }
+
+        .srf-notif-empty {
+            margin: 0;
+            font-size: 13px;
+            color: #64748b;
+            padding: 6px 4px;
+        }
+
+        .srf-notif-item {
+            border: 1px solid #bfdbfe;
+            border-radius: 9px;
+            background: #eff6ff;
+            padding: 8px 10px;
+        }
+
+        .srf-notif-item-title {
+            margin: 0;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #1d4ed8;
+        }
+
+        .srf-notif-item-text {
+            margin: 3px 0 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f172a;
+            word-break: break-word;
+        }
+
+        .srf-notif-item-time {
+            margin: 4px 0 0;
+            font-size: 11px;
+            color: #64748b;
+        }
+
+        .srf-toast-stack {
+            position: fixed;
+            top: 18px;
+            right: 18px;
+            z-index: 80;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .srf-toast {
+            min-width: 260px;
+            max-width: min(420px, calc(100vw - 24px));
+            border-radius: 10px;
+            border: 1px solid #99f6e4;
+            background: #ecfeff;
+            color: #0f172a;
+            box-shadow: 0 12px 30px rgba(15, 23, 42, 0.2);
+            padding: 10px 12px;
+            pointer-events: auto;
+            animation: srf-toast-in 180ms ease-out;
+        }
+
+        .srf-toast-title {
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #0f766e;
+            margin: 0 0 3px;
+        }
+
+        .srf-toast-text {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 600;
+            color: #0f172a;
+        }
+
+        @keyframes srf-toast-in {
+            from {
+                transform: translateY(-8px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+    </style>
+
+    <div class="srf-root">
+
     <header class="auth-login-topbar">
         <div class="auth-login-brand">
             <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
@@ -48,12 +442,44 @@
             </div>
         </div>
 
-        <div class="auth-login-top-actions"></div>
+        <div class="auth-login-top-actions">
+            @if ($isAdmin)
+                <div class="srf-notif-wrap" id="admin-chat-notif-wrap">
+                    <button type="button" class="srf-notif-btn" id="admin-chat-notif-toggle" aria-label="View notifications">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                            <path d="M10 2a5.5 5.5 0 00-5.5 5.5v2.8L3 12.5h14l-1.5-2.2V7.5A5.5 5.5 0 0010 2z"></path>
+                            <path d="M8.5 15.8a1.5 1.5 0 003 0"></path>
+                        </svg>
+                        <span class="srf-notif-count hidden" id="admin-chat-notif-count">0</span>
+                    </button>
+
+                    <div class="srf-notif-panel hidden" id="admin-chat-notif-panel">
+                        <div class="srf-notif-panel-head">Notifications</div>
+                        <div class="srf-notif-list" id="admin-chat-notif-list">
+                            <p class="srf-notif-empty" id="admin-chat-notif-empty">No notifications yet.</p>
+                        </div>
+                    </div>
+                </div>
+            @endif
+        </div>
     </header>
 
-    <section class="auth-login-card-wrap" style="max-width: 1280px; margin-top: 1.4rem;">
-    <div class="mx-auto w-full py-2">
-        <div class="mb-4 rounded-2xl border border-white/70 bg-white/85 p-4 shadow-lg backdrop-blur-xl">
+    <section style="max-width: 1300px; margin: 1.5rem auto; padding: 0 1rem 2rem;">
+    @if (session('status'))
+        <div class="mb-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+            {{ session('status') }}
+        </div>
+    @endif
+
+    <div class="mb-3 hidden rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800" data-admin-live-notice></div>
+
+    <div class="srf-card">
+        <div class="srf-form-header">
+            <span class="srf-form-header-text">Service Request Form</span>
+            <div class="srf-form-header-line"></div>
+        </div>
+
+        <div class="srf-section srf-status-block">
             <div class="flex flex-wrap items-center gap-3">
                 <p class="text-sm font-semibold text-slate-700">Status :</p>
                 @php
@@ -71,7 +497,7 @@
 
                 @if ($isAdmin)
                     <div class="ms-auto flex flex-wrap items-center gap-2">
-                        <a href="{{ route('service-requests.print', $serviceRequest) }}" target="_blank" class="rounded-xl border border-slate-300 bg-slate-50 px-3 py-1.5 text-xs font-semibold uppercase text-slate-800 transition hover:bg-slate-100">Print</a>
+                        <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
                         <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2">
                             @csrf
                             @method('PATCH')
@@ -84,7 +510,7 @@
             </div>
         </div>
 
-        <div class="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-lg">
+        <div class="overflow-x-auto bg-white">
             <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0">
                 @csrf
                 @method('PUT')
@@ -92,7 +518,8 @@
                 <fieldset @if ($isAdmin) disabled @endif>
 
                 <div class="px-4 pb-3">
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
+                    <p class="srf-section-label">Request Information</p>
+                    <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
                         <tr>
                             <td class="border border-slate-400 px-2 py-1 font-semibold">Reference Code :
                                 <span class="inline-block min-w-64 border-b border-slate-400 px-1 py-0.5 text-center">{{ $serviceRequest->reference_code }}</span>
@@ -118,7 +545,8 @@
                 </div>
 
                 <div class="px-4 pb-3">
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
+                    <p class="srf-section-label">Requester Details</p>
+                    <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
                         <tr>
                             <td class="border border-slate-500 px-2 py-1">2) Request Category :
                                 <select id="request_category" name="request_category" class="auth-input !inline-block align-middle !min-h-0 !w-[260px] !rounded-none !border-0 border-b border-slate-200 !bg-transparent px-0 py-0 text-[12px]">
@@ -204,6 +632,7 @@
                 </div>
 
                 <div class="px-4 pb-3">
+                    <p class="srf-section-label">Description of Request</p>
                     <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
                         <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
                             <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
@@ -232,7 +661,8 @@
                 </div>
 
                 <div class="px-4 pb-3">
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
+                    <p class="srf-section-label">Approved By</p>
+                    <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
                         <tr>
                             <td class="w-48 border border-slate-400 px-2 py-1 font-semibold">13) APPROVED BY :</td>
                             <td class="border border-slate-400 px-2 py-1">
@@ -315,23 +745,6 @@
                         <div class="rounded-xl border border-slate-300 bg-slate-50 p-3">
                             <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For knowledge management and information technology service only</h3>
 
-                            <div class="mt-3 grid gap-3 md:grid-cols-3">
-                                <label class="block text-[12px] text-slate-700">
-                                    <span class="font-semibold">10. Date</span>
-                                    <input type="date" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                                </label>
-
-                                <label class="block text-[12px] text-slate-700">
-                                    <span class="font-semibold">11. Time Received</span>
-                                    <input type="time" name="time_received" value="{{ old('time_received', $serviceRequest->time_received) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                                </label>
-
-                                <label class="block text-[12px] text-slate-700 md:col-span-3">
-                                    <span class="font-semibold">12. Actions Taken</span>
-                                    <textarea name="actions_taken" rows="2" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">{{ old('actions_taken', $serviceRequest->actions_taken) }}</textarea>
-                                </label>
-                            </div>
-
                             <div class="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white">
                                 <table class="min-w-full border-collapse text-[12px] text-slate-800">
                                     <thead class="bg-slate-100">
@@ -383,9 +796,6 @@
                                 </label>
                             </div>
 
-                            <x-input-error :messages="$errors->get('kmits_date')" class="mt-2" />
-                            <x-input-error :messages="$errors->get('time_received')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('actions_taken')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_date')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_time')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_action_date')" class="mt-1" />
@@ -401,14 +811,92 @@
                     <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
                 @endif
 
-                <div class="flex items-center justify-between border-t border-slate-300 bg-slate-50 px-4 py-3">
-                    <a href="{{ route('service-requests.index') }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-500">Cancel</a>
-                    <button type="submit" class="auth-button">Update Service Request</button>
+                <div class="srf-footer">
+                    <a href="{{ route('service-requests.index') }}" class="srf-btn-back">Cancel</a>
+                    <button type="submit" class="srf-btn-submit">Update Service Request</button>
                 </div>
             </form>
         </div>
     </div>
     </section>
+
+    @if ($isAdmin)
+        <section style="max-width: 1300px; margin: -0.7rem auto 1.8rem; padding: 0 1rem;">
+            <div class="srf-card">
+                <div class="srf-form-header">
+                    <span class="srf-form-header-text">Requestor and Admin Chat</span>
+                    <div class="srf-form-header-line"></div>
+                </div>
+
+                @php
+                    $adminChatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+                    $isChatPending = $adminChatStatus === 'pending';
+                    $isChatAccepted = $adminChatStatus === 'accepted';
+                @endphp
+
+                <div class="p-4" data-admin-chat-panel data-admin-chat-status="{{ $adminChatStatus !== '' ? $adminChatStatus : 'none' }}" data-admin-chat-poll-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}" data-admin-reference-code="{{ $serviceRequest->reference_code }}">
+                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 {{ $isChatPending ? '' : 'hidden' }}" data-admin-chat-state="pending">
+                            <p class="font-semibold">Pending chat request from requestor.</p>
+                            <p class="mt-1 text-xs">Accept to unlock messaging, or decline to keep chat hidden.</p>
+
+                            <form method="POST" action="{{ route('service-requests.chat-request.decision', $serviceRequest) }}" class="mt-3 flex flex-wrap gap-2">
+                                @csrf
+                                <button type="submit" name="decision" value="accepted" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Accept Request</button>
+                                <button type="submit" name="decision" value="rejected" class="rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-rose-700">Decline</button>
+                            </form>
+                    </div>
+
+                    <div class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 {{ $adminChatStatus === 'rejected' ? '' : 'hidden' }}" data-admin-chat-state="rejected">
+                        Last chat request was declined. Waiting for a new chat request from the track page.
+                    </div>
+
+                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 {{ (! $isChatAccepted && $adminChatStatus !== 'rejected' && ! $isChatPending) ? '' : 'hidden' }}" data-admin-chat-state="none">
+                        No chat request yet. Chat stays hidden until requestor clicks Contact Admin Personnel and admin accepts.
+                    </div>
+
+                    <div data-admin-chat-state="accepted" class="{{ $isChatAccepted ? '' : 'hidden' }}">
+                        <div class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-emerald-700" data-admin-chat-accepted-banner>
+                            Chat request accepted
+                        </div>
+
+                        <div class="srf-chat-list" data-chat-list data-chat-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}">
+                            @forelse ($chatMessages as $chatMessage)
+                                @php
+                                    $isAdminMessage = strtolower((string) $chatMessage->sender_type) === 'admin';
+                                    $senderLabel = $isAdminMessage
+                                        ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
+                                        : 'Requestor';
+                                @endphp
+
+                                <div class="srf-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
+                                    <div class="srf-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
+                                        <p class="srf-chat-meta">{{ $senderLabel }} • {{ $chatMessage->created_at?->format('M j, Y g:i A') }}</p>
+                                        <p class="srf-chat-text">{{ $chatMessage->message }}</p>
+                                    </div>
+                                </div>
+                            @empty
+                                <p class="text-sm text-slate-500">No chat messages yet.</p>
+                            @endforelse
+                        </div>
+
+                        <form method="POST" action="{{ route('service-requests.messages.store', $serviceRequest) }}" class="mt-3" data-chat-enter-form>
+                            @csrf
+                            <label for="admin_chat_message" class="block text-xs font-semibold uppercase tracking-[0.06em] text-slate-600">Reply as Admin</label>
+                            <textarea id="admin_chat_message" name="message" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-teal-600 focus:ring-teal-600" rows="3" maxlength="1000" required>{{ old('message') }}</textarea>
+                            <x-input-error :messages="$errors->get('message')" class="mt-1" />
+                            <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
+                            <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new line.</p>
+                            <div class="mt-2 flex justify-end">
+                                <button type="submit" class="rounded-lg bg-teal-700 px-4 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:bg-teal-800">Send Message</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </section>
+    @endif
+
+    </div>
 
     <datalist id="hospital-office-options">
         @foreach (array_keys($hospitalOfficeMap) as $hospitalOfficeOption)
@@ -592,7 +1080,421 @@
                 syncMode();
             };
 
+            const initDirectPrint = function () {
+                const printButton = document.getElementById('admin-print-button');
+                if (!printButton) {
+                    return;
+                }
+
+                const frameId = 'service-request-print-frame';
+                let printFrame = document.getElementById(frameId);
+
+                if (!printFrame) {
+                    printFrame = document.createElement('iframe');
+                    printFrame.id = frameId;
+                    printFrame.style.display = 'none';
+                    document.body.appendChild(printFrame);
+                }
+
+                printButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    const baseUrl = printButton.getAttribute('href') || '';
+                    if (baseUrl === '') {
+                        return;
+                    }
+
+                    const ts = Date.now();
+                    const iframeUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'print_ts=' + ts;
+
+                    printFrame.onload = function () {
+                        setTimeout(function () {
+                            try {
+                                printFrame.contentWindow.focus();
+                                printFrame.contentWindow.print();
+                            } catch (error) {
+                                window.open(baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'autoprint=1', '_blank');
+                            }
+                        }, 120);
+                    };
+
+                    printFrame.src = iframeUrl;
+                });
+            };
+
+            const initChatEnterSubmit = function () {
+                const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+                const adminChatPanel = document.querySelector('[data-admin-chat-panel]');
+                const adminLiveNotice = document.querySelector('[data-admin-live-notice]');
+                const notifWrap = document.getElementById('admin-chat-notif-wrap');
+                const notifToggle = document.getElementById('admin-chat-notif-toggle');
+                const notifPanel = document.getElementById('admin-chat-notif-panel');
+                const notifList = document.getElementById('admin-chat-notif-list');
+                const notifEmpty = document.getElementById('admin-chat-notif-empty');
+                const notifCount = document.getElementById('admin-chat-notif-count');
+                const chatForms = document.querySelectorAll('[data-chat-enter-form]');
+                let unreadNotifications = 0;
+
+                const escapeHtml = function (value) {
+                    return String(value)
+                        .replace(/&/g, '&amp;')
+                        .replace(/</g, '&lt;')
+                        .replace(/>/g, '&gt;')
+                        .replace(/"/g, '&quot;')
+                        .replace(/'/g, '&#039;');
+                };
+
+                const normalizeChatState = function (state) {
+                    const normalized = String(state || '').toLowerCase();
+                    return ['none', 'pending', 'accepted', 'rejected'].includes(normalized) ? normalized : 'none';
+                };
+
+                const getCurrentChatState = function () {
+                    if (!adminChatPanel) {
+                        return 'none';
+                    }
+
+                    return normalizeChatState(adminChatPanel.dataset.adminChatStatus || 'none');
+                };
+
+                const setCurrentChatState = function (state) {
+                    if (!adminChatPanel) {
+                        return;
+                    }
+
+                    adminChatPanel.dataset.adminChatStatus = normalizeChatState(state);
+                };
+
+                const showChatRequestToast = function (message) {
+                    let stack = document.getElementById('admin-chat-toast-stack');
+
+                    if (!stack) {
+                        stack = document.createElement('div');
+                        stack.id = 'admin-chat-toast-stack';
+                        stack.className = 'srf-toast-stack';
+                        document.body.appendChild(stack);
+                    }
+
+                    const toast = document.createElement('div');
+                    toast.className = 'srf-toast';
+                    toast.innerHTML = '<p class="srf-toast-title">New Chat Request</p><p class="srf-toast-text"></p>';
+                    const textNode = toast.querySelector('.srf-toast-text');
+                    if (textNode) {
+                        textNode.textContent = message;
+                    }
+
+                    stack.appendChild(toast);
+
+                    window.setTimeout(function () {
+                        toast.remove();
+                    }, 4500);
+                };
+
+                const updateNotifBadge = function () {
+                    if (!notifCount) {
+                        return;
+                    }
+
+                    if (unreadNotifications > 0) {
+                        notifCount.textContent = String(unreadNotifications);
+                        notifCount.classList.remove('hidden');
+                        return;
+                    }
+
+                    notifCount.classList.add('hidden');
+                };
+
+                const addNotificationItem = function (message) {
+                    if (!notifList) {
+                        return;
+                    }
+
+                    if (notifEmpty) {
+                        notifEmpty.classList.add('hidden');
+                    }
+
+                    const notifItem = document.createElement('div');
+                    notifItem.className = 'srf-notif-item';
+                    notifItem.innerHTML = '<p class="srf-notif-item-title">Chat Request</p><p class="srf-notif-item-text"></p><p class="srf-notif-item-time"></p>';
+
+                    const textNode = notifItem.querySelector('.srf-notif-item-text');
+                    const timeNode = notifItem.querySelector('.srf-notif-item-time');
+
+                    if (textNode) {
+                        textNode.textContent = message;
+                    }
+
+                    if (timeNode) {
+                        const now = new Date();
+                        timeNode.textContent = now.toLocaleString();
+                    }
+
+                    notifList.prepend(notifItem);
+
+                    while (notifList.querySelectorAll('.srf-notif-item').length > 12) {
+                        const items = notifList.querySelectorAll('.srf-notif-item');
+                        if (items.length <= 12) {
+                            break;
+                        }
+                        items[items.length - 1].remove();
+                    }
+
+                    unreadNotifications += 1;
+                    updateNotifBadge();
+                };
+
+                if (notifToggle && notifPanel) {
+                    notifToggle.addEventListener('click', function () {
+                        notifPanel.classList.toggle('hidden');
+                        if (!notifPanel.classList.contains('hidden')) {
+                            unreadNotifications = 0;
+                            updateNotifBadge();
+                        }
+                    });
+
+                    document.addEventListener('click', function (event) {
+                        if (!notifWrap || notifPanel.classList.contains('hidden')) {
+                            return;
+                        }
+
+                        if (!notifWrap.contains(event.target)) {
+                            notifPanel.classList.add('hidden');
+                        }
+                    });
+                }
+
+                const showTopLiveNotice = function (message) {
+                    if (!adminLiveNotice) {
+                        return;
+                    }
+
+                    adminLiveNotice.textContent = message;
+                    adminLiveNotice.classList.remove('hidden');
+
+                    window.setTimeout(function () {
+                        if (adminLiveNotice.textContent === message) {
+                            adminLiveNotice.classList.add('hidden');
+                        }
+                    }, 8000);
+                };
+
+                const syncChatStateUi = function (state) {
+                    if (!adminChatPanel) {
+                        return;
+                    }
+
+                    const normalizedState = normalizeChatState(state);
+                    const stateBlocks = adminChatPanel.querySelectorAll('[data-admin-chat-state]');
+
+                    stateBlocks.forEach(function (block) {
+                        const blockState = normalizeChatState(block.getAttribute('data-admin-chat-state') || 'none');
+                        block.classList.toggle('hidden', blockState !== normalizedState);
+                    });
+
+                    setCurrentChatState(normalizedState);
+                };
+
+                syncChatStateUi(getCurrentChatState());
+
+                chatForms.forEach(function (form) {
+                    const textarea = form.querySelector('textarea[name="message"]');
+                    const chatSection = form.closest('.p-4');
+                    const chatList = chatSection ? chatSection.querySelector('[data-chat-list]') : null;
+                    const chatEndpoint = chatList ? chatList.dataset.chatEndpoint : '';
+                    const errorBox = form.querySelector('[data-chat-error]');
+
+                    if (!textarea || !chatList || chatEndpoint === '') {
+                        return;
+                    }
+
+                    const renderMessages = function (messages, scrollToBottom) {
+                        if (!Array.isArray(messages) || messages.length === 0) {
+                            chatList.innerHTML = '<p class="text-sm text-slate-500">No chat messages yet.</p>';
+                            return;
+                        }
+
+                        chatList.innerHTML = messages.map(function (message) {
+                            const senderType = String(message.sender_type || '').toLowerCase() === 'admin' ? 'admin' : 'requestor';
+                            const senderLabel = escapeHtml(message.sender_label || '');
+                            const createdAt = escapeHtml(message.created_at_label || '');
+                            const text = escapeHtml(message.message || '').replace(/\n/g, '<br>');
+
+                            return '<div class="srf-chat-item ' + senderType + '">' +
+                                '<div class="srf-chat-bubble ' + senderType + '">' +
+                                '<p class="srf-chat-meta">' + senderLabel + ' • ' + createdAt + '</p>' +
+                                '<p class="srf-chat-text">' + text + '</p>' +
+                                '</div>' +
+                                '</div>';
+                        }).join('');
+
+                        if (scrollToBottom) {
+                            chatList.scrollTop = chatList.scrollHeight;
+                        }
+                    };
+
+                    const loadMessages = async function (scrollToBottom) {
+                        try {
+                            const response = await fetch(chatEndpoint, {
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                            });
+
+                            if (!response.ok) {
+                                return;
+                            }
+
+                            const payload = await response.json();
+                            const nextState = payload.chat_accepted
+                                ? 'accepted'
+                                : normalizeChatState(payload.chat_status || 'none');
+
+                            const currentState = getCurrentChatState();
+                            if (currentState !== nextState) {
+                                if (currentState !== 'pending' && nextState === 'pending' && adminChatPanel) {
+                                    const referenceCode = adminChatPanel.dataset.adminReferenceCode || 'Unknown reference';
+                                    const notifyMessage = referenceCode + ' send a request chat';
+                                    showChatRequestToast(notifyMessage);
+                                    showTopLiveNotice(notifyMessage);
+                                    addNotificationItem(notifyMessage);
+                                }
+
+                                syncChatStateUi(nextState);
+                                if (nextState !== 'accepted') {
+                                    return;
+                                }
+                            }
+
+                            if (nextState !== 'accepted') {
+                                return;
+                            }
+
+                            renderMessages(payload.messages || [], scrollToBottom);
+                        } catch (error) {
+                            // Keep previous chat state if refresh fails.
+                        }
+                    };
+
+                    const sendMessage = async function () {
+                        const messageValue = textarea.value.trim();
+                        if (messageValue === '') {
+                            return;
+                        }
+
+                        if (errorBox) {
+                            errorBox.classList.add('hidden');
+                            errorBox.textContent = '';
+                        }
+
+                        const body = new URLSearchParams();
+                        body.set('_token', csrfToken);
+                        body.set('message', messageValue);
+
+                        try {
+                            const response = await fetch(form.action, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json',
+                                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
+                                    'X-Requested-With': 'XMLHttpRequest',
+                                },
+                                body: body.toString(),
+                            });
+
+                            if (response.ok) {
+                                textarea.value = '';
+                                await loadMessages(true);
+                                return;
+                            }
+
+                            if (response.status === 422) {
+                                const payload = await response.json();
+                                const messageError = payload?.errors?.message?.[0] || 'Unable to send message.';
+
+                                if (errorBox) {
+                                    errorBox.textContent = messageError;
+                                    errorBox.classList.remove('hidden');
+                                    return;
+                                }
+                            }
+
+                            form.submit();
+                        } catch (error) {
+                            form.submit();
+                        }
+                    };
+
+                    form.addEventListener('submit', function (event) {
+                        event.preventDefault();
+                        sendMessage();
+                    });
+
+                    textarea.addEventListener('keydown', function (event) {
+                        if (event.key === 'Enter' && !event.shiftKey) {
+                            event.preventDefault();
+                            sendMessage();
+                        }
+                    });
+
+                    loadMessages(true);
+                    window.setInterval(function () {
+                        loadMessages(false);
+                    }, 4000);
+                });
+
+                if (adminChatPanel && chatForms.length === 0) {
+                    const pollEndpoint = adminChatPanel.dataset.adminChatPollEndpoint || '';
+
+                    if (pollEndpoint !== '') {
+                        const pollStatus = async function () {
+                            try {
+                                const response = await fetch(pollEndpoint, {
+                                    headers: {
+                                        'Accept': 'application/json',
+                                        'X-Requested-With': 'XMLHttpRequest',
+                                    },
+                                });
+
+                                if (!response.ok) {
+                                    return;
+                                }
+
+                                const payload = await response.json();
+                                const nextState = payload.chat_accepted
+                                    ? 'accepted'
+                                    : normalizeChatState(payload.chat_status || 'none');
+
+                                const currentState = getCurrentChatState();
+                                if (currentState !== nextState) {
+                                    if (currentState !== 'pending' && nextState === 'pending' && adminChatPanel) {
+                                        const referenceCode = adminChatPanel.dataset.adminReferenceCode || 'Unknown reference';
+                                        const notifyMessage = referenceCode + ' send a request chat';
+                                        showChatRequestToast(notifyMessage);
+                                        showTopLiveNotice(notifyMessage);
+                                        addNotificationItem(notifyMessage);
+                                    }
+
+                                    syncChatStateUi(nextState);
+
+                                    // Show message panel right away once request becomes accepted.
+                                    if (nextState === 'accepted') {
+                                        window.location.reload();
+                                    }
+                                }
+                            } catch (error) {
+                                // Keep current UI on transient poll failures.
+                            }
+                        };
+
+                        window.setInterval(pollStatus, 4000);
+                    }
+                }
+            };
+
             initSignatureInput();
+            initDirectPrint();
+            initChatEnterSubmit();
         });
 
     </script>
