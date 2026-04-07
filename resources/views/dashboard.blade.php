@@ -121,9 +121,17 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         @php
                             $resolvedRequests = $approvedRequests + $rejectedRequests;
-                            $pendingRate = $totalRequests > 0 ? round(($pendingRequests / $totalRequests) * 100) : 0;
-                            $approvalRate = $totalRequests > 0 ? round(($approvedRequests / $totalRequests) * 100) : 0;
-                            $rejectionRate = $totalRequests > 0 ? round(($rejectedRequests / $totalRequests) * 100) : 0;
+                            $pendingRatePrecise = $totalRequests > 0 ? (($pendingRequests / $totalRequests) * 100) : 0;
+                            $approvalRatePrecise = $totalRequests > 0 ? (($approvedRequests / $totalRequests) * 100) : 0;
+                            $rejectionRatePrecise = $totalRequests > 0 ? (($rejectedRequests / $totalRequests) * 100) : 0;
+
+                            $pendingRate = (int) round($pendingRatePrecise);
+                            $approvalRate = (int) round($approvalRatePrecise);
+                            $rejectionRate = (int) round($rejectionRatePrecise);
+
+                            $pendingBarWidth = $pendingRequests > 0 ? min(max($pendingRatePrecise, 4), 100) : 0;
+                            $approvalBarWidth = $approvedRequests > 0 ? min(max($approvalRatePrecise, 4), 100) : 0;
+                            $rejectionBarWidth = $rejectedRequests > 0 ? min(max($rejectionRatePrecise, 4), 100) : 0;
                         @endphp
                         <h3 class="text-base font-semibold text-slate-900">Status Snapshot</h3>
                         <div class="mt-3 space-y-3 text-sm text-slate-700">
@@ -133,7 +141,7 @@
                                     <span class="font-semibold">{{ number_format($pendingRequests) }} ({{ $pendingRate }}%)</span>
                                 </div>
                                 <div class="mt-1 h-2 rounded-full bg-slate-100">
-                                    <div class="h-2 rounded-full bg-amber-400" style="width: {{ $pendingRate }}%"></div>
+                                    <div class="h-2 rounded-full" style="width: {{ number_format($pendingBarWidth, 2, '.', '') }}%; background-color: #f59e0b;"></div>
                                 </div>
                             </div>
                             <div>
@@ -142,7 +150,7 @@
                                     <span class="font-semibold">{{ number_format($approvedRequests) }} ({{ $approvalRate }}%)</span>
                                 </div>
                                 <div class="mt-1 h-2 rounded-full bg-slate-100">
-                                    <div class="h-2 rounded-full bg-emerald-500" style="width: {{ $approvalRate }}%"></div>
+                                    <div class="h-2 rounded-full" style="width: {{ number_format($approvalBarWidth, 2, '.', '') }}%; background-color: #10b981;"></div>
                                 </div>
                             </div>
                             <div>
@@ -151,11 +159,12 @@
                                     <span class="font-semibold">{{ number_format($rejectedRequests) }} ({{ $rejectionRate }}%)</span>
                                 </div>
                                 <div class="mt-1 h-2 rounded-full bg-slate-100">
-                                    <div class="h-2 rounded-full bg-rose-500" style="width: {{ $rejectionRate }}%"></div>
+                                    <div class="h-2 rounded-full" style="width: {{ number_format($rejectionBarWidth, 2, '.', '') }}%; background-color: #f43f5e;"></div>
                                 </div>
                             </div>
-                            <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                                Resolved requests: <span class="font-semibold text-slate-800">{{ number_format($resolvedRequests) }}</span>
+                                <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
+                                    Resolved requests: <span class="font-semibold text-slate-800">{{ number_format($resolvedRequests) }}</span><br>
+                                    Request messages: <span class="font-semibold text-slate-800">{{ number_format($requestMessages ?? 0) }}</span>
                             </div>
                         </div>
                     </div>
@@ -163,31 +172,32 @@
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         <div class="flex items-center justify-between gap-2">
                             <h3 class="text-base font-semibold text-slate-900">Recent Activities</h3>
-                            <a href="{{ route('service-requests.index') }}" class="auth-link text-xs">View all</a>
+                            <a href="{{ route('service-requests.chat-requests') }}" class="auth-link text-xs">View all</a>
                         </div>
 
                         <div class="mt-3 space-y-2">
-                            @forelse ($recentRequests->take(4) as $activity)
+                            @forelse (($recentChatRequests ?? collect())->take(4) as $activity)
                                 @php
-                                    $activityStatusClass = match ($activity->status) {
-                                        'checking' => 'bg-sky-100 text-sky-700',
-                                        'approved' => 'bg-emerald-100 text-emerald-700',
+                                    $chatActivityStatus = strtolower((string) ($activity->contact_chat_status ?? 'pending'));
+                                    $activityStatusClass = match ($chatActivityStatus) {
+                                        'accepted' => 'bg-emerald-100 text-emerald-700',
                                         'rejected' => 'bg-rose-100 text-rose-700',
                                         default => 'bg-amber-100 text-amber-700',
                                     };
+                                    $requestedAt = $activity->contact_chat_requested_at ?? $activity->updated_at;
                                 @endphp
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2.5">
                                     <div class="flex items-center justify-between gap-2">
                                         <span class="font-mono text-xs text-slate-800">{{ $activity->reference_code }}</span>
                                         <span class="rounded-full px-2 py-1 text-[10px] font-semibold uppercase {{ $activityStatusClass }}">
-                                            {{ $activity->status }}
+                                            {{ $chatActivityStatus }}
                                         </span>
                                     </div>
-                                    <p class="mt-1 text-xs text-slate-600">{{ $activity->office }} | {{ $activity->updated_at->format('M d, Y') }}</p>
+                                    <p class="mt-1 text-xs text-slate-600">{{ $activity->office }} | {{ $requestedAt ? $requestedAt->format('M d, Y g:i A') : 'N/A' }}</p>
                                 </div>
                             @empty
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">
-                                    No recent activities yet.
+                                    No recent chat activities yet.
                                 </div>
                             @endforelse
                         </div>

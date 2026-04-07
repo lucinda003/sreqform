@@ -32,6 +32,20 @@ class DashboardController extends Controller
             ]);
         }
 
+        $chatBaseQuery = ServiceRequest::query()
+            ->whereNotNull('contact_chat_requested_at');
+
+        if ($range === 'today') {
+            $chatBaseQuery->whereDate('contact_chat_requested_at', today());
+        }
+
+        if ($range === 'week') {
+            $chatBaseQuery->whereBetween('contact_chat_requested_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek(),
+            ]);
+        }
+
         $totalRequests = (clone $baseQuery)->count();
         $todayRequests = ServiceRequest::whereDate('created_at', today())->count();
         $thisWeekRequests = ServiceRequest::whereBetween('created_at', [
@@ -42,9 +56,16 @@ class DashboardController extends Controller
         $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
         $approvedRequests = (clone $baseQuery)->where('status', 'approved')->count();
         $rejectedRequests = (clone $baseQuery)->where('status', 'rejected')->count();
+        $requestMessages = (clone $chatBaseQuery)->count();
 
         $recentRequests = (clone $baseQuery)
             ->latest()
+            ->take(8)
+            ->get();
+
+        $recentChatRequests = (clone $chatBaseQuery)
+            ->orderByDesc('contact_chat_requested_at')
+            ->orderByDesc('updated_at')
             ->take(8)
             ->get();
 
@@ -56,7 +77,9 @@ class DashboardController extends Controller
             'pendingRequests' => $pendingRequests,
             'approvedRequests' => $approvedRequests,
             'rejectedRequests' => $rejectedRequests,
+            'requestMessages' => $requestMessages,
             'recentRequests' => $recentRequests,
+            'recentChatRequests' => $recentChatRequests,
             'range' => $range,
         ]);
     }

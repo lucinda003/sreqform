@@ -24,24 +24,93 @@ class ServiceRequestController extends Controller
     public function index(Request $request): View
     {
         $statusFilter = trim((string) $request->query('status'));
+        $search = trim((string) $request->query('q'));
+        $chatRequestFilter = trim((string) $request->query('chat_request'));
 
         $serviceRequestsQuery = $this->scopeForUser(ServiceRequest::query())->latest();
 
         if ($statusFilter === 'archived') {
             $serviceRequestsQuery->whereIn('status', ['approved', 'rejected']);
-        } elseif (in_array($statusFilter, ['pending', 'checking', 'approved', 'rejected'], true)) {
+        } elseif (in_array($statusFilter, ['pending', 'checking'], true)) {
             $serviceRequestsQuery->where('status', $statusFilter);
         } else {
             $statusFilter = '';
+            $serviceRequestsQuery->whereIn('status', ['pending', 'checking']);
+        }
+
+        if ($search !== '') {
+            $serviceRequestsQuery->where(function (Builder $builder) use ($search): void {
+                $like = '%' . $search . '%';
+
+                $builder
+                    ->where('reference_code', 'like', $like)
+                    ->orWhere('contact_last_name', 'like', $like)
+                    ->orWhere('contact_first_name', 'like', $like)
+                    ->orWhere('office', 'like', $like)
+                    ->orWhere('application_system_name', 'like', $like)
+                    ->orWhere('request_category', 'like', $like)
+                    ->orWhere('status', 'like', $like);
+            });
+        }
+
+        if (in_array($chatRequestFilter, ['pending', 'accepted', 'rejected'], true)) {
+            $serviceRequestsQuery->where('contact_chat_status', $chatRequestFilter);
+        } else {
+            $chatRequestFilter = '';
         }
 
         $serviceRequests = $serviceRequestsQuery
-            ->paginate(10)
+            ->paginate(15)
             ->withQueryString();
 
         return view('service-requests.index', [
             'serviceRequests' => $serviceRequests,
             'statusFilter' => $statusFilter,
+            'search' => $search,
+            'chatRequestFilter' => $chatRequestFilter,
+        ]);
+    }
+
+    public function chatRequests(Request $request): View
+    {
+        abort_unless($this->isAdmin(), 403);
+
+        $chatStatus = strtolower(trim((string) $request->query('chat_status', 'pending')));
+        $search = trim((string) $request->query('q'));
+
+        $chatRequestsQuery = ServiceRequest::query()
+            ->whereNotNull('contact_chat_status')
+            ->latest('contact_chat_requested_at')
+            ->latest();
+
+        if (in_array($chatStatus, ['pending', 'accepted', 'rejected'], true)) {
+            $chatRequestsQuery->where('contact_chat_status', $chatStatus);
+        } else {
+            $chatStatus = 'all';
+        }
+
+        if ($search !== '') {
+            $chatRequestsQuery->where(function (Builder $builder) use ($search): void {
+                $like = '%' . $search . '%';
+
+                $builder
+                    ->where('reference_code', 'like', $like)
+                    ->orWhere('contact_last_name', 'like', $like)
+                    ->orWhere('contact_first_name', 'like', $like)
+                    ->orWhere('office', 'like', $like)
+                    ->orWhere('application_system_name', 'like', $like)
+                    ->orWhere('contact_chat_status', 'like', $like);
+            });
+        }
+
+        $chatRequests = $chatRequestsQuery
+            ->paginate(12)
+            ->withQueryString();
+
+        return view('service-requests.chat-requests', [
+            'chatRequests' => $chatRequests,
+            'chatStatus' => $chatStatus,
+            'search' => $search,
         ]);
     }
 
@@ -300,6 +369,38 @@ class ServiceRequestController extends Controller
             'messages' => $chatAccepted
                 ? $this->serializedChatMessages($this->chatMessagesFor($serviceRequest, 150))
                 : [],
+        ]);
+    }
+
+    public function adminChatNotifications(): JsonResponse
+    {
+        abort_unless($this->isAdmin(), 403);
+
+        $pendingRequests = ServiceRequest::query()
+            ->where('contact_chat_status', 'pending')
+            ->orderByDesc('contact_chat_requested_at')
+            ->orderByDesc('updated_at')
+            ->limit(25)
+            ->get(['id', 'reference_code', 'contact_chat_requested_at', 'updated_at']);
+
+        $notifications = $pendingRequests
+            ->map(function (ServiceRequest $serviceRequest): array {
+                $requestedAt = $serviceRequest->contact_chat_requested_at ?? $serviceRequest->updated_at;
+
+                return [
+                    'key' => 'chat-request-' . (int) $serviceRequest->id . '-' . ($requestedAt?->timestamp ?? 0),
+                    'reference_code' => (string) $serviceRequest->reference_code,
+                    'message' => (string) $serviceRequest->reference_code . ' send a request chat',
+                    'requested_at_label' => $requestedAt?->format('M j, Y g:i A') ?? '',
+                    'requested_at_unix' => $requestedAt?->timestamp,
+                    'edit_url' => route('service-requests.edit', ['serviceRequest' => $serviceRequest->id]),
+                ];
+            })
+            ->values()
+            ->all();
+
+        return response()->json([
+            'notifications' => $notifications,
         ]);
     }
 

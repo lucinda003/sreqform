@@ -154,6 +154,8 @@
             border-top: 1px solid #111827;
             margin-top: 15px;
             padding-top: 4px;
+            margin-left: -7px;
+            margin-right: -7px;
         }
 
         .reference-wrap {
@@ -257,7 +259,13 @@
             overflow-wrap: anywhere;
             line-height: 1.35;
         }
-
+        .line-value2 {
+            min-height: 18px;
+            border-bottom: 1px solid #111827;
+            padding: 0 3px;
+            margin-left: -6px;
+            margin-right: -6px;
+        }
         .line-value {
             min-height: 18px;
             border-bottom: 1px solid #111827;
@@ -280,6 +288,7 @@
             font-size: 12px;
             font-weight: 700;
         }
+
 
         @media print {
             body {
@@ -338,8 +347,11 @@
             }
 
             .header-sub {
-                font-size: 16px;
-                margin-top: 8px;
+                font-size: 15px;
+                margin-top: 10px;
+                margin-left: -7px;
+                margin-right: -7px;
+                padding-top: 10px;
             }
 
             .reference-label {
@@ -411,7 +423,11 @@
                 font-size: 13px;
                 line-height: 1.4;
             }
-
+            .line-value2 {
+                min-height: 22px;
+                margin-left: -6px;
+                margin-right: -6px;
+            }
             .line-value {
                 min-height: 22px;
             }
@@ -546,19 +562,19 @@
             <tr>
                 <td style="width:180px;" class="bold">13) APPROVED BY :</td>
                 <td style="padding:0 10px 6px;">
-                    <div style="display:flex; gap:16px; align-items:flex-start;">
+                    <div style="display:flex; gap:16px; align-items:flex-end;">
                         <div style="flex:1;">
                             <div style="min-height:56px; margin-top:4px;">
                                 @if (!empty($serviceRequest->approved_by_signature))
                                     <div style="width:100%; min-height:34px; margin-bottom:0; display:flex; align-items:flex-end; justify-content:center;">
-                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Signature" style="max-height:56px; max-width:220px; object-fit:contain; display:block; margin:0 auto;">
+                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Signature" style="max-height:60px; max-width:220px; object-fit:contain; display:block; margin:0 auto; margin-bottom:-10px">
                                     </div>
                                 @else
                                     <div style="min-height:34px;"></div>
                                 @endif
                                 <div class="line-value center" style="margin-top:0; min-height:16px; padding-left:0; padding-right:0;">{{ $serviceRequest->approved_by_name }}</div>
                             </div>
-                            <div class="line-caption" style="margin-top:-1px;">Name &amp; Signature of Head of Office</div>
+                            <div class="line-caption">Name &amp; Signature of Head of Office</div>
 
                             <div style="margin-top:8px;" class="line-value center">{{ $serviceRequest->approved_by_position }}</div>
                             <div class="line-caption">Position</div>
@@ -633,15 +649,15 @@
             </tr>
             <tr>
                 <td style="padding:1px 6px; border-top:0 !important;">
-                    <div class="line-value center">{{ $serviceRequest->noted_by_name ?: '' }}</div>
+                    <div class="line-value2 center">{{ $serviceRequest->noted_by_name ?: '' }}</div>
                     <div class="center" style="padding-top:1px;">Name and Signature of Supervisor</div>
                 </td>
                 <td style="padding:1px 6px; border-top:0 !important;">
-                    <div class="line-value center">{{ $serviceRequest->noted_by_position ?: '' }}</div>
+                    <div class="line-value2 center">{{ $serviceRequest->noted_by_position ?: '' }}</div>
                     <div class="center" style="padding-top:1px;">Position</div>
                 </td>
                 <td style="padding:1px 6px; border-top:0 !important;">
-                    <div class="line-value center">{{ optional($serviceRequest->noted_by_date_signed)->format('m/d/Y') ?: '' }}</div>
+                    <div class="line-value2 center">{{ optional($serviceRequest->noted_by_date_signed)->format('m/d/Y') ?: '' }}</div>
                     <div class="center" style="padding-top:1px;">Date Signed</div>
                 </td>
             </tr>

@@ -66,6 +66,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/service-requests/{serviceRequest}/edit', [ServiceRequestController::class, 'edit'])->name('service-requests.edit');
     Route::put('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'update'])->name('service-requests.update');
     Route::patch('/service-requests/{serviceRequest}/status', [ServiceRequestController::class, 'updateStatus'])->name('service-requests.update-status');
+    Route::get('/admin/chat-notifications', [ServiceRequestController::class, 'adminChatNotifications'])->name('service-requests.notifications');
+    Route::get('/admin/chat-requests', [ServiceRequestController::class, 'chatRequests'])->name('service-requests.chat-requests');
     Route::post('/service-requests/{serviceRequest}/chat-request-decision', [ServiceRequestController::class, 'decideChatRequest'])->name('service-requests.chat-request.decision');
     Route::post('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'postAdminMessage'])->name('service-requests.messages.store');
     Route::get('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'adminMessages'])->name('service-requests.messages.index');

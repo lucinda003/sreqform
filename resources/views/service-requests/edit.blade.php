@@ -66,6 +66,30 @@
             gap: 12px;
         }
 
+        .srf-header-back {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.08);
+            transition: background 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .srf-header-back:hover {
+            background: rgba(255, 255, 255, 0.18);
+        }
+
+        .srf-header-back svg {
+            width: 16px;
+            height: 16px;
+        }
+
         .srf-form-header-text {
             font-size: 15px;
             font-weight: 600;
@@ -166,6 +190,9 @@
             background: #fff;
             border: 1.5px solid #e2e8f0;
             border-radius: 8px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
             padding: 10px 22px;
             text-decoration: none;
             transition: border-color 0.18s, color 0.18s;
@@ -174,6 +201,11 @@
         .srf-btn-back:hover {
             border-color: #94a3b8;
             color: #1e293b;
+        }
+
+        .srf-btn-back svg {
+            width: 16px;
+            height: 16px;
         }
 
         .srf-btn-submit {
@@ -363,6 +395,23 @@
             text-transform: uppercase;
             letter-spacing: 0.04em;
             color: #1d4ed8;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .srf-notif-item-new {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-width: 32px;
+            border-radius: 999px;
+            padding: 2px 7px;
+            font-size: 10px;
+            line-height: 1;
+            font-weight: 800;
+            color: #fff;
+            background: #dc2626;
         }
 
         .srf-notif-item-text {
@@ -377,6 +426,125 @@
             margin: 4px 0 0;
             font-size: 11px;
             color: #64748b;
+        }
+
+        .srf-status-modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(15, 23, 42, 0.55);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 95;
+            padding: 16px;
+        }
+
+        .srf-status-modal-backdrop.open {
+            display: flex;
+        }
+
+        .srf-status-modal {
+            width: min(460px, calc(100vw - 32px));
+            border-radius: 14px;
+            border: 1px solid #d1d5db;
+            background: #fff;
+            box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+            overflow: hidden;
+        }
+
+        .srf-status-modal-head {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px 12px;
+            border-bottom: 1px solid #e5e7eb;
+            background: #f8fafc;
+        }
+
+        .srf-status-modal-icon {
+            width: 30px;
+            height: 30px;
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .srf-status-modal-icon.pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .srf-status-modal-icon.approved {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .srf-status-modal-icon.rejected {
+            background: #fee2e2;
+            color: #b91c1c;
+        }
+
+        .srf-status-modal-title {
+            margin: 0;
+            font-size: 16px;
+            font-weight: 700;
+            color: #0f172a;
+        }
+
+        .srf-status-modal-body {
+            padding: 14px 16px;
+        }
+
+        .srf-status-modal-message {
+            margin: 0;
+            font-size: 14px;
+            line-height: 1.5;
+            color: #334155;
+            white-space: pre-line;
+        }
+
+        .srf-status-modal-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 0 16px 16px;
+        }
+
+        .srf-status-modal-cancel,
+        .srf-status-modal-confirm {
+            border-radius: 9px;
+            border: 1px solid #cbd5e1;
+            padding: 8px 14px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            cursor: pointer;
+        }
+
+        .srf-status-modal-cancel {
+            background: #fff;
+            color: #475569;
+        }
+
+        .srf-status-modal-cancel:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        .srf-status-modal-confirm {
+            background: #0f766e;
+            border-color: #0f766e;
+            color: #fff;
+        }
+
+        .srf-status-modal-confirm:hover {
+            background: #115e59;
+            border-color: #115e59;
         }
 
         .srf-toast-stack {
@@ -475,6 +643,11 @@
 
     <div class="srf-card">
         <div class="srf-form-header">
+            <a href="{{ route('service-requests.index') }}" class="srf-header-back" aria-label="Back to Service Requests list">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                    <path d="M12 4L6 10L12 16"></path>
+                </svg>
+            </a>
             <span class="srf-form-header-text">Service Request Form</span>
             <div class="srf-form-header-line"></div>
         </div>
@@ -498,12 +671,12 @@
                 @if ($isAdmin)
                     <div class="ms-auto flex flex-wrap items-center gap-2">
                         <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
-                        <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2">
+                        <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2" data-status-action-form>
                             @csrf
                             @method('PATCH')
-                            <button type="submit" name="status" value="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
-                            <button type="submit" name="status" value="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
-                            <button type="submit" name="status" value="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                            <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
+                            <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
+                            <button type="submit" name="status" value="rejected" data-status-target="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
                         </form>
                     </div>
                 @endif
@@ -812,7 +985,12 @@
                 @endif
 
                 <div class="srf-footer">
-                    <a href="{{ route('service-requests.index') }}" class="srf-btn-back">Cancel</a>
+                    <a href="{{ route('service-requests.index') }}" class="srf-btn-back">
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                            <path d="M12 4L6 10L12 16"></path>
+                        </svg>
+                        Back
+                    </a>
                     <button type="submit" class="srf-btn-submit">Update Service Request</button>
                 </div>
             </form>
@@ -895,6 +1073,22 @@
             </div>
         </section>
     @endif
+
+    <div class="srf-status-modal-backdrop" id="status-confirm-modal" aria-hidden="true">
+        <div class="srf-status-modal" role="dialog" aria-modal="true" aria-labelledby="status-confirm-title">
+            <div class="srf-status-modal-head">
+                <span class="srf-status-modal-icon pending" id="status-confirm-icon">!</span>
+                <h3 class="srf-status-modal-title" id="status-confirm-title">Confirm Action</h3>
+            </div>
+            <div class="srf-status-modal-body">
+                <p class="srf-status-modal-message" id="status-confirm-message">Do you want to continue?</p>
+            </div>
+            <div class="srf-status-modal-actions">
+                <button type="button" class="srf-status-modal-cancel" id="status-confirm-cancel">No</button>
+                <button type="button" class="srf-status-modal-confirm" id="status-confirm-accept">Yes</button>
+            </div>
+        </div>
+    </div>
 
     </div>
 
@@ -1132,8 +1326,11 @@
                 const notifList = document.getElementById('admin-chat-notif-list');
                 const notifEmpty = document.getElementById('admin-chat-notif-empty');
                 const notifCount = document.getElementById('admin-chat-notif-count');
+                const notifEndpoint = @json(route('service-requests.notifications'));
                 const chatForms = document.querySelectorAll('[data-chat-enter-form]');
                 let unreadNotifications = 0;
+                let knownNotificationKeys = new Set();
+                let notificationItems = [];
 
                 const escapeHtml = function (value) {
                     return String(value)
@@ -1147,6 +1344,16 @@
                 const normalizeChatState = function (state) {
                     const normalized = String(state || '').toLowerCase();
                     return ['none', 'pending', 'accepted', 'rejected'].includes(normalized) ? normalized : 'none';
+                };
+
+                const isFreshNotification = function (item) {
+                    const requestedAtUnix = Number(item.requested_at_unix || 0);
+                    if (!Number.isFinite(requestedAtUnix) || requestedAtUnix <= 0) {
+                        return false;
+                    }
+
+                    const ageSeconds = (Date.now() / 1000) - requestedAtUnix;
+                    return ageSeconds >= 0 && ageSeconds < 120;
                 };
 
                 const getCurrentChatState = function () {
@@ -1204,43 +1411,72 @@
                     notifCount.classList.add('hidden');
                 };
 
-                const addNotificationItem = function (message) {
-                    if (!notifList) {
+                const renderNotificationList = function (items) {
+                    if (!notifList || !notifEmpty) {
                         return;
                     }
 
-                    if (notifEmpty) {
-                        notifEmpty.classList.add('hidden');
+                    if (!Array.isArray(items) || items.length === 0) {
+                        notifList.innerHTML = '';
+                        notifEmpty.classList.remove('hidden');
+                        notifList.appendChild(notifEmpty);
+                        return;
                     }
 
-                    const notifItem = document.createElement('div');
-                    notifItem.className = 'srf-notif-item';
-                    notifItem.innerHTML = '<p class="srf-notif-item-title">Chat Request</p><p class="srf-notif-item-text"></p><p class="srf-notif-item-time"></p>';
+                    notifEmpty.classList.add('hidden');
+                    notifList.innerHTML = items.map(function (item) {
+                        const message = escapeHtml(item.message || 'Chat request received');
+                        const requestedAt = escapeHtml(item.requested_at_label || '');
+                        const editUrl = escapeHtml(item.edit_url || '#');
+                        const newBadge = isFreshNotification(item) ? '<span class="srf-notif-item-new">NEW</span>' : '';
 
-                    const textNode = notifItem.querySelector('.srf-notif-item-text');
-                    const timeNode = notifItem.querySelector('.srf-notif-item-time');
+                        return '<a href="' + editUrl + '" class="srf-notif-item">' +
+                            '<p class="srf-notif-item-title">Chat Request' + newBadge + '</p>' +
+                            '<p class="srf-notif-item-text">' + message + '</p>' +
+                            '<p class="srf-notif-item-time">' + requestedAt + '</p>' +
+                            '</a>';
+                    }).join('');
+                };
 
-                    if (textNode) {
-                        textNode.textContent = message;
+                const syncNotificationList = async function (countNewAsUnread) {
+                    if (!notifList || notifEndpoint === '') {
+                        return;
                     }
 
-                    if (timeNode) {
-                        const now = new Date();
-                        timeNode.textContent = now.toLocaleString();
-                    }
+                    try {
+                        const response = await fetch(notifEndpoint, {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
 
-                    notifList.prepend(notifItem);
-
-                    while (notifList.querySelectorAll('.srf-notif-item').length > 12) {
-                        const items = notifList.querySelectorAll('.srf-notif-item');
-                        if (items.length <= 12) {
-                            break;
+                        if (!response.ok) {
+                            return;
                         }
-                        items[items.length - 1].remove();
-                    }
 
-                    unreadNotifications += 1;
-                    updateNotifBadge();
+                        const payload = await response.json();
+                        const items = Array.isArray(payload.notifications) ? payload.notifications : [];
+
+                        if (countNewAsUnread) {
+                            items.forEach(function (item) {
+                                const key = String(item.key || '');
+                                if (key !== '' && !knownNotificationKeys.has(key) && isFreshNotification(item)) {
+                                    unreadNotifications += 1;
+                                }
+                            });
+                        }
+
+                        knownNotificationKeys = new Set(items.map(function (item) {
+                            return String(item.key || '');
+                        }));
+
+                        notificationItems = items;
+                        renderNotificationList(notificationItems);
+                        updateNotifBadge();
+                    } catch (error) {
+                        // Keep existing notifications when polling fails.
+                    }
                 };
 
                 if (notifToggle && notifPanel) {
@@ -1249,6 +1485,7 @@
                         if (!notifPanel.classList.contains('hidden')) {
                             unreadNotifications = 0;
                             updateNotifBadge();
+                            syncNotificationList(false);
                         }
                     });
 
@@ -1260,6 +1497,21 @@
                         if (!notifWrap.contains(event.target)) {
                             notifPanel.classList.add('hidden');
                         }
+                    });
+
+                    notifList.addEventListener('click', function (event) {
+                        const link = event.target.closest('.srf-notif-item');
+                        if (!link) {
+                            return;
+                        }
+
+                        const href = link.getAttribute('href') || '';
+                        if (href === '') {
+                            return;
+                        }
+
+                        event.preventDefault();
+                        window.location.assign(href);
                     });
                 }
 
@@ -1295,6 +1547,13 @@
                 };
 
                 syncChatStateUi(getCurrentChatState());
+                syncNotificationList(true);
+                window.setInterval(function () {
+                    syncNotificationList(true);
+                }, 4000);
+                window.setInterval(function () {
+                    renderNotificationList(notificationItems);
+                }, 15000);
 
                 chatForms.forEach(function (form) {
                     const textarea = form.querySelector('textarea[name="message"]');
@@ -1357,7 +1616,7 @@
                                     const notifyMessage = referenceCode + ' send a request chat';
                                     showChatRequestToast(notifyMessage);
                                     showTopLiveNotice(notifyMessage);
-                                    addNotificationItem(notifyMessage);
+                                    syncNotificationList(true);
                                 }
 
                                 syncChatStateUi(nextState);
@@ -1472,7 +1731,7 @@
                                         const notifyMessage = referenceCode + ' send a request chat';
                                         showChatRequestToast(notifyMessage);
                                         showTopLiveNotice(notifyMessage);
-                                        addNotificationItem(notifyMessage);
+                                        syncNotificationList(true);
                                     }
 
                                     syncChatStateUi(nextState);
@@ -1492,9 +1751,129 @@
                 }
             };
 
+            const initStatusActionConfirm = function () {
+                const statusForm = document.querySelector('[data-status-action-form]');
+                if (!statusForm) {
+                    return;
+                }
+
+                const modal = document.getElementById('status-confirm-modal');
+                const modalTitle = document.getElementById('status-confirm-title');
+                const modalMessage = document.getElementById('status-confirm-message');
+                const modalIcon = document.getElementById('status-confirm-icon');
+                const cancelButton = document.getElementById('status-confirm-cancel');
+                const acceptButton = document.getElementById('status-confirm-accept');
+                const buttons = statusForm.querySelectorAll('button[data-status-target]');
+                const statusConfig = {
+                    pending: {
+                        title: 'Set Request to Pending?',
+                        message: 'This action will clear chat history and require chat request again. Do you want to continue?',
+                        icon: '!',
+                        tone: 'pending',
+                        confirmLabel: 'Yes, Set Pending',
+                    },
+                    approved: {
+                        title: 'Approve This Request?',
+                        message: 'Do you want to approve this service request now?',
+                        icon: '!',
+                        tone: 'approved',
+                        confirmLabel: 'Yes, Approve',
+                    },
+                    rejected: {
+                        title: 'Reject This Request?',
+                        message: 'Do you want to reject this service request now?',
+                        icon: '!',
+                        tone: 'rejected',
+                        confirmLabel: 'Yes, Reject',
+                    },
+                };
+                let activeSubmitButton = null;
+
+                const closeModal = function () {
+                    if (!modal) {
+                        return;
+                    }
+
+                    modal.classList.remove('open');
+                    modal.setAttribute('aria-hidden', 'true');
+                    activeSubmitButton = null;
+                };
+
+                const openModal = function (config, submitButton) {
+                    if (!modal || !modalTitle || !modalMessage || !modalIcon || !acceptButton) {
+                        const fallbackMessage = config && config.message ? config.message : 'Do you want to continue?';
+                        if (window.confirm(fallbackMessage)) {
+                            statusForm.requestSubmit(submitButton);
+                        }
+                        return;
+                    }
+
+                    activeSubmitButton = submitButton;
+                    modalTitle.textContent = config.title;
+                    modalMessage.textContent = config.message;
+                    modalIcon.textContent = config.icon;
+                    modalIcon.classList.remove('pending', 'approved', 'rejected');
+                    modalIcon.classList.add(config.tone);
+                    acceptButton.textContent = config.confirmLabel;
+
+                    modal.classList.add('open');
+                    modal.setAttribute('aria-hidden', 'false');
+                };
+
+                if (cancelButton) {
+                    cancelButton.addEventListener('click', function () {
+                        closeModal();
+                    });
+                }
+
+                if (acceptButton) {
+                    acceptButton.addEventListener('click', function () {
+                        if (!activeSubmitButton) {
+                            closeModal();
+                            return;
+                        }
+
+                        const submitButton = activeSubmitButton;
+                        closeModal();
+                        statusForm.requestSubmit(submitButton);
+                    });
+                }
+
+                if (modal) {
+                    modal.addEventListener('click', function (event) {
+                        if (event.target === modal) {
+                            closeModal();
+                        }
+                    });
+
+                    document.addEventListener('keydown', function (event) {
+                        if (event.key === 'Escape' && modal.classList.contains('open')) {
+                            closeModal();
+                        }
+                    });
+                }
+
+                buttons.forEach(function (button) {
+                    button.addEventListener('click', function (event) {
+                        const targetStatus = String(button.getAttribute('data-status-target') || '').toLowerCase();
+                        const config = statusConfig[targetStatus] || {
+                            title: 'Confirm Action',
+                            message: 'Do you want to continue?',
+                            icon: '!',
+                            tone: 'pending',
+                            confirmLabel: 'Yes, Continue',
+                        };
+
+                        event.preventDefault();
+                        openModal(config, button);
+                    });
+                });
+            };
+
             initSignatureInput();
             initDirectPrint();
             initChatEnterSubmit();
+            initStatusActionConfirm();
         });
 
     </script>

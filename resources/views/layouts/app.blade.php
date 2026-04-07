@@ -6,6 +6,7 @@
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
         <title>{{ config('app.name', 'Laravel') }}</title>
+        <link rel="icon" type="image/svg+xml" href="{{ asset('images/dohlogo.svg') }}">
 
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -14,7 +15,7 @@
         @php
             $usesCustomDashboardLayout = request()->routeIs('dashboard')
                 || request()->routeIs('admin.dashboard')
-                || request()->routeIs('service-requests.index')
+                || request()->routeIs('service-requests.*')
                 || request()->routeIs('profile.*')
                 || request()->routeIs('admin.users.*');
         @endphp
