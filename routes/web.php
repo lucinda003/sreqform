@@ -34,6 +34,12 @@ Route::get('/admin/dashboard', [DashboardController::class, 'index'])
 Route::get('/service-requests/create', [ServiceRequestController::class, 'create'])->name('service-requests.create');
 Route::post('/service-requests', [ServiceRequestController::class, 'store'])->name('service-requests.store');
 Route::get('/track-your-request', [ServiceRequestController::class, 'track'])->name('service-requests.track');
+Route::post('/track-your-request/{referenceCode}/verify/send-code', [ServiceRequestController::class, 'sendTrackAccessCode'])
+    ->middleware('throttle:track-send-code')
+    ->name('service-requests.track.verify.send-code');
+Route::post('/track-your-request/{referenceCode}/verify', [ServiceRequestController::class, 'verifyTrackAccessCode'])
+    ->middleware('throttle:track-verify-code')
+    ->name('service-requests.track.verify');
 Route::get('/track-your-request/{referenceCode}/edit', [ServiceRequestController::class, 'trackEdit'])
     ->middleware('signed')
     ->name('service-requests.track.edit');

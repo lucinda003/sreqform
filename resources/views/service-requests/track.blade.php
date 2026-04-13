@@ -467,7 +467,18 @@
     }
 </style>
 
-<div class="trk-wrap">
+@if ($trackAccessRequired && $trackAccessGranted && $trackAccessExpiresAt && $serviceRequest)
+    @php
+        $trackRefreshAfterSeconds = max(1, ((int) $trackAccessExpiresAt) - now()->timestamp + 1);
+    @endphp
+    <meta http-equiv="refresh" content="{{ $trackRefreshAfterSeconds }};url={{ route('service-requests.track', ['reference_code' => $serviceRequest->reference_code]) }}">
+@endif
+
+<div
+    class="trk-wrap"
+    data-track-access-expires-at="{{ $trackAccessExpiresAt ?? '' }}"
+    data-track-reference-code="{{ $serviceRequest?->reference_code ?? '' }}"
+>
     <header class="auth-login-topbar">
         <div class="auth-login-brand">
             <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
@@ -487,7 +498,7 @@
 
     {{-- Search form --}}
     <section style="position:relative; z-index:5; max-width:420px; width:100%; margin: 1.4rem auto 1.2rem; padding: 0 1rem;">
-           @if (! ($referenceCode !== '' && $serviceRequest))
+           @if (! ($referenceCode !== '' && $serviceRequest && (! $trackAccessRequired || $trackAccessGranted)))
            <div class="trk-search-card">
             <div class="auth-login-card-head">
                 <h2 class="auth-login-card-title">TRACK REQUEST</h2>
@@ -511,6 +522,43 @@
                     <a href="{{ route('service-requests.create') }}" class="auth-login-secondary">Create Service Request</a>
                 @endif
             </form>
+
+            @if ($serviceRequest && $trackAccessRequired && ! $trackAccessGranted)
+                <div class="mt-4 rounded-xl border border-sky-200 bg-sky-50/90 p-3">
+                    <p class="text-sm font-semibold text-slate-700">Verification required before proceeding.</p>
+                    <p class="mt-1 text-xs text-slate-600">A 6-digit code will be sent to {{ $maskedTrackEmail }}.</p>
+
+                    <form method="POST" action="{{ route('service-requests.track.verify.send-code', ['referenceCode' => $serviceRequest->reference_code]) }}" class="mt-3">
+                        @csrf
+                        <button type="submit" class="auth-login-secondary w-full">Send Code to Email</button>
+                    </form>
+
+                    <form method="POST" action="{{ route('service-requests.track.verify', ['referenceCode' => $serviceRequest->reference_code]) }}" class="auth-login-form mt-3">
+                        @csrf
+                        <div>
+                            <label for="track_code" class="auth-login-label">Verification Code</label>
+                            <div class="auth-login-input-wrap">
+                                <input
+                                    id="track_code"
+                                    name="code"
+                                    type="text"
+                                    inputmode="numeric"
+                                    autocomplete="one-time-code"
+                                    maxlength="6"
+                                    pattern="[0-9]{6}"
+                                    value="{{ old('code') }}"
+                                    class="auth-login-input"
+                                    placeholder="Enter 6-digit code"
+                                    required
+                                >
+                            </div>
+                            <x-input-error :messages="$errors->get('code')" class="mt-1" />
+                        </div>
+                        <button type="submit" class="auth-login-button">Verify and Continue</button>
+                    </form>
+                </div>
+            @endif
+
             @if (session('status'))
                 <div class="mt-4 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
                     {{ session('status') }}
@@ -521,7 +569,7 @@
     </section>
 
     {{-- Status tracking card --}}
-    @if ($referenceCode !== '')
+    @if ($referenceCode !== '' && (! $trackAccessRequired || $trackAccessGranted))
         <section style="position:relative; z-index:5; padding: 0 1rem 2rem; max-width: 860px; margin: 0 auto;">
             @if (session('status'))
                 <div class="mb-4 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
@@ -547,6 +595,7 @@
                     $isApprovedStage = $statusRaw === 'approved';
                     $isRejectedStage = $statusRaw === 'rejected';
                     $isBeyondPendingStage = in_array($statusRaw, ['approved', 'rejected', 'completed', 'closed'], true);
+                    $chatLocked = in_array($statusRaw, ['approved', 'rejected', 'completed', 'closed'], true);
 
                     $steps = [
                         ['key' => 'submitted',  'label' => 'Request Submitted',   'icon' => '✓'],
@@ -706,26 +755,28 @@
                     <div class="trk-action-bar">
                         <a href="{{ route('service-requests.track') }}" class="trk-btn trk-btn-back">← Back</a>
                         <div class="trk-btn-right">
-                            <button
-                                type="button"
-                                class="trk-btn trk-btn-contact"
-                                data-chat-toggle
-                                data-chat-access="{{ $chatAccepted ? 'accepted' : ($chatStatus !== null && $chatStatus !== '' ? $chatStatus : 'none') }}"
-                                data-chat-request-endpoint="{{ route('service-requests.track.chat-request', ['referenceCode' => $serviceRequest->reference_code]) }}"
-                            >
-                                <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 10c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8H2l2-2"/></svg>
-                                <span data-chat-toggle-label>
-                                    @if ($chatAccepted)
-                                        Contact Admin Personnel
-                                    @elseif ($chatStatus === 'pending')
-                                        Chat Request Pending
-                                    @elseif ($chatStatus === 'rejected')
-                                        Request Chat Again
-                                    @else
-                                        Request Chat with Admin
-                                    @endif
-                                </span>
-                            </button>
+                            @if (! $chatLocked)
+                                <button
+                                    type="button"
+                                    class="trk-btn trk-btn-contact"
+                                    data-chat-toggle
+                                    data-chat-access="{{ $chatAccepted ? 'accepted' : ($chatStatus !== null && $chatStatus !== '' ? $chatStatus : 'none') }}"
+                                    data-chat-request-endpoint="{{ route('service-requests.track.chat-request', ['referenceCode' => $serviceRequest->reference_code]) }}"
+                                >
+                                    <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 10c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8H2l2-2"/></svg>
+                                    <span data-chat-toggle-label>
+                                        @if ($chatAccepted)
+                                            Contact Admin Personnel
+                                        @elseif ($chatStatus === 'pending')
+                                            Chat Request Pending
+                                        @elseif ($chatStatus === 'rejected')
+                                            Request Chat Again
+                                        @else
+                                            Request Chat with Admin
+                                        @endif
+                                    </span>
+                                </button>
+                            @endif
                             <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" target="_blank" class="trk-btn trk-btn-print">
                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="12" height="5" rx="1"/><path d="M4 7H2a1 1 0 00-1 1v6a1 1 0 001 1h2v3h12v-3h2a1 1 0 001-1V8a1 1 0 00-1-1h-2"/></svg>
                                 Print Status Report
@@ -733,63 +784,67 @@
                         </div>
                     </div>
 
-                    @php
-                        $chatStatusNotice = match ($chatStatus) {
-                            'accepted' => 'Chat request accepted. You can now contact admin personnel.',
-                            'pending' => 'Chat request sent. Waiting for admin approval.',
-                            'rejected' => 'Previous chat request was declined. You can request again.',
-                            default => 'Request chat approval first before messaging admin personnel.',
-                        };
+                    @if (! $chatLocked)
+                        @php
+                            $chatStatusNotice = match ($chatStatus) {
+                                'accepted' => 'Chat request accepted. You can now contact admin personnel.',
+                                'pending' => 'Chat request sent. Waiting for admin approval.',
+                                'rejected' => 'Previous chat request was declined. You can request again.',
+                                default => 'Request chat approval first before messaging admin personnel.',
+                            };
 
-                        $chatStatusClass = match ($chatStatus) {
-                            'accepted' => 'accepted',
-                            'pending' => 'pending',
-                            'rejected' => 'rejected',
-                            default => 'none',
-                        };
-                    @endphp
-                    <p class="trk-chat-request-status {{ $chatStatusClass }}" data-chat-request-status data-chat-request-state="{{ $chatStatusClass }}">{{ $chatStatusNotice }}</p>
+                            $chatStatusClass = match ($chatStatus) {
+                                'accepted' => 'accepted',
+                                'pending' => 'pending',
+                                'rejected' => 'rejected',
+                                default => 'none',
+                            };
+                        @endphp
+                        <p class="trk-chat-request-status {{ $chatStatusClass }}" data-chat-request-status data-chat-request-state="{{ $chatStatusClass }}">{{ $chatStatusNotice }}</p>
+                    @endif
                 </div>
 
-                <div class="trk-chat-widget" data-chat-widget>
-                    <div class="trk-chat-widget-head">
-                        <div>
-                            <p class="trk-chat-widget-title">Contact Admin Personnel</p>
-                            <p class="trk-chat-widget-subtitle">Messenger-style support chat</p>
+                @if (! $chatLocked)
+                    <div class="trk-chat-widget" data-chat-widget>
+                        <div class="trk-chat-widget-head">
+                            <div>
+                                <p class="trk-chat-widget-title">Contact Admin Personnel</p>
+                                <p class="trk-chat-widget-subtitle">Messenger-style support chat</p>
+                            </div>
+                            <button type="button" class="trk-chat-widget-close" data-chat-close aria-label="Close chat">×</button>
                         </div>
-                        <button type="button" class="trk-chat-widget-close" data-chat-close aria-label="Close chat">×</button>
-                    </div>
 
-                    <div class="trk-chat-card">
-                        <div class="trk-chat-list" data-chat-list data-chat-endpoint="{{ route('service-requests.track.messages.index', ['referenceCode' => $serviceRequest->reference_code]) }}">
-                            @forelse ($chatMessages as $chatMessage)
-                                @php
-                                    $isAdminMessage = strtolower((string) $chatMessage->sender_type) === 'admin';
-                                    $senderLabel = $isAdminMessage
-                                        ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
-                                        : 'Requestor';
-                                @endphp
-                                <div class="trk-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
-                                    <div class="trk-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
-                                        <p class="trk-chat-meta">{{ $senderLabel }} • {{ $chatMessage->created_at?->format('M j, Y g:i A') }}</p>
-                                        <p class="trk-chat-text">{{ $chatMessage->message }}</p>
+                        <div class="trk-chat-card">
+                            <div class="trk-chat-list" data-chat-list data-chat-endpoint="{{ route('service-requests.track.messages.index', ['referenceCode' => $serviceRequest->reference_code]) }}">
+                                @forelse ($chatMessages as $chatMessage)
+                                    @php
+                                        $isAdminMessage = strtolower((string) $chatMessage->sender_type) === 'admin';
+                                        $senderLabel = $isAdminMessage
+                                            ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
+                                            : 'Requestor';
+                                    @endphp
+                                    <div class="trk-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
+                                        <div class="trk-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
+                                            <p class="trk-chat-meta">{{ $senderLabel }} • {{ $chatMessage->created_at?->format('M j, Y g:i A') }}</p>
+                                            <p class="trk-chat-text">{{ $chatMessage->message }}</p>
+                                        </div>
                                     </div>
-                                </div>
-                            @empty
-                                <p class="trk-chat-empty">No chat messages yet.</p>
-                            @endforelse
-                        </div>
+                                @empty
+                                    <p class="trk-chat-empty">No chat messages yet.</p>
+                                @endforelse
+                            </div>
 
-                        <form method="POST" action="{{ route('service-requests.track.messages.store', ['referenceCode' => $serviceRequest->reference_code]) }}" data-chat-enter-form>
-                            @csrf
-                            <textarea name="message" class="trk-chat-input" placeholder="Type your message for admin personnel..." maxlength="1000" required>{{ old('message') }}</textarea>
-                            <x-input-error :messages="$errors->get('message')" class="mt-1" />
-                            <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
-                            <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new line.</p>
-                            <button type="submit" class="trk-chat-submit">Send Message</button>
-                        </form>
+                            <form method="POST" action="{{ route('service-requests.track.messages.store', ['referenceCode' => $serviceRequest->reference_code]) }}" data-chat-enter-form>
+                                @csrf
+                                <textarea name="message" class="trk-chat-input" placeholder="Type your message for admin personnel..." maxlength="1000" required>{{ old('message') }}</textarea>
+                                <x-input-error :messages="$errors->get('message')" class="mt-1" />
+                                <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
+                                <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new line.</p>
+                                <button type="submit" class="trk-chat-submit">Send Message</button>
+                            </form>
+                        </div>
                     </div>
-                </div>
+                @endif
 
             @else
                 <div style="position:relative; z-index:5; max-width:420px; margin: 0 auto;">
@@ -804,11 +859,58 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const trackWrap = document.querySelector('.trk-wrap');
+        const trackBaseUrl = '{{ route('service-requests.track') }}';
+        const trackReferenceCode = trackWrap ? String(trackWrap.dataset.trackReferenceCode || '') : '';
+        const trackAccessExpiry = trackWrap ? Number(trackWrap.dataset.trackAccessExpiresAt || '') : 0;
         const chatForms = document.querySelectorAll('[data-chat-enter-form]');
         const chatWidget = document.querySelector('[data-chat-widget]');
         const chatOpenButtons = document.querySelectorAll('[data-chat-toggle]');
         const chatCloseButton = document.querySelector('[data-chat-close]');
         const chatStatusLine = document.querySelector('[data-chat-request-status]');
+
+        const redirectToTrackVerification = function () {
+            const params = new URLSearchParams();
+
+            if (trackReferenceCode !== '') {
+                params.set('reference_code', trackReferenceCode);
+            }
+
+            window.location.href = params.toString() !== ''
+                ? (trackBaseUrl + '?' + params.toString())
+                : trackBaseUrl;
+        };
+
+        const checkTrackAccessExpiry = function () {
+            if (trackAccessExpiry <= 0) {
+                return false;
+            }
+
+            const nowUnix = Math.floor(Date.now() / 1000);
+            if (nowUnix >= trackAccessExpiry) {
+                redirectToTrackVerification();
+                return true;
+            }
+
+            return false;
+        };
+
+        if (trackAccessExpiry > 0) {
+            if (!checkTrackAccessExpiry()) {
+                const expiryWatcher = window.setInterval(function () {
+                    if (checkTrackAccessExpiry()) {
+                        window.clearInterval(expiryWatcher);
+                    }
+                }, 1000);
+
+                window.addEventListener('focus', checkTrackAccessExpiry);
+                document.addEventListener('visibilitychange', function () {
+                    if (document.visibilityState === 'visible') {
+                        checkTrackAccessExpiry();
+                    }
+                });
+            }
+        }
 
         const openChatWidget = function () {
             if (chatWidget) {

@@ -1,0 +1,28 @@
+graph TD
+    A[Open Service Request Form] --> B[Submit Request]
+    B --> C[Create Reference Code]
+    C --> D[Status Pending]
+    D --> E[Track Request]
+
+    E --> F{Need Chat}
+    F -->|No| G[Wait for Status Update]
+    F -->|Yes| H[Send Chat Request]
+
+    H --> I[Admin Receives Notification]
+    I --> J{Admin Decision}
+    J -->|Accept| K[Chat Enabled]
+    J -->|Reject| L[Chat Disabled]
+
+    K --> M[Requestor Sends Message]
+    K --> N[Admin Sends Message]
+    M --> O[Live Polling Updates]
+    N --> O
+
+    G --> P[Admin Updates Status]
+    P --> Q{New Status}
+    Q -->|Checking| R[Checking Time Saved]
+    Q -->|Approved| S[Approved and Completed]
+    Q -->|Rejected| T[Rejected and Completed]
+
+    S --> U[Move to Archive]
+    T --> U

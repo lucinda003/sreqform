@@ -1,0 +1,42 @@
+flowchart TD
+    A[User opens Service Request Form] --> B[Submit request]
+    B --> C[ServiceRequestController@store]
+    C --> D[Generate Reference Code SRF-...]
+    D --> E[Status = Pending]
+    E --> F[User gets tracking link and reference code]
+
+    F --> G[Track Your Request page]
+    G --> H{Request chat with admin?}
+    H -- No --> I[Wait for status updates]
+    H -- Yes --> J[requestTrackChat]
+    J --> K[contact_chat_status = pending]
+
+    K --> L[Admin notification bell or panel]
+    L --> M[Open request in Admin Edit page]
+    M --> N{Admin decision}
+    N -- Accept --> O[decideChatRequest accepted]
+    N -- Reject --> P[decideChatRequest rejected]
+
+    O --> Q[Chat enabled]
+    Q --> R[Requestor postTrackMessage]
+    Q --> S[Admin postAdminMessage]
+    R --> T[Messages polling endpoints]
+    S --> T
+
+    P --> U[Chat hidden and messages cleared]
+
+    I --> V[Admin updateStatus]
+    V --> W{New status}
+    W -- Checking --> X[checking_at set]
+    W -- Approved --> Y[approved_at plus completed_at set]
+    W -- Rejected --> Z[rejected_at plus completed_at set]
+
+    Y --> AA[Move to Archive view]
+    Z --> AA
+
+    subgraph Dashboard
+      AB[DashboardController@index]
+      AC[Counts total pending approved rejected]
+      AD[Recent requests and recent chat requests]
+      AB --> AC --> AD
+    end

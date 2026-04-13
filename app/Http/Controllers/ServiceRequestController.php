@@ -11,6 +11,7 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -116,10 +117,8 @@ class ServiceRequestController extends Controller
 
     public function create(): View
     {
-        $currentDepartment = trim((string) Auth::user()?->department);
-
         return view('service-requests.create', [
-            'departmentOptions' => $this->approvedDepartmentOptions(true, $currentDepartment !== '' ? $currentDepartment : null),
+            'departmentPersonnelOptions' => $this->approvedDepartmentPersonnelOptions(),
         ]);
     }
 
@@ -131,6 +130,10 @@ class ServiceRequestController extends Controller
         $chatMessages = collect();
         $chatAccepted = false;
         $chatStatus = null;
+        $trackAccessRequired = false;
+        $trackAccessGranted = false;
+        $trackAccessExpiresAt = null;
+        $maskedTrackEmail = null;
 
         if ($referenceCode !== '') {
             $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
@@ -139,15 +142,28 @@ class ServiceRequestController extends Controller
                 ->first();
 
             if ($serviceRequest) {
-                $trackEditUrl = URL::temporarySignedRoute(
-                    'service-requests.track.edit',
-                    now()->addMinutes(30),
-                    ['referenceCode' => $serviceRequest->reference_code]
-                );
+                $trackAccessRequired = $this->requiresTrackVerification($serviceRequest);
+                if ($trackAccessRequired) {
+                    $trackAccessExpiresAt = $this->trackAccessExpiresAt($request, $serviceRequest);
+                    $trackAccessGranted = $trackAccessExpiresAt !== null;
+                } else {
+                    $trackAccessGranted = true;
+                }
+                $maskedTrackEmail = $trackAccessRequired
+                    ? $this->maskedTrackEmail((string) ($serviceRequest->email_address ?? ''))
+                    : null;
 
-                $chatAccepted = $this->isChatAccepted($serviceRequest);
-                $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
-                $chatMessages = $chatAccepted ? $this->chatMessagesFor($serviceRequest) : collect();
+                if ($trackAccessGranted) {
+                    $trackEditUrl = URL::temporarySignedRoute(
+                        'service-requests.track.edit',
+                        now()->addMinutes(30),
+                        ['referenceCode' => $serviceRequest->reference_code]
+                    );
+
+                    $chatAccepted = $this->isChatAccepted($serviceRequest);
+                    $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+                    $chatMessages = $chatAccepted ? $this->chatMessagesFor($serviceRequest) : collect();
+                }
             }
         }
 
@@ -158,15 +174,199 @@ class ServiceRequestController extends Controller
             'chatMessages' => $chatMessages,
             'chatAccepted' => $chatAccepted,
             'chatStatus' => $chatStatus,
+            'trackAccessRequired' => $trackAccessRequired,
+            'trackAccessGranted' => $trackAccessGranted,
+            'trackAccessExpiresAt' => $trackAccessExpiresAt,
+            'maskedTrackEmail' => $maskedTrackEmail,
         ]);
     }
 
-    public function sendTrackEditLink(string $referenceCode): RedirectResponse
+    public function sendTrackAccessCode(Request $request, string $referenceCode): RedirectResponse
     {
         $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
         $serviceRequest = ServiceRequest::query()
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
+
+        if (! $this->requiresTrackVerification($serviceRequest)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ]);
+        }
+
+        if ($this->hasTrackAccess($request, $serviceRequest)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ]);
+        }
+
+        $lockKey = $this->trackAccessLockCacheKey($normalizedReferenceCode);
+        if (Cache::has($lockKey)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'Too many invalid attempts. Please request again after 15 minutes.',
+            ]);
+        }
+
+        $cooldownKey = $this->trackAccessCooldownCacheKey($normalizedReferenceCode);
+        if (Cache::has($cooldownKey)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->with('status', 'Verification code already sent. Please wait a moment before requesting another one.');
+        }
+
+        $recipientEmail = $this->normalizeTrackEmail((string) ($serviceRequest->email_address ?? ''));
+        if ($recipientEmail === '') {
+            $captureEmailUrl = URL::temporarySignedRoute(
+                'service-requests.capture-email',
+                now()->addMinutes(15),
+                ['serviceRequest' => $serviceRequest->id]
+            );
+
+            return redirect($captureEmailUrl)
+                ->with('status', 'No email is saved for this request. Add your email to continue verification.');
+        }
+
+        $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
+        $expiresAt = now()->addMinutes(8);
+
+        Cache::put($this->trackAccessCodeCacheKey($normalizedReferenceCode), [
+            'code_hash' => $this->hashTrackAccessCode($verificationCode),
+            'attempts' => 0,
+            'expires_at' => $expiresAt->timestamp,
+        ], $expiresAt);
+        Cache::put($cooldownKey, true, now()->addSeconds(60));
+
+        try {
+            Mail::raw(
+                "Your DOH track request verification code is {$verificationCode}.\n\nThis code expires in 8 minutes.",
+                function ($message) use ($recipientEmail, $serviceRequest): void {
+                    $message
+                        ->to($recipientEmail)
+                        ->subject('DOH Track Request Verification Code - ' . $serviceRequest->reference_code);
+                }
+            );
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'Unable to send verification code right now. Please try again later.',
+            ]);
+        }
+
+        return redirect()->route('service-requests.track', [
+            'reference_code' => $serviceRequest->reference_code,
+        ])->with('status', 'Verification code sent to your registered email.');
+    }
+
+    public function verifyTrackAccessCode(Request $request, string $referenceCode): RedirectResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        if (! $this->requiresTrackVerification($serviceRequest)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ]);
+        }
+
+        $validated = $request->validate([
+            'code' => ['required', 'digits:6'],
+        ]);
+
+        if ($this->hasTrackAccess($request, $serviceRequest)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ]);
+        }
+
+        $codeKey = $this->trackAccessCodeCacheKey($normalizedReferenceCode);
+        $lockKey = $this->trackAccessLockCacheKey($normalizedReferenceCode);
+
+        if (Cache::has($lockKey)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'Too many invalid attempts. Please request a new code later.',
+            ]);
+        }
+
+        $payload = Cache::get($codeKey);
+        if (! is_array($payload)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'Verification code is invalid or expired. Please request a new code.',
+            ]);
+        }
+
+        $expiresAt = (int) ($payload['expires_at'] ?? 0);
+        if ($expiresAt <= now()->timestamp) {
+            Cache::forget($codeKey);
+
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'Verification code is invalid or expired. Please request a new code.',
+            ]);
+        }
+
+        $codeMatches = hash_equals(
+            (string) ($payload['code_hash'] ?? ''),
+            $this->hashTrackAccessCode((string) $validated['code'])
+        );
+
+        if (! $codeMatches) {
+            $attempts = ((int) ($payload['attempts'] ?? 0)) + 1;
+
+            if ($attempts >= 5) {
+                Cache::forget($codeKey);
+                Cache::put($lockKey, true, now()->addMinutes(15));
+
+                return redirect()->route('service-requests.track', [
+                    'reference_code' => $serviceRequest->reference_code,
+                ])->withErrors([
+                    'code' => 'Too many invalid attempts. Please request a new code after 15 minutes.',
+                ]);
+            }
+
+            $payload['attempts'] = $attempts;
+            Cache::put($codeKey, $payload, now()->addSeconds(max(1, $expiresAt - now()->timestamp)));
+
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'Verification code is invalid or expired. Please try again.',
+            ]);
+        }
+
+        Cache::forget($codeKey);
+        Cache::forget($lockKey);
+
+        $this->grantTrackAccess($request, $serviceRequest);
+
+        return redirect()->route('service-requests.track', [
+            'reference_code' => $serviceRequest->reference_code,
+        ])->with('status', 'Email verification successful. You can now proceed.');
+    }
+
+    public function sendTrackEditLink(Request $request, string $referenceCode): RedirectResponse
+    {
+        $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
+        $serviceRequest = ServiceRequest::query()
+            ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
+            ->firstOrFail();
+
+        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', 'Please verify your email code first before requesting an edit link.');
+        }
 
         $recipientEmail = trim((string) ($serviceRequest->email_address ?? ''));
         if ($recipientEmail === '') {
@@ -209,6 +409,34 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
+        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+            $statusMessage = 'Please verify your email code first before requesting chat access.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $statusMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', $statusMessage);
+        }
+
+        if ($this->isChatLockedForStatus((string) $serviceRequest->status)) {
+            $statusMessage = 'Request chat is unavailable once the request is approved or rejected.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $statusMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', $statusMessage);
+        }
+
         $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
         $statusMessage = 'Chat request sent. Please wait for admin approval.';
 
@@ -242,6 +470,34 @@ class ServiceRequestController extends Controller
         $serviceRequest = ServiceRequest::query()
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
+
+        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+            $errorMessage = 'Please verify your email code first before sending messages.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $errorMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', $errorMessage);
+        }
+
+        if ($this->isChatLockedForStatus((string) $serviceRequest->status)) {
+            $errorMessage = 'Chat is unavailable once the request is approved or rejected.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $errorMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', $errorMessage);
+        }
 
         if (! $this->isChatAccepted($serviceRequest)) {
             $errorMessage = 'Chat is hidden until admin accepts your request.';
@@ -288,12 +544,26 @@ class ServiceRequestController extends Controller
             ->with('status', 'Message sent to admin personnel.');
     }
 
-    public function trackMessages(string $referenceCode): JsonResponse
+    public function trackMessages(Request $request, string $referenceCode): JsonResponse
     {
         $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
         $serviceRequest = ServiceRequest::query()
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
+
+        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+            return response()->json([
+                'message' => 'Please verify your email code first before accessing chat.',
+            ], 403);
+        }
+
+        if ($this->isChatLockedForStatus((string) $serviceRequest->status)) {
+            return response()->json([
+                'chat_status' => null,
+                'chat_accepted' => false,
+                'messages' => [],
+            ]);
+        }
 
         $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
         $chatAccepted = $this->isChatAccepted($serviceRequest);
@@ -431,12 +701,18 @@ class ServiceRequestController extends Controller
             ->with('status', $statusMessage);
     }
 
-    public function trackView(string $referenceCode): View
+    public function trackView(Request $request, string $referenceCode): View|RedirectResponse
     {
         $normalizedReferenceCode = $this->normalizeReferenceCode($referenceCode);
         $serviceRequest = ServiceRequest::query()
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
+
+        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+            return redirect()
+                ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
+                ->with('status', 'Please verify your email code first before printing your request details.');
+        }
 
         return view('service-requests.print', [
             'serviceRequest' => $serviceRequest,
@@ -504,15 +780,44 @@ class ServiceRequestController extends Controller
         }
         $validated['approved_by_signature'] = $this->storeApprovedSignature($request);
 
-        // Public requesters and admin-submitted requests are all routed to ADMIN queue.
-        $validated['department_code'] = 'ADMIN';
-
         $authUser = Auth::user();
         if ($authUser && ! $this->isAdmin() && $authUser->department_status !== 'approved') {
             return back()
-                ->withErrors(['department_code' => 'Your department is pending admin approval.'])
+                ->withErrors(['department_user_id' => 'Your department is pending admin approval.'])
                 ->withInput();
         }
+
+        $departmentSelection = $request->validate([
+            'department_user_id' => ['required', 'integer'],
+        ]);
+
+        $selectedDepartmentUserQuery = User::query()
+            ->whereKey((int) $departmentSelection['department_user_id'])
+            ->where('department_status', 'approved')
+            ->whereNotNull('department')
+            ->whereRaw('TRIM(department) <> ?', ['']);
+
+        if (! $this->isAdmin()) {
+            $authDepartment = trim((string) ($authUser?->department ?? ''));
+
+            if ($authDepartment !== '') {
+                $selectedDepartmentUserQuery->where('department', $authDepartment);
+            } elseif ($authUser) {
+                $selectedDepartmentUserQuery->whereKey((int) $authUser->id);
+            }
+        }
+
+        $selectedDepartmentUser = $selectedDepartmentUserQuery->first();
+
+        $selectedDepartment = trim((string) ($selectedDepartmentUser?->department ?? ''));
+
+        if ($selectedDepartment === '') {
+            return back()
+                ->withErrors(['department_user_id' => 'Please select a valid name.'])
+                ->withInput();
+        }
+
+        $validated['department_code'] = $selectedDepartment;
 
         $validated['reference_code'] = $this->generateReferenceCode(
             $validated['department_code'],
@@ -793,6 +1098,115 @@ class ServiceRequestController extends Controller
         return strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', trim($referenceCode)));
     }
 
+    private function normalizeTrackEmail(string $email): string
+    {
+        return strtolower(trim($email));
+    }
+
+    private function requiresTrackVerification(ServiceRequest $serviceRequest): bool
+    {
+        return true;
+    }
+
+    private function maskedTrackEmail(string $email): string
+    {
+        $normalized = $this->normalizeTrackEmail($email);
+        if ($normalized === '' || ! str_contains($normalized, '@')) {
+            return 'your registered email';
+        }
+
+        [$localPart, $domainPart] = explode('@', $normalized, 2);
+        $maskedLocal = Str::substr($localPart, 0, 1)
+            . str_repeat('*', max(2, max(0, Str::length($localPart) - 1)));
+
+        $domainSegments = explode('.', $domainPart);
+        $domainName = (string) ($domainSegments[0] ?? '');
+        $domainSuffix = implode('.', array_slice($domainSegments, 1));
+
+        $maskedDomain = Str::substr($domainName, 0, 1)
+            . str_repeat('*', max(2, max(0, Str::length($domainName) - 1)));
+
+        if ($domainSuffix !== '') {
+            $maskedDomain .= '.' . $domainSuffix;
+        }
+
+        return $maskedLocal . '@' . $maskedDomain;
+    }
+
+    private function trackAccessCodeCacheKey(string $normalizedReferenceCode): string
+    {
+        return 'track-access-code:' . $normalizedReferenceCode;
+    }
+
+    private function trackAccessLockCacheKey(string $normalizedReferenceCode): string
+    {
+        return 'track-access-lock:' . $normalizedReferenceCode;
+    }
+
+    private function trackAccessCooldownCacheKey(string $normalizedReferenceCode): string
+    {
+        return 'track-access-cooldown:' . $normalizedReferenceCode;
+    }
+
+    private function hashTrackAccessCode(string $code): string
+    {
+        return hash_hmac('sha256', $code, (string) config('app.key'));
+    }
+
+    private function hasTrackAccess(Request $request, ServiceRequest $serviceRequest): bool
+    {
+        return $this->trackAccessExpiresAt($request, $serviceRequest) !== null;
+    }
+
+    private function trackAccessExpiresAt(Request $request, ServiceRequest $serviceRequest): ?int
+    {
+        $this->pruneExpiredTrackAccess($request);
+
+        $accessMap = (array) $request->session()->get('track_access', []);
+        $sessionKey = $this->normalizeReferenceCode((string) $serviceRequest->reference_code);
+        $expiresAt = (int) ($accessMap[$sessionKey] ?? 0);
+
+        if ($expiresAt <= now()->timestamp) {
+            if (isset($accessMap[$sessionKey])) {
+                unset($accessMap[$sessionKey]);
+                $request->session()->put('track_access', $accessMap);
+            }
+
+            return null;
+        }
+
+        return $expiresAt;
+    }
+
+    private function grantTrackAccess(Request $request, ServiceRequest $serviceRequest): void
+    {
+        $this->pruneExpiredTrackAccess($request);
+
+        $accessMap = (array) $request->session()->get('track_access', []);
+        $sessionKey = $this->normalizeReferenceCode((string) $serviceRequest->reference_code);
+        $accessMap[$sessionKey] = now()->addDay()->timestamp;
+
+        $request->session()->put('track_access', $accessMap);
+    }
+
+    private function pruneExpiredTrackAccess(Request $request): void
+    {
+        $accessMap = (array) $request->session()->get('track_access', []);
+        if ($accessMap === []) {
+            return;
+        }
+
+        $nowTimestamp = now()->timestamp;
+        $activeAccess = array_filter(
+            $accessMap,
+            static fn ($expiresAt): bool => (int) $expiresAt > $nowTimestamp
+        );
+
+        if ($activeAccess !== $accessMap) {
+            $request->session()->put('track_access', $activeAccess);
+        }
+    }
+
     private function hasDescriptionPhotosColumn(): bool
     {
         return Schema::hasColumn('service_requests', 'description_photos');
@@ -802,7 +1216,7 @@ class ServiceRequestController extends Controller
     {
         $validated = $request->validate([
             'request_date' => ['required', 'date'],
-            'department_code' => ['nullable', 'string', 'max:30', 'in:ADMIN'],
+            'department_code' => ['nullable', 'string', 'max:30'],
             'request_category' => ['nullable', 'string', 'max:100'],
             'application_system_name' => ['required', 'string', 'max:255'],
             'expected_completion_date' => ['nullable', 'date'],
@@ -1175,5 +1589,67 @@ class ServiceRequestController extends Controller
         }
 
         return $options;
+    }
+
+    private function approvedDepartmentPersonnelOptions(): array
+    {
+        $authUser = Auth::user();
+        $isGuest = $authUser === null;
+
+        $query = User::query()
+            ->where('department_status', 'approved')
+            ->whereNotNull('department')
+            ->whereRaw('TRIM(department) <> ?', ['']);
+
+        if (! $this->isAdmin() && $authUser) {
+            $authDepartment = trim((string) ($authUser?->department ?? ''));
+
+            if ($authDepartment !== '') {
+                $query->where('department', $authDepartment);
+            } elseif ($authUser) {
+                $query->whereKey((int) $authUser->id);
+            }
+        }
+
+        return $query
+            ->orderBy('name')
+            ->get(['id', 'name', 'department'])
+            ->map(function (User $user) use ($isGuest): array {
+                $displayName = trim((string) $user->name);
+                if ($isGuest) {
+                    $displayName = $this->maskPersonnelName($displayName);
+                }
+
+                return [
+                    'id' => (int) $user->id,
+                    'name' => $displayName,
+                    'department' => trim((string) $user->department),
+                ];
+            })
+            ->filter(fn (array $entry): bool => $entry['name'] !== '')
+            ->values()
+            ->all();
+    }
+
+    private function maskPersonnelName(string $name): string
+    {
+        $normalizedName = trim($name);
+        if ($normalizedName === '') {
+            return '';
+        }
+
+        $parts = preg_split('/\s+/', $normalizedName) ?: [];
+
+        $maskedParts = array_map(static function (string $part): string {
+            $cleanPart = trim($part);
+            if ($cleanPart === '') {
+                return '';
+            }
+
+            return Str::substr($cleanPart, 0, 1)
+                . str_repeat('*', max(2, max(0, Str::length($cleanPart) - 1)));
+        }, $parts);
+
+        return trim(implode(' ', array_filter($maskedParts, static fn (string $value): bool => $value !== '')));
     }
 }

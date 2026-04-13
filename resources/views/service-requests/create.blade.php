@@ -498,6 +498,23 @@
                     <div class="srf-section" style="padding-bottom: 4px;">
                         <p class="srf-section-label">Request Information</p>
 
+                        <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
+                            <div class="srf-field">
+                                <label class="srf-label">
+                                    <span class="srf-number-badge">1</span> Name <span class="srf-required">*</span>
+                                </label>
+                                <select name="department_user_id" class="srf-select" required>
+                                    <option value="">Select person</option>
+                                    @foreach ($departmentPersonnelOptions as $departmentPersonOption)
+                                        <option value="{{ $departmentPersonOption['id'] }}" @selected((string) old('department_user_id') === (string) $departmentPersonOption['id'])>
+                                            {{ $departmentPersonOption['name'] }}{{ $departmentPersonOption['department'] !== '' ? ' - ' . $departmentPersonOption['department'] : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                                <x-input-error :messages="$errors->get('department_user_id')" class="mt-1" />
+                            </div>
+                        </div>
+
                         <div class="srf-field-grid srf-field-grid-3" style="margin-bottom: 16px;">
                             <div class="srf-field">
                                 @php
@@ -515,7 +532,7 @@
                                         && ! in_array($oldRequestCategory, $requestCategoryOptions, true);
                                 @endphp
                                 <label class="srf-label">
-                                    <span class="srf-number-badge">1</span> Request Category <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">2</span> Request Category <span class="srf-required">*</span>
                                 </label>
                                 <select name="request_category" id="request_category" class="srf-select">
                                     <option value="Technical Assistance" @selected(old('request_category') === 'Technical Assistance')>Technical Assistance</option>
@@ -539,13 +556,13 @@
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label">
-                                    <span class="srf-number-badge">2</span> Application System Name <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">3</span> Application System Name <span class="srf-required">*</span>
                                 </label>
                                 <input type="text" name="application_system_name" value="{{ old('application_system_name') }}" class="srf-input" required>
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label">
-                                    <span class="srf-number-badge">3</span> Expected Date / Time of Completion
+                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion
                                 </label>
                                 <div style="display: flex; gap: 8px;">
                                     <input type="date" name="expected_completion_date" value="{{ old('expected_completion_date') }}" class="srf-input" style="width: 180px;">
