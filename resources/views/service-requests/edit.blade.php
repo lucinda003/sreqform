@@ -138,6 +138,102 @@
             background: #f8fafc;
         }
 
+        .srf-timeline {
+            margin-top: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            background: #fff;
+            padding: 12px;
+        }
+
+        .srf-timeline-track {
+            display: flex;
+            gap: 8px;
+            overflow-x: auto;
+            padding-bottom: 2px;
+        }
+
+        .srf-timeline-step {
+            min-width: 170px;
+            flex: 1;
+        }
+
+        .srf-timeline-node-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 6px;
+        }
+
+        .srf-timeline-node {
+            width: 18px;
+            height: 18px;
+            border-radius: 999px;
+            border: 2px solid #cbd5e1;
+            background: #fff;
+            position: relative;
+            flex-shrink: 0;
+        }
+
+        .srf-timeline-node.reached {
+            border-color: #0f766e;
+            background: #0f766e;
+        }
+
+        .srf-timeline-node.reached::after {
+            content: '';
+            position: absolute;
+            inset: 4px;
+            border-radius: 999px;
+            background: #fff;
+            opacity: 0.95;
+        }
+
+        .srf-timeline-node.current {
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
+        }
+
+        .srf-timeline-node.rejected {
+            border-color: #dc2626;
+            background: #dc2626;
+        }
+
+        .srf-timeline-node.rejected.current {
+            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
+        }
+
+        .srf-timeline-link {
+            height: 2px;
+            background: #e2e8f0;
+            flex: 1;
+            border-radius: 999px;
+        }
+
+        .srf-timeline-link.active {
+            background: #0f766e;
+        }
+
+        .srf-timeline-link.danger {
+            background: #dc2626;
+        }
+
+        .srf-timeline-label {
+            margin: 0;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            color: #334155;
+        }
+
+        .srf-timeline-time {
+            margin: 2px 0 0;
+            font-size: 11px;
+            color: #64748b;
+            font-weight: 600;
+            white-space: nowrap;
+        }
+
         .srf-table {
             border: 1.5px solid #e2e8f0;
             border-radius: 8px;
@@ -659,6 +755,8 @@
             <div class="flex flex-wrap items-center gap-3">
                 <p class="text-sm font-semibold text-slate-700">Status :</p>
                 @php
+                    $currentStatusValue = strtolower((string) $serviceRequest->status);
+                    $showDecisionButtons = in_array($currentStatusValue, ['pending', 'checking', 'rejected'], true);
                     $statusClasses = match ($serviceRequest->status) {
                         'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
                         'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
@@ -678,11 +776,102 @@
                             @csrf
                             @method('PATCH')
                             <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
-                            <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
-                            <button type="submit" name="status" value="rejected" data-status-target="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                            @if ($showDecisionButtons)
+                                <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
+                                <button type="submit" name="status" value="rejected" data-status-target="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                            @endif
                         </form>
                     </div>
                 @endif
+            </div>
+
+            @php
+                $resolvedStatus = strtolower((string) $serviceRequest->status);
+                if (in_array($resolvedStatus, ['completed', 'closed'], true)) {
+                    $resolvedStatus = filled($serviceRequest->approved_at)
+                        ? 'approved'
+                        : (filled($serviceRequest->rejected_at) ? 'rejected' : 'checking');
+                }
+
+                $timelineSteps = [
+                    [
+                        'key' => 'pending',
+                        'label' => 'Pending',
+                        'at' => $serviceRequest->pending_at ?? $serviceRequest->created_at,
+                    ],
+                    [
+                        'key' => 'checking',
+                        'label' => 'Checking',
+                        'at' => $serviceRequest->checking_at,
+                    ],
+                ];
+
+                if ($resolvedStatus === 'approved') {
+                    $timelineSteps[] = [
+                        'key' => 'approved',
+                        'label' => 'Approved',
+                        'at' => $serviceRequest->approved_at,
+                    ];
+                } elseif ($resolvedStatus === 'rejected') {
+                    $timelineSteps[] = [
+                        'key' => 'rejected',
+                        'label' => 'Rejected',
+                        'at' => $serviceRequest->rejected_at,
+                    ];
+                } else {
+                    $timelineSteps[] = [
+                        'key' => 'approved',
+                        'label' => 'Approved',
+                        'at' => $serviceRequest->approved_at,
+                    ];
+
+                    $timelineSteps[] = [
+                        'key' => 'rejected',
+                        'label' => 'Rejected',
+                        'at' => $serviceRequest->rejected_at,
+                    ];
+                }
+
+                $isStepReached = static function (string $stepKey) use ($serviceRequest, $resolvedStatus): bool {
+                    return match ($stepKey) {
+                        'pending' => true,
+                        'checking' => filled($serviceRequest->checking_at) || in_array($resolvedStatus, ['checking', 'approved', 'rejected'], true),
+                        'approved' => filled($serviceRequest->approved_at) || $resolvedStatus === 'approved',
+                        'rejected' => filled($serviceRequest->rejected_at) || $resolvedStatus === 'rejected',
+                        default => false,
+                    };
+                };
+            @endphp
+
+            <div class="srf-timeline" aria-label="Request status timeline">
+                <div class="srf-timeline-track">
+                    @foreach ($timelineSteps as $index => $step)
+                        @php
+                            $stepReached = $isStepReached($step['key']);
+                            $stepCurrent = $resolvedStatus === $step['key'];
+                            $stepTimeLabel = filled($step['at'])
+                                ? \Illuminate\Support\Carbon::parse($step['at'])->format('M d, Y h:i A')
+                                : '--';
+
+                            $nextStep = $timelineSteps[$index + 1] ?? null;
+                            $linkActive = $nextStep ? $isStepReached($nextStep['key']) : false;
+                            $linkDanger = $nextStep
+                                && $nextStep['key'] === 'rejected'
+                                && $isStepReached('rejected');
+                        @endphp
+
+                        <div class="srf-timeline-step">
+                            <div class="srf-timeline-node-row">
+                                <span class="srf-timeline-node {{ $stepReached ? 'reached' : '' }} {{ $step['key'] === 'rejected' && $stepReached ? 'rejected' : '' }} {{ $stepCurrent ? 'current' : '' }}"></span>
+                                @if ($nextStep)
+                                    <span class="srf-timeline-link {{ $linkActive ? 'active' : '' }} {{ $linkDanger ? 'danger' : '' }}"></span>
+                                @endif
+                            </div>
+                            <p class="srf-timeline-label">{{ $step['label'] }}</p>
+                            <p class="srf-timeline-time">{{ $stepTimeLabel }}</p>
+                        </div>
+                    @endforeach
+                </div>
             </div>
         </div>
 
