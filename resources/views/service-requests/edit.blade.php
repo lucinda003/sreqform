@@ -1,6 +1,9 @@
 <x-guest-layout>
     @php
         $isAdmin = strtoupper((string) auth()->user()?->department) === 'ADMIN';
+        $isKmits = strtoupper((string) auth()->user()?->department) === 'KMITS';
+        $canModerateChat = $isAdmin || $isKmits;
+        $isReadOnlyForm = $isAdmin || $isKmits;
         $hospitalOfficeMap = [
             'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
             'National Kidney and Transplant Institute' => 'East Avenue, Quezon City, Metro Manila',
@@ -611,7 +614,7 @@
         </div>
 
         <div class="auth-login-top-actions">
-            @if ($isAdmin)
+            @if ($canModerateChat)
                 <div class="srf-notif-wrap" id="admin-chat-notif-wrap">
                     <button type="button" class="srf-notif-btn" id="admin-chat-notif-toggle" aria-label="View notifications">
                         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
@@ -668,7 +671,7 @@
                     {{ $serviceRequest->status }}
                 </span>
 
-                @if ($isAdmin)
+                @if ($canModerateChat)
                     <div class="ms-auto flex flex-wrap items-center gap-2">
                         <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
                         <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2" data-status-action-form>
@@ -688,7 +691,7 @@
                 @csrf
                 @method('PUT')
 
-                <fieldset @if ($isAdmin) disabled @endif>
+                <fieldset @if ($isReadOnlyForm) disabled @endif>
 
                 <div class="px-4 pb-3">
                     <p class="srf-section-label">Request Information</p>
@@ -700,8 +703,11 @@
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">Department for Reference :
-                                <span class="inline-block min-w-40 border-b border-slate-400 px-1 py-0.5 text-center">ADMIN</span>
-                                <input type="hidden" id="department_code" name="department_code" value="ADMIN">
+                                @php
+                                    $displayDepartmentCode = trim((string) old('department_code', $serviceRequest->department_code));
+                                @endphp
+                                <span class="inline-block min-w-40 border-b border-slate-400 px-1 py-0.5 text-center">{{ $displayDepartmentCode !== '' ? $displayDepartmentCode : 'N/A' }}</span>
+                                <input type="hidden" id="department_code" name="department_code" value="{{ old('department_code', $serviceRequest->department_code) }}">
                                 <x-input-error :messages="$errors->get('department_code')" class="mt-1" />
                             </td>
                         </tr>
@@ -810,7 +816,7 @@
                         <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
                             <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
 
-                            @if ($isAdmin)
+                            @if ($canModerateChat)
                                 <div class="mt-3 border-t border-slate-300 pt-2">
                                     <p class="text-[12px] font-semibold text-slate-700">Uploaded Photos</p>
 
@@ -818,7 +824,13 @@
                                         @if (is_array($serviceRequest->description_photos) && count($serviceRequest->description_photos) > 0)
                                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                                                 @foreach ($serviceRequest->description_photos as $photoPath)
-                                                    <a href="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" target="_blank" class="block overflow-hidden rounded-lg border border-slate-300 bg-white">
+                                                    <a
+                                                        href="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}"
+                                                        class="block overflow-hidden rounded-lg border border-slate-300 bg-white"
+                                                        data-uploaded-photo-trigger
+                                                        data-photo-src="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}"
+                                                        data-photo-alt="Service Request Photo"
+                                                    >
                                                         <img src="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" alt="Service Request Photo" class="h-32 w-full object-cover">
                                                     </a>
                                                 @endforeach
@@ -841,7 +853,7 @@
                             <td class="border border-slate-400 px-2 py-1">
                                 <div class="grid grid-cols-10 gap-3">
                                     <div class="col-span-6">
-                                        @if (! $isAdmin)
+                                        @if (! $isReadOnlyForm)
                                             <div class="mb-0 rounded-md border border-slate-300 bg-slate-50 p-1 pb-0">
                                                 <div class="mb-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-700">
                                                     <label class="inline-flex items-center gap-1">
@@ -903,7 +915,7 @@
                 </div>
                 </fieldset>
 
-                @if ($isAdmin)
+                @if ($canModerateChat)
                     @php
                         $existingLogs = $serviceRequest->action_logs ?? [];
                         $logDates = old('action_log_date', collect($existingLogs)->pluck('date')->pad(5, '')->values()->all());
@@ -991,18 +1003,18 @@
                         </svg>
                         Back
                     </a>
-                    <button type="submit" class="srf-btn-submit">Update Service Request</button>
+                    <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
                 </div>
             </form>
         </div>
     </div>
     </section>
 
-    @if ($isAdmin)
+    @if ($canModerateChat)
         <section style="max-width: 1300px; margin: -0.7rem auto 1.8rem; padding: 0 1rem;">
             <div class="srf-card">
                 <div class="srf-form-header">
-                    <span class="srf-form-header-text">Requestor and Admin Chat</span>
+                    <span class="srf-form-header-text">Requestor and Personnel Chat</span>
                     <div class="srf-form-header-line"></div>
                 </div>
 
@@ -1059,7 +1071,7 @@
 
                         <form method="POST" action="{{ route('service-requests.messages.store', $serviceRequest) }}" class="mt-3" data-chat-enter-form>
                             @csrf
-                            <label for="admin_chat_message" class="block text-xs font-semibold uppercase tracking-[0.06em] text-slate-600">Reply as Admin</label>
+                            <label for="admin_chat_message" class="block text-xs font-semibold uppercase tracking-[0.06em] text-slate-600">Reply as Personnel</label>
                             <textarea id="admin_chat_message" name="message" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-teal-600 focus:ring-teal-600" rows="3" maxlength="1000" required>{{ old('message') }}</textarea>
                             <x-input-error :messages="$errors->get('message')" class="mt-1" />
                             <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
@@ -1086,6 +1098,32 @@
             <div class="srf-status-modal-actions">
                 <button type="button" class="srf-status-modal-cancel" id="status-confirm-cancel">No</button>
                 <button type="button" class="srf-status-modal-confirm" id="status-confirm-accept">Yes</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="uploaded-photo-modal" class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/80 backdrop-blur-2xl px-4" aria-hidden="true">
+        <div class="relative w-full max-w-3xl">
+            <button
+                type="button"
+                id="uploaded-photo-modal-close"
+                class="absolute z-[121] inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-2xl font-bold leading-none text-slate-900 shadow-lg transition hover:bg-slate-100"
+                style="top: -18px; right: -18px;"
+                aria-label="Close photo preview"
+            >
+                ×
+            </button>
+            <div class="overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl">
+                <img id="uploaded-photo-modal-image" src="" alt="Uploaded photo preview" class="max-h-[65vh] w-full object-contain">
+                <div class="flex justify-end border-t border-white/15 bg-black/70 px-4 py-3">
+                    <button
+                        type="button"
+                        id="uploaded-photo-modal-cancel"
+                        class="rounded-lg border border-white/40 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/20"
+                    >
+                        Cancel
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1870,10 +1908,68 @@
                 });
             };
 
+            const initUploadedPhotoPreview = function () {
+                const triggers = document.querySelectorAll('[data-uploaded-photo-trigger]');
+                const modal = document.getElementById('uploaded-photo-modal');
+                const modalImage = document.getElementById('uploaded-photo-modal-image');
+                const closeButton = document.getElementById('uploaded-photo-modal-close');
+                const cancelButton = document.getElementById('uploaded-photo-modal-cancel');
+
+                if (!triggers.length || !modal || !modalImage || !closeButton || !cancelButton) {
+                    return;
+                }
+
+                const closeModal = function () {
+                    modal.classList.add('hidden');
+                    modal.classList.remove('flex');
+                    modal.setAttribute('aria-hidden', 'true');
+                    modalImage.src = '';
+                    document.body.classList.remove('overflow-hidden');
+                };
+
+                const openModal = function (src, altText) {
+                    if (!src) {
+                        return;
+                    }
+
+                    modalImage.src = src;
+                    modalImage.alt = altText || 'Uploaded photo preview';
+                    modal.classList.remove('hidden');
+                    modal.classList.add('flex');
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('overflow-hidden');
+                };
+
+                triggers.forEach(function (trigger) {
+                    trigger.addEventListener('click', function (event) {
+                        event.preventDefault();
+                        openModal(
+                            String(trigger.getAttribute('data-photo-src') || ''),
+                            String(trigger.getAttribute('data-photo-alt') || 'Uploaded photo preview')
+                        );
+                    });
+                });
+
+                closeButton.addEventListener('click', closeModal);
+                cancelButton.addEventListener('click', closeModal);
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                        closeModal();
+                    }
+                });
+            };
+
             initSignatureInput();
             initDirectPrint();
             initChatEnterSubmit();
             initStatusActionConfirm();
+            initUploadedPhotoPreview();
         });
 
     </script>

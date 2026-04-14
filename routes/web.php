@@ -9,7 +9,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
     if (Auth::check()) {
-        return redirect()->route('admin.dashboard');
+        $targetRoute = strtoupper((string) Auth::user()?->department) === 'ADMIN'
+            ? 'admin.dashboard'
+            : 'dashboard';
+
+        return redirect()->route($targetRoute);
     }
 
     if (app()->runningUnitTests()) {
@@ -83,6 +87,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
+    Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
 });
 
 require __DIR__.'/auth.php';

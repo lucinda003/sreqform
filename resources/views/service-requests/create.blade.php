@@ -315,12 +315,27 @@
         }
         .srf-sig-canvas {
             width: 100%;
-            height: 150px;
+            height: 300px;
             max-width: 100%;
             border: 1px solid #e2e8f0;
             border-radius: 5px;
             background: #fff;
             display: block;
+        }
+        .srf-sig-upload-area {
+            min-height: 300px;
+            border: 1px dashed #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            display: flex;
+            align-items: center;
+            padding: 12px;
+        }
+        .hidden.srf-sig-upload-area {
+            display: none !important;
+        }
+        .srf-sig-upload-area .srf-file-input {
+            width: 100%;
         }
         .srf-sig-clear {
             margin-top: 6px;
@@ -367,8 +382,8 @@
         }
         .srf-approved-inner {
             display: grid;
-            grid-template-columns: 3fr 2fr;
-            gap: 20px;
+            grid-template-columns: 1fr;
+            gap: 0;
         }
         .srf-field-underline {
             display: flex;
@@ -501,13 +516,13 @@
                         <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
                             <div class="srf-field">
                                 <label class="srf-label">
-                                    <span class="srf-number-badge">1</span> Name <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">1</span> Send to <span class="srf-required">*</span>
                                 </label>
                                 <select name="department_user_id" class="srf-select" required>
                                     <option value="">Select person</option>
                                     @foreach ($departmentPersonnelOptions as $departmentPersonOption)
                                         <option value="{{ $departmentPersonOption['id'] }}" @selected((string) old('department_user_id') === (string) $departmentPersonOption['id'])>
-                                            {{ $departmentPersonOption['name'] }}{{ $departmentPersonOption['department'] !== '' ? ' - ' . $departmentPersonOption['department'] : '' }}
+                                            {{ $departmentPersonOption['name'] }}
                                         </option>
                                     @endforeach
                                 </select>
@@ -700,12 +715,12 @@
                                             </div>
                                             <div id="create-signature-draw-wrap">
                                                 <canvas id="create-signature-canvas" class="srf-sig-canvas"
-                                                    style="height:150px; width:100%;"></canvas>
+                                                    style="width:100%;"></canvas>
                                                 <input type="hidden" name="approved_by_signature_drawn"
                                                     id="create-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
                                                 <button type="button" id="create-signature-clear" class="srf-sig-clear">Clear</button>
                                             </div>
-                                            <div id="create-signature-upload-wrap" class="hidden">
+                                            <div id="create-signature-upload-wrap" class="hidden srf-sig-upload-area">
                                                 <input type="file" name="approved_by_signature_upload" accept="image/*"
                                                     id="create-signature-upload" class="srf-file-input">
                                             </div>
@@ -715,21 +730,19 @@
 
                                         <div class="srf-field-underline">
                                             <input name="approved_by_name" value="{{ old('approved_by_name') }}"
-                                                class="srf-input-underline" required>
+                                                class="srf-input-underline">
                                             <p class="srf-sublabel">Name &amp; Signature of Head of Office</p>
                                         </div>
 
                                         <div class="srf-field-underline">
                                             <input name="approved_by_position" value="{{ old('approved_by_position') }}"
-                                                class="srf-input-underline" required>
+                                                class="srf-input-underline">
                                             <p class="srf-sublabel">Position</p>
                                         </div>
-                                    </div>
 
-                                    <div>
                                         <div class="srf-field-underline">
                                             <input name="approved_date" type="date"
-                                                value="{{ old('approved_date', now()->toDateString()) }}"
+                                                value="{{ old('approved_date') }}"
                                                 id="create-approved-date" class="srf-input-underline" required>
                                             <p class="srf-sublabel">Date Signed</p>
                                         </div>
@@ -762,6 +775,130 @@
             const createForm = document.querySelector('form[action="{{ route('service-requests.store') }}"]');
             const requestCategorySelect = document.getElementById('request_category');
             const requestCategoryOther = document.getElementById('request_category_other');
+            const draftStorageKey = 'service-request-create-draft-v1';
+
+            const saveDraftToStorage = function () {
+                if (!createForm) return;
+
+                const draft = {};
+                const fields = createForm.querySelectorAll('input[name], select[name], textarea[name]');
+
+                fields.forEach(function (field) {
+                    const name = field.name;
+                    if (!name || name === '_token' || name === '_method') return;
+                    if (field.type === 'file') return;
+
+                    if (field.type === 'radio') {
+                        if (field.checked) {
+                            draft[name] = field.value;
+                        }
+                        return;
+                    }
+
+                    if (field.type === 'checkbox') {
+                        if (!Array.isArray(draft[name])) {
+                            draft[name] = [];
+                        }
+                        if (field.checked) {
+                            draft[name].push(field.value || '1');
+                        }
+                        return;
+                    }
+
+                    draft[name] = field.value;
+                });
+
+                try {
+                    localStorage.setItem(draftStorageKey, JSON.stringify(draft));
+                } catch (error) {
+                    // Ignore storage failures (private mode/quota).
+                }
+            };
+
+            const clearDraftStorage = function () {
+                try {
+                    localStorage.removeItem(draftStorageKey);
+                } catch (error) {
+                    // Ignore storage failures (private mode/quota).
+                }
+            };
+
+            const restoreDraftFromStorage = function () {
+                if (!createForm) return;
+
+                let rawDraft = null;
+                try {
+                    rawDraft = localStorage.getItem(draftStorageKey);
+                } catch (error) {
+                    return;
+                }
+
+                if (!rawDraft) return;
+
+                let draft = null;
+                try {
+                    draft = JSON.parse(rawDraft);
+                } catch (error) {
+                    return;
+                }
+
+                if (!draft || typeof draft !== 'object') return;
+
+                Object.keys(draft).forEach(function (name) {
+                    const selector = '[name="' + name.replace(/"/g, '\\"') + '"]';
+                    const fields = createForm.querySelectorAll(selector);
+                    if (!fields.length) return;
+
+                    const firstField = fields[0];
+                    const storedValue = draft[name];
+
+                    if (firstField.type === 'radio') {
+                        fields.forEach(function (field) {
+                            field.checked = String(field.value) === String(storedValue);
+                        });
+                        return;
+                    }
+
+                    if (firstField.type === 'checkbox') {
+                        const values = Array.isArray(storedValue) ? storedValue.map(String) : [String(storedValue)];
+                        fields.forEach(function (field) {
+                            field.checked = values.includes(String(field.value || '1'));
+                        });
+                        return;
+                    }
+
+                    if (firstField.type === 'file') return;
+
+                    firstField.value = storedValue == null ? '' : String(storedValue);
+                });
+            };
+
+            if (createForm) {
+                const navigationEntry = (window.performance && window.performance.getEntriesByType)
+                    ? window.performance.getEntriesByType('navigation')[0]
+                    : null;
+                const navigationType = navigationEntry && navigationEntry.type
+                    ? navigationEntry.type
+                    : (window.performance && window.performance.navigation && window.performance.navigation.type === 1 ? 'reload' : 'navigate');
+
+                if (navigationType === 'reload') {
+                    restoreDraftFromStorage();
+                } else {
+                    clearDraftStorage();
+                }
+
+                let draftSaveTimer = null;
+                const queueDraftSave = function () {
+                    if (draftSaveTimer) {
+                        window.clearTimeout(draftSaveTimer);
+                    }
+                    draftSaveTimer = window.setTimeout(saveDraftToStorage, 120);
+                };
+
+                createForm.addEventListener('input', queueDraftSave);
+                createForm.addEventListener('change', queueDraftSave);
+                createForm.addEventListener('submit', clearDraftStorage);
+            }
 
             const syncRequestCategoryOther = function () {
                 if (!requestCategorySelect || !requestCategoryOther) return;
@@ -931,6 +1068,8 @@
                     const centeredSignature = getCenteredSignatureDataUrl();
                     hiddenDrawn.value = centeredSignature;
 
+                    saveDraftToStorage();
+
                     if (centeredSignature !== '') {
                         fillSignedDateIfEmpty();
                     }
@@ -1006,6 +1145,7 @@
                     clearBtn.addEventListener('click', function () {
                         ctx.clearRect(0, 0, canvas.width, canvas.height);
                         hiddenDrawn.value = '';
+                        saveDraftToStorage();
                     });
                 }
 

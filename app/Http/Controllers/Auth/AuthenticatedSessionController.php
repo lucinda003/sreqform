@@ -26,20 +26,14 @@ class AuthenticatedSessionController extends Controller
     {
         $request->authenticate();
 
-        if (! app()->runningUnitTests() && strtoupper((string) Auth::user()?->department) !== 'ADMIN') {
-            Auth::guard('web')->logout();
-            $request->session()->invalidate();
-            $request->session()->regenerateToken();
-
-            return back()->withErrors([
-                'email' => 'Only ADMIN account is allowed to sign in.',
-            ])->onlyInput('email');
-        }
-
         $request->session()->regenerate();
 
         if (! app()->runningUnitTests()) {
-            return redirect()->route('admin.dashboard');
+            $targetRoute = strtoupper((string) Auth::user()?->department) === 'ADMIN'
+                ? 'admin.dashboard'
+                : 'dashboard';
+
+            return redirect()->route($targetRoute);
         }
 
         return redirect()->route('dashboard');

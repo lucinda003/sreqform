@@ -41,14 +41,26 @@ class AdminUserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'password' => ['required', 'string', 'min:8'],
-            'department' => ['required', 'string', 'max:30', 'in:ADMIN'],
-            'department_status' => ['required', 'in:approved'],
+            'department_code' => ['required', 'string', 'max:30'],
+            'department_status' => ['required', 'in:approved,pending'],
         ]);
 
-                $department = trim($validated['department']);
+        $departmentCode = strtoupper(trim($validated['department_code']));
         $departmentStatus = $validated['department_status'];
 
-        if ($department === 'ADMIN') {
+        if ($departmentCode === '') {
+            return back()
+                ->withErrors(['department_code' => 'Department code is required.'])
+                ->withInput();
+        }
+
+        if ($departmentCode === 'ADMIN' && User::query()->whereRaw('UPPER(department) = ?', ['ADMIN'])->exists()) {
+            return back()
+                ->withErrors(['department_code' => 'Only one ADMIN account is allowed.'])
+                ->withInput();
+        }
+
+        if ($departmentCode === 'ADMIN') {
             $departmentStatus = 'approved';
         }
 
@@ -56,7 +68,7 @@ class AdminUserController extends Controller
             'name' => $validated['name'],
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
-            'department' => $department,
+            'department' => $departmentCode,
             'department_status' => $departmentStatus,
             'email_verified_at' => now(),
         ]);
@@ -71,21 +83,39 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'department' => ['required', 'string', 'max:30', 'in:ADMIN'],
-            'department_status' => ['required', 'in:approved'],
+            'department_code' => ['required', 'string', 'max:30'],
+            'department_status' => ['required', 'in:approved,pending'],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
 
-        $department = trim($validated['department']);
+        $departmentCode = strtoupper(trim($validated['department_code']));
         $departmentStatus = $validated['department_status'];
 
-        if ($department === 'ADMIN') {
+        if ($departmentCode === '') {
+            return back()
+                ->withErrors(['department_code' => 'Department code is required.'])
+                ->withInput();
+        }
+
+        if (
+            $departmentCode === 'ADMIN'
+            && User::query()
+                ->whereRaw('UPPER(department) = ?', ['ADMIN'])
+                ->whereKeyNot($user->id)
+                ->exists()
+        ) {
+            return back()
+                ->withErrors(['department_code' => 'Only one ADMIN account is allowed.'])
+                ->withInput();
+        }
+
+        if ($departmentCode === 'ADMIN') {
             $departmentStatus = 'approved';
         }
 
         $user->name = $validated['name'];
         $user->email = $validated['email'];
-        $user->department = $department;
+        $user->department = $departmentCode;
         $user->department_status = $departmentStatus;
 
         if (! empty($validated['password'])) {
@@ -97,8 +127,21 @@ class AdminUserController extends Controller
         return redirect()->route('admin.users.index')->with('status', 'Account updated successfully.');
     }
 
+    public function destroy(User $user): RedirectResponse
+    {
+        $this->authorizeAdmin();
+
+        if (strtoupper((string) $user->department) === 'ADMIN') {
+            return back()->withErrors(['delete' => 'Cannot delete an ADMIN account.']);
+        }
+
+        $user->delete();
+
+        return redirect()->route('admin.users.index')->with('status', 'Account deleted successfully.');
+    }
+
     private function authorizeAdmin(): void
     {
-        abort_unless(auth()->user()?->department === 'ADMIN', 403);
+        abort_unless(strtoupper((string) auth()->user()?->department) === 'ADMIN', 403);
     }
 }

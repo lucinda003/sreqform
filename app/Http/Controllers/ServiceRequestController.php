@@ -74,12 +74,10 @@ class ServiceRequestController extends Controller
 
     public function chatRequests(Request $request): View
     {
-        abort_unless($this->isAdmin(), 403);
-
         $chatStatus = strtolower(trim((string) $request->query('chat_status', 'pending')));
         $search = trim((string) $request->query('q'));
 
-        $chatRequestsQuery = ServiceRequest::query()
+        $chatRequestsQuery = $this->scopeForUser(ServiceRequest::query())
             ->whereNotNull('contact_chat_status')
             ->latest('contact_chat_requested_at')
             ->latest();
@@ -579,7 +577,7 @@ class ServiceRequestController extends Controller
 
     public function postAdminMessage(Request $request, ServiceRequest $serviceRequest): RedirectResponse|JsonResponse
     {
-        abort_unless($this->isAdmin(), 403);
+        abort_unless($this->canAccess($serviceRequest), 403);
 
         if (! $this->isChatAccepted($serviceRequest)) {
             $errorMessage = 'Chat is not available yet. Accept the chat request first.';
@@ -628,7 +626,7 @@ class ServiceRequestController extends Controller
 
     public function adminMessages(ServiceRequest $serviceRequest): JsonResponse
     {
-        abort_unless($this->isAdmin(), 403);
+        abort_unless($this->canAccess($serviceRequest), 403);
 
         $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
         $chatAccepted = $this->isChatAccepted($serviceRequest);
@@ -644,9 +642,7 @@ class ServiceRequestController extends Controller
 
     public function adminChatNotifications(): JsonResponse
     {
-        abort_unless($this->isAdmin(), 403);
-
-        $pendingRequests = ServiceRequest::query()
+        $pendingRequests = $this->scopeForUser(ServiceRequest::query())
             ->where('contact_chat_status', 'pending')
             ->orderByDesc('contact_chat_requested_at')
             ->orderByDesc('updated_at')
@@ -676,7 +672,7 @@ class ServiceRequestController extends Controller
 
     public function decideChatRequest(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        abort_unless($this->isAdmin(), 403);
+        abort_unless($this->canAccess($serviceRequest), 403);
 
         $validated = $request->validate([
             'decision' => ['required', 'in:accepted,rejected'],
@@ -825,7 +821,7 @@ class ServiceRequestController extends Controller
         );
         $validated['status'] = 'pending';
         $validated['pending_at'] = now();
-        $validated['user_id'] = Auth::id();
+        $validated['user_id'] = (int) $selectedDepartmentUser->id;
 
         $serviceRequest = ServiceRequest::create($validated);
 
@@ -889,7 +885,7 @@ class ServiceRequestController extends Controller
         abort_unless($this->canAccess($serviceRequest), 403);
 
         if (
-            $this->isAdmin()
+            $this->canManageStatus($serviceRequest)
             && $serviceRequest->status === 'pending'
             && $request->query('skip_auto_checking') !== '1'
         ) {
@@ -901,7 +897,7 @@ class ServiceRequestController extends Controller
             $serviceRequest->refresh();
         }
 
-        if ($this->isAdmin()) {
+        if ($this->canManageStatus($serviceRequest)) {
             $now = now();
             $updates = [];
 
@@ -958,7 +954,9 @@ class ServiceRequestController extends Controller
                 ->withInput();
         }
 
-        $validated = $this->isAdmin()
+        $isModerationEditor = $this->isAdmin() || $this->isKmits();
+
+        $validated = $isModerationEditor
             ? $this->validatedKmitsData($request)
             : $this->validatedData($request);
 
@@ -969,7 +967,7 @@ class ServiceRequestController extends Controller
             );
         }
 
-        if (! $this->isAdmin()) {
+        if (! $isModerationEditor) {
             $validated['approved_by_signature'] = $this->storeApprovedSignature(
                 $request,
                 (string) ($serviceRequest->approved_by_signature ?? '')
@@ -1234,12 +1232,12 @@ class ServiceRequestController extends Controller
             'description_request' => ['required', 'string'],
             'description_photos' => ['nullable', 'array', 'max:3'],
             'description_photos.*' => ['nullable', 'image', 'max:5120'],
-            'approved_by_name' => ['required', 'string', 'max:255'],
+            'approved_by_name' => ['nullable', 'string', 'max:255'],
             'approved_by_signature' => ['nullable', 'string', 'max:255'],
             'approved_by_signature_mode' => ['nullable', 'in:draw,upload'],
             'approved_by_signature_drawn' => ['nullable', 'string'],
             'approved_by_signature_upload' => ['nullable', 'image', 'max:5120'],
-            'approved_by_position' => ['required', 'string', 'max:255'],
+            'approved_by_position' => ['nullable', 'string', 'max:255'],
             'approved_date' => ['required', 'date'],
             'kmits_date' => ['required', 'date'],
             'time_received' => ['nullable', 'date_format:H:i'],
@@ -1262,6 +1260,10 @@ class ServiceRequestController extends Controller
 
         unset($validated['description_photos']);
         unset($validated['approved_by_signature_mode'], $validated['approved_by_signature_drawn'], $validated['approved_by_signature_upload']);
+
+        // These fields are optional in the form but DB columns are non-nullable strings.
+        $validated['approved_by_name'] = trim((string) ($validated['approved_by_name'] ?? ''));
+        $validated['approved_by_position'] = trim((string) ($validated['approved_by_position'] ?? ''));
 
         $dateRows = $validated['action_log_date'] ?? [];
         $timeRows = $validated['action_log_time'] ?? [];
@@ -1457,14 +1459,17 @@ class ServiceRequestController extends Controller
             return $query->whereRaw('1 = 0');
         }
 
-        if (blank($user?->department)) {
-            return $query->where('user_id', $user?->id);
-        }
-
         return $query->where(function (Builder $builder) use ($user): void {
-            $builder
-                ->where('department_code', (string) $user->department)
-                ->orWhere('user_id', $user?->id);
+            $builder->where('user_id', (int) ($user?->id ?? 0));
+
+            $department = trim((string) ($user?->department ?? ''));
+            if ($department !== '') {
+                $builder->orWhere(function (Builder $legacyBuilder) use ($department): void {
+                    $legacyBuilder
+                        ->whereNull('user_id')
+                        ->where('department_code', $department);
+                });
+            }
         });
     }
 
@@ -1480,8 +1485,9 @@ class ServiceRequestController extends Controller
             return false;
         }
 
-        if ((int) $serviceRequest->user_id === (int) ($user?->id ?? 0)) {
-            return true;
+        $assignedUserId = (int) ($serviceRequest->user_id ?? 0);
+        if ($assignedUserId > 0) {
+            return $assignedUserId === (int) ($user?->id ?? 0);
         }
 
         if (blank($user?->department)) {
@@ -1496,23 +1502,22 @@ class ServiceRequestController extends Controller
         return strtoupper((string) Auth::user()?->department) === 'ADMIN';
     }
 
+    private function isKmits(): bool
+    {
+        return strtoupper((string) Auth::user()?->department) === 'KMITS';
+    }
+
     private function canManageStatus(ServiceRequest $serviceRequest): bool
     {
         if ($this->isAdmin()) {
             return true;
         }
 
-        $user = Auth::user();
-
-        if ($user?->department_status !== 'approved') {
+        if (! $this->isKmits()) {
             return false;
         }
 
-        if (blank($user?->department)) {
-            return false;
-        }
-
-        return (string) $serviceRequest->department_code === (string) $user->department;
+        return $this->canAccess($serviceRequest);
     }
 
     private function isChatLockedForStatus(string $status): bool
@@ -1594,7 +1599,6 @@ class ServiceRequestController extends Controller
     private function approvedDepartmentPersonnelOptions(): array
     {
         $authUser = Auth::user();
-        $isGuest = $authUser === null;
 
         $query = User::query()
             ->where('department_status', 'approved')
@@ -1614,42 +1618,15 @@ class ServiceRequestController extends Controller
         return $query
             ->orderBy('name')
             ->get(['id', 'name', 'department'])
-            ->map(function (User $user) use ($isGuest): array {
-                $displayName = trim((string) $user->name);
-                if ($isGuest) {
-                    $displayName = $this->maskPersonnelName($displayName);
-                }
-
+            ->map(function (User $user): array {
                 return [
                     'id' => (int) $user->id,
-                    'name' => $displayName,
+                    'name' => trim((string) $user->name),
                     'department' => trim((string) $user->department),
                 ];
             })
             ->filter(fn (array $entry): bool => $entry['name'] !== '')
             ->values()
             ->all();
-    }
-
-    private function maskPersonnelName(string $name): string
-    {
-        $normalizedName = trim($name);
-        if ($normalizedName === '') {
-            return '';
-        }
-
-        $parts = preg_split('/\s+/', $normalizedName) ?: [];
-
-        $maskedParts = array_map(static function (string $part): string {
-            $cleanPart = trim($part);
-            if ($cleanPart === '') {
-                return '';
-            }
-
-            return Str::substr($cleanPart, 0, 1)
-                . str_repeat('*', max(2, max(0, Str::length($cleanPart) - 1)));
-        }, $parts);
-
-        return trim(implode(' ', array_filter($maskedParts, static fn (string $value): bool => $value !== '')));
     }
 }

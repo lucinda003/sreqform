@@ -1,25 +1,46 @@
 <x-app-layout>
     <x-slot name="header" style="display:none;"></x-slot>
 
-    <x-db2-shell title="Profile" subtitle="Manage your account details and security settings.">
-        <div class="max-w-3xl space-y-5">
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-                <div class="max-w-2xl">
+    <x-db2-shell title="Profile Settings" subtitle="Manage your account details and security settings.">
+        <div
+            x-data="{
+                showPassword: false,
+                togglePassword() {
+                    if (this.showPassword) {
+                        this.showPassword = false;
+                        return;
+                    }
+
+                    this.showPassword = true;
+
+                    if (this.showPassword) {
+                        this.$nextTick(() => this.$refs.passwordCard.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+                    }
+                }
+            }"
+            class="mx-auto w-full max-w-5xl space-y-4"
+        >
+            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="border-b border-slate-100 px-6 py-4">
+                    <h3 class="text-2xl font-semibold text-slate-900">Profile Information</h3>
+                    <p class="mt-1 text-sm text-slate-500">Update your personal details and email settings.</p>
+                </div>
+                <div class="p-6">
                     @include('profile.partials.update-profile-information-form')
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm sm:p-8">
-                <div class="max-w-2xl">
+            <div x-show="showPassword" x-transition x-ref="passwordCard" class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                <div class="border-b border-slate-100 px-6 py-4">
+                    <h3 class="text-2xl font-semibold text-slate-900">Password Security</h3>
+                    <p class="mt-1 text-sm text-slate-500">Use a long, unique password and update it often.</p>
+                </div>
+                <div class="p-6">
                     @include('profile.partials.update-password-form')
                 </div>
             </div>
 
-            <div class="rounded-2xl border border-rose-200 bg-rose-50 p-5 shadow-sm sm:p-8">
-                <div class="max-w-2xl">
-                    @include('profile.partials.delete-user-form')
-                </div>
-            </div>
+            @include('profile.partials.delete-user-form')
         </div>
     </x-db2-shell>
 </x-app-layout>

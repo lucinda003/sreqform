@@ -131,9 +131,23 @@
         align-items: center;
         justify-content: flex-end;
         gap: 12px;
+        min-height: 64px;
         position: sticky;
         top: 0;
         z-index: 5;
+    }
+    .db2-topbar-chip {
+        display: inline-flex;
+        align-items: center;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #f8fafc;
+        color: #334155;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        padding: 6px 10px;
     }
     .db2-search {
         display: flex;
@@ -438,12 +452,10 @@
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h12v3H4zM4 7h12v9a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 11h4"/></svg>
                 <span class="db2-nav-label">Archive</span>
             </a>
-            @if ($isAdmin)
-                <a href="{{ route('service-requests.chat-requests') }}" class="db2-nav-item {{ request()->routeIs('service-requests.chat-requests') ? 'active' : '' }}">
-                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v7a2 2 0 01-2 2H9l-4 3v-3H5a2 2 0 01-2-2V5z"/><path d="M7 8h6M7 11h4"/></svg>
-                    <span class="db2-nav-label">Chat Requests</span>
-                </a>
-            @endif
+            <a href="{{ route('service-requests.chat-requests') }}" class="db2-nav-item {{ request()->routeIs('service-requests.chat-requests') ? 'active' : '' }}">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v7a2 2 0 01-2 2H9l-4 3v-3H5a2 2 0 01-2-2V5z"/><path d="M7 8h6M7 11h4"/></svg>
+                <span class="db2-nav-label">Chat Requests</span>
+            </a>
             <a href="{{ route('profile.edit') }}" class="db2-nav-item {{ request()->routeIs('profile.*') ? 'active' : '' }}">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="10" cy="7" r="3"/><path d="M4 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/></svg>
                 <span class="db2-nav-label">Profile</span>
@@ -469,7 +481,9 @@
     <div class="db2-main">
         <div class="db2-topbar">
             <div class="db2-topbar-right">
-                @if ($isAdmin)
+                @if (! $isAdmin)
+                    <span class="db2-topbar-chip">{{ strtoupper((string) Auth::user()?->department) }}</span>
+                @endif
                 <div class="db2-notif-wrap" data-db2-notif-wrap data-poll-endpoint="{{ route('service-requests.notifications') }}">
                     <button type="button" class="db2-icon-btn" data-db2-notif-toggle aria-label="View notifications">
                         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2a6 6 0 00-6 6v3l-1.5 2.5h15L16 11V8a6 6 0 00-6-6zM8 17a2 2 0 004 0"/></svg>
@@ -491,7 +505,6 @@
                         </div>
                     </div>
                 </div>
-                @endif
             </div>
         </div>
 

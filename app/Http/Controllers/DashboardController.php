@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\ServiceRequest;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\Auth;
@@ -12,19 +13,16 @@ class DashboardController extends Controller
 {
     public function index(Request $request): View|RedirectResponse
     {
-        if (strtoupper((string) Auth::user()?->department) !== 'ADMIN') {
-            return redirect()->route('service-requests.index');
-        }
-
         $range = $request->query('range', 'all');
         if (! in_array($range, ['all', 'today', 'week'], true)) {
             $range = 'all';
         }
 
-        $baseQuery = ServiceRequest::query();
+        $baseQuery = $this->scopeForDashboard(ServiceRequest::query());
         if ($range === 'today') {
             $baseQuery->whereDate('created_at', today());
         }
+
         if ($range === 'week') {
             $baseQuery->whereBetween('created_at', [
                 now()->startOfWeek(),
@@ -32,8 +30,9 @@ class DashboardController extends Controller
             ]);
         }
 
-        $chatBaseQuery = ServiceRequest::query()
-            ->whereNotNull('contact_chat_requested_at');
+        $chatBaseQuery = $this->scopeForDashboard(
+            ServiceRequest::query()->whereNotNull('contact_chat_requested_at')
+        );
 
         if ($range === 'today') {
             $chatBaseQuery->whereDate('contact_chat_requested_at', today());
@@ -82,5 +81,35 @@ class DashboardController extends Controller
             'recentChatRequests' => $recentChatRequests,
             'range' => $range,
         ]);
+    }
+
+    private function scopeForDashboard(Builder $query): Builder
+    {
+        $user = Auth::user();
+
+        if ($user === null) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        if (strtoupper((string) $user->department) === 'ADMIN') {
+            return $query;
+        }
+
+        if ($user->department_status !== 'approved') {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $builder) use ($user): void {
+            $builder->where('user_id', (int) $user->id);
+
+            $department = trim((string) ($user->department ?? ''));
+            if ($department !== '') {
+                $builder->orWhere(function (Builder $legacyBuilder) use ($department): void {
+                    $legacyBuilder
+                        ->whereNull('user_id')
+                        ->where('department_code', $department);
+                });
+            }
+        });
     }
 }
