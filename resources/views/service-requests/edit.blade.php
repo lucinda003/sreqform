@@ -1042,6 +1042,16 @@
                             <td class="border border-slate-400 px-2 py-1">
                                 <div class="grid grid-cols-10 gap-3">
                                     <div class="col-span-6">
+                                        @php
+                                            $approvedSignatureDataUri = '';
+                                            $approvedSignaturePath = trim((string) ($serviceRequest->approved_by_signature ?? ''));
+
+                                            if ($approvedSignaturePath !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($approvedSignaturePath)) {
+                                                $approvedSignatureMime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($approvedSignaturePath) ?: 'image/png';
+                                                $approvedSignatureDataUri = 'data:' . $approvedSignatureMime . ';base64,' . base64_encode((string) \Illuminate\Support\Facades\Storage::disk('public')->get($approvedSignaturePath));
+                                            }
+                                        @endphp
+
                                         @if (! $isReadOnlyForm)
                                             <div class="mb-0 rounded-md border border-slate-300 bg-slate-50 p-1 pb-0">
                                                 <div class="mb-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-700">
@@ -1055,10 +1065,10 @@
                                                     </label>
                                                 </div>
 
-                                                @if (!empty($serviceRequest->approved_by_signature) && old('approved_by_signature_drawn') === null)
+                                                @if ($approvedSignatureDataUri !== '' && old('approved_by_signature_drawn') === null)
                                                     <div class="mb-2">
                                                         <p class="mb-1 text-[11px] text-slate-600">Current Signature</p>
-                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Current Signature" class="h-16 rounded border border-slate-300 bg-white px-2 py-1">
+                                                        <img src="{{ $approvedSignatureDataUri }}" alt="Current Signature" draggable="false" class="h-16 rounded border border-slate-300 bg-white px-2 py-1" style="user-select:none; -webkit-user-drag:none;">
                                                     </div>
                                                 @endif
 
@@ -1079,8 +1089,10 @@
                                         @else
                                             <div class="mb-1 rounded-md border border-slate-300 bg-slate-50 p-2">
                                                 <p class="text-[11px] font-semibold text-slate-700">Requester Signature (Read Only)</p>
-                                                @if (!empty($serviceRequest->approved_by_signature))
-                                                    <img src="{{ \Illuminate\Support\Facades\Storage::url($serviceRequest->approved_by_signature) }}" alt="Requester Signature" class="mt-1 h-14 rounded border border-slate-300 bg-white px-2 py-1">
+                                                @if ($approvedSignatureDataUri !== '' && $isAdmin)
+                                                    <img src="{{ $approvedSignatureDataUri }}" alt="Requester Signature" draggable="false" class="mt-1 h-14 rounded border border-slate-300 bg-white px-2 py-1" style="user-select:none; -webkit-user-drag:none;">
+                                                @elseif ($approvedSignatureDataUri !== '')
+                                                    <p class="mt-1 text-[11px] text-slate-500">Signature hidden for security.</p>
                                                 @else
                                                     <p class="mt-1 text-[11px] text-slate-500">No signature provided.</p>
                                                 @endif
