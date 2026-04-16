@@ -644,18 +644,18 @@
         @php
             $descriptionPreview = \Illuminate\Support\Str::limit((string) $serviceRequest->description_request, 1800, '...');
             $descriptionLength = \Illuminate\Support\Str::length($descriptionPreview);
-            $descriptionFontSize = '13px';
-            $descriptionLineHeight = '1.35';
-
-            if ($descriptionLength > 1500) {
-                $descriptionFontSize = '10px';
-                $descriptionLineHeight = '1.2';
-            } elseif ($descriptionLength > 1200) {
-                $descriptionFontSize = '11px';
-                $descriptionLineHeight = '1.24';
-            } elseif ($descriptionLength > 900) {
+            if ($descriptionLength <= 280) {
+                $descriptionFontSize = '16px';
+                $descriptionLineHeight = '1.45';
+            } elseif ($descriptionLength <= 900) {
+                $descriptionFontSize = '14px';
+                $descriptionLineHeight = '1.38';
+            } elseif ($descriptionLength <= 1500) {
                 $descriptionFontSize = '12px';
                 $descriptionLineHeight = '1.3';
+            } else {
+                $descriptionFontSize = '10px';
+                $descriptionLineHeight = '1.2';
             }
         @endphp
         <div class="desc-body" style="font-size: {{ $descriptionFontSize }}; line-height: {{ $descriptionLineHeight }};">{{ $descriptionPreview }}</div>
