@@ -3,6 +3,7 @@
         $isAdmin = strtoupper((string) auth()->user()?->department) === 'ADMIN';
         $isKmits = strtoupper((string) auth()->user()?->department) === 'KMITS';
         $canModerateChat = $isAdmin || $isKmits;
+        $canPersonnelChat = auth()->check();
         $isReadOnlyForm = $isAdmin || $isKmits;
         $hospitalOfficeMap = [
             'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
@@ -383,6 +384,96 @@
             color: #0f172a;
             white-space: pre-wrap;
             word-break: break-word;
+        }
+
+        .srf-signature-watermark-wrap {
+            position: relative;
+            display: inline-block;
+        }
+
+        .srf-signature-watermark-wrap::after {
+            content: 'VIEW ONLY';
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+            letter-spacing: 0.08em;
+            font-weight: 700;
+            color: rgba(15, 23, 42, 0.4);
+            background: rgba(255, 255, 255, 0.14);
+            pointer-events: none;
+            text-transform: uppercase;
+        }
+
+        .srf-chat-attachment {
+            margin-top: 0.45rem;
+            display: inline-block;
+            max-width: min(360px, 100%);
+            border-radius: 8px;
+            overflow: hidden;
+            border: 1px solid #cbd5e1;
+            background: #fff;
+            padding: 0;
+            cursor: pointer;
+        }
+
+        .srf-chat-attachment img {
+            display: block;
+            width: 100%;
+            height: auto;
+            max-height: 300px;
+            object-fit: cover;
+            cursor: pointer;
+        }
+
+        .srf-image-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 130;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(2, 6, 23, 0.82);
+            backdrop-filter: blur(2px);
+        }
+
+        .srf-image-modal.open {
+            display: flex;
+        }
+
+        .srf-image-modal-content {
+            position: relative;
+            width: 100%;
+            max-width: 960px;
+        }
+
+        .srf-image-modal-content img {
+            display: block;
+            width: 100%;
+            max-height: 88vh;
+            object-fit: contain;
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            background: #020617;
+        }
+
+        .srf-image-modal-close {
+            position: absolute;
+            top: -14px;
+            right: -14px;
+            width: 34px;
+            height: 34px;
+            border: 0;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            font-size: 22px;
+            line-height: 1;
+            cursor: pointer;
+            box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
         }
 
         .srf-chat-locked {
@@ -1043,13 +1134,12 @@
                                 <div class="grid grid-cols-10 gap-3">
                                     <div class="col-span-6">
                                         @php
-                                            $approvedSignatureDataUri = '';
-                                            $approvedSignaturePath = trim((string) ($serviceRequest->approved_by_signature ?? ''));
-
-                                            if ($approvedSignaturePath !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($approvedSignaturePath)) {
-                                                $approvedSignatureMime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($approvedSignaturePath) ?: 'image/png';
-                                                $approvedSignatureDataUri = 'data:' . $approvedSignatureMime . ';base64,' . base64_encode((string) \Illuminate\Support\Facades\Storage::disk('public')->get($approvedSignaturePath));
-                                            }
+                                            $approvedSignatureUrl = trim((string) ($serviceRequest->approved_by_signature ?? '')) !== ''
+                                                ? route('service-requests.signature.approved', [
+                                                    'serviceRequest' => $serviceRequest,
+                                                    'token' => (string) ($signatureViewToken ?? ''),
+                                                ])
+                                                : '';
                                         @endphp
 
                                         @if (! $isReadOnlyForm)
@@ -1065,10 +1155,12 @@
                                                     </label>
                                                 </div>
 
-                                                @if ($approvedSignatureDataUri !== '' && old('approved_by_signature_drawn') === null)
+                                                @if ($approvedSignatureUrl !== '' && old('approved_by_signature_drawn') === null)
                                                     <div class="mb-2">
                                                         <p class="mb-1 text-[11px] text-slate-600">Current Signature</p>
-                                                        <img src="{{ $approvedSignatureDataUri }}" alt="Current Signature" draggable="false" class="h-16 rounded border border-slate-300 bg-white px-2 py-1" style="user-select:none; -webkit-user-drag:none;">
+                                                        <div class="srf-signature-watermark-wrap">
+                                                            <img src="{{ $approvedSignatureUrl }}" alt="Current Signature" draggable="false" class="h-16 rounded border border-slate-300 bg-white px-2 py-1" style="user-select:none; -webkit-user-drag:none;">
+                                                        </div>
                                                     </div>
                                                 @endif
 
@@ -1089,10 +1181,8 @@
                                         @else
                                             <div class="mb-1 rounded-md border border-slate-300 bg-slate-50 p-2">
                                                 <p class="text-[11px] font-semibold text-slate-700">Requester Signature (Read Only)</p>
-                                                @if ($approvedSignatureDataUri !== '' && $isAdmin)
-                                                    <img src="{{ $approvedSignatureDataUri }}" alt="Requester Signature" draggable="false" class="mt-1 h-14 rounded border border-slate-300 bg-white px-2 py-1" style="user-select:none; -webkit-user-drag:none;">
-                                                @elseif ($approvedSignatureDataUri !== '')
-                                                    <p class="mt-1 text-[11px] text-slate-500">Signature hidden for security.</p>
+                                                @if ($approvedSignatureUrl !== '')
+                                                    <p class="mt-1 text-[11px] text-slate-500">Signature hidden in this edit view. Use Print Status Report to see the signature.</p>
                                                 @else
                                                     <p class="mt-1 text-[11px] text-slate-500">No signature provided.</p>
                                                 @endif
@@ -1160,16 +1250,11 @@
                                 </table>
                             </div>
 
-                            <div class="mt-4 grid gap-3 md:grid-cols-3">
-                                <label class="block text-[12px] text-slate-700 md:col-span-3">
+                            <div class="mt-4 grid gap-3 md:grid-cols-2">
+                                <label class="block text-[12px] text-slate-700 md:col-span-2">
                                     <span class="font-semibold">13. Noted by (Name of Supervisor)</span>
                                     <input type="text" name="noted_by_name" value="{{ old('noted_by_name', $serviceRequest->noted_by_name) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                 </label>
-
-                                <div class="text-[12px] text-slate-700">
-                                    <span class="font-semibold">Signature</span>
-                                    <div class="mt-2 h-[34px] rounded-md border border-dashed border-slate-300 bg-slate-50"></div>
-                                </div>
 
                                 <label class="block text-[12px] text-slate-700">
                                     <span class="font-semibold">14. Position</span>
@@ -1211,7 +1296,7 @@
     </div>
     </section>
 
-    @if ($canModerateChat)
+    @if ($canPersonnelChat)
         <section style="max-width: 1300px; margin: -0.7rem auto 1.8rem; padding: 0 1rem;">
             <div class="srf-card">
                 <div class="srf-form-header">
@@ -1228,27 +1313,46 @@
                 <div class="p-4" data-admin-chat-panel data-admin-chat-status="{{ $adminChatStatus !== '' ? $adminChatStatus : 'none' }}" data-admin-chat-poll-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}" data-admin-reference-code="{{ $serviceRequest->reference_code }}">
                     <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 {{ $isChatPending ? '' : 'hidden' }}" data-admin-chat-state="pending">
                             <p class="font-semibold">Pending chat request from requestor.</p>
-                            <p class="mt-1 text-xs">Accept to unlock messaging, or decline to keep chat hidden.</p>
+                            <p class="mt-1 text-xs">Turn chat on to unlock messaging.</p>
 
                             <form method="POST" action="{{ route('service-requests.chat-request.decision', $serviceRequest) }}" class="mt-3 flex flex-wrap gap-2">
                                 @csrf
-                                <button type="submit" name="decision" value="accepted" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Accept Request</button>
-                                <button type="submit" name="decision" value="rejected" class="rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-rose-700">Decline</button>
+                                <button type="submit" name="decision" value="accepted" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn Chat On</button>
                             </form>
                     </div>
 
                     <div class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 {{ $adminChatStatus === 'rejected' ? '' : 'hidden' }}" data-admin-chat-state="rejected">
-                        Last chat request was declined. Waiting for a new chat request from the track page.
+                        <p>Last chat request was declined. Wait for the requestor to send a new chat request.</p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}">
+                                @csrf
+                                <input type="hidden" name="enabled" value="1">
+                                <button type="submit" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn Chat On</button>
+                            </form>
+                        </div>
                     </div>
 
                     <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 {{ (! $isChatAccepted && $adminChatStatus !== 'rejected' && ! $isChatPending) ? '' : 'hidden' }}" data-admin-chat-state="none">
-                        No chat request yet. Chat stays hidden until requestor clicks Contact Admin Personnel and admin accepts.
+                        <p>No chat request yet. Wait for the requestor to send a chat request.</p>
+                        <div class="mt-3 flex flex-wrap gap-2">
+                            <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}">
+                                @csrf
+                                <input type="hidden" name="enabled" value="1">
+                                <button type="submit" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn Chat On</button>
+                            </form>
+                        </div>
                     </div>
 
                     <div data-admin-chat-state="accepted" class="{{ $isChatAccepted ? '' : 'hidden' }}">
                         <div class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-emerald-700" data-admin-chat-accepted-banner>
                             Chat request accepted
                         </div>
+
+                        <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}" class="mb-3 flex justify-end">
+                            @csrf
+                            <input type="hidden" name="enabled" value="0">
+                            <button type="submit" class="rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-rose-700">Turn Chat Off</button>
+                        </form>
 
                         <div class="srf-chat-list" data-chat-list data-chat-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}">
                             @forelse ($chatMessages as $chatMessage)
@@ -1262,7 +1366,14 @@
                                 <div class="srf-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
                                     <div class="srf-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
                                         <p class="srf-chat-meta">{{ $senderLabel }} • {{ $chatMessage->created_at?->format('M j, Y g:i A') }}</p>
-                                        <p class="srf-chat-text">{{ $chatMessage->message }}</p>
+                                        @if (filled($chatMessage->message))
+                                            <p class="srf-chat-text">{{ $chatMessage->message }}</p>
+                                        @endif
+                                        @if (filled($chatMessage->attachment_path))
+                                            <button type="button" class="srf-chat-attachment" data-chat-image-open data-chat-image-src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}" aria-label="View chat image">
+                                                <img src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}" alt="Chat attachment" loading="lazy">
+                                            </button>
+                                        @endif
                                     </div>
                                 </div>
                             @empty
@@ -1270,22 +1381,32 @@
                             @endforelse
                         </div>
 
-                        <form method="POST" action="{{ route('service-requests.messages.store', $serviceRequest) }}" class="mt-3" data-chat-enter-form>
+                        <form method="POST" action="{{ route('service-requests.messages.store', $serviceRequest) }}" class="mt-3" data-chat-enter-form enctype="multipart/form-data">
                             @csrf
                             <label for="admin_chat_message" class="block text-xs font-semibold uppercase tracking-[0.06em] text-slate-600">Reply as Personnel</label>
-                            <textarea id="admin_chat_message" name="message" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-teal-600 focus:ring-teal-600" rows="3" maxlength="1000" required>{{ old('message') }}</textarea>
+                            <textarea id="admin_chat_message" name="message" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-teal-600 focus:ring-teal-600" rows="3" maxlength="1000">{{ old('message') }}</textarea>
+                            <div class="mt-2 flex flex-wrap items-center gap-2">
+                                <input type="file" name="attachment" accept="image/*" class="block min-w-[220px] grow text-xs text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white">
+                                <button type="submit" class="rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:opacity-90" style="background:#0f766e; min-width:88px;">Send</button>
+                            </div>
+                            <p class="mt-1 hidden text-[11px] text-slate-500" data-chat-attachment-name></p>
                             <x-input-error :messages="$errors->get('message')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('attachment')" class="mt-1" />
                             <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
                             <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new line.</p>
-                            <div class="mt-2 flex justify-end">
-                                <button type="submit" class="rounded-lg bg-teal-700 px-4 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:bg-teal-800">Send Message</button>
-                            </div>
                         </form>
                     </div>
                 </div>
             </div>
         </section>
     @endif
+
+    <div class="srf-image-modal" data-chat-image-modal>
+        <div class="srf-image-modal-content">
+            <button type="button" class="srf-image-modal-close" data-chat-image-close aria-label="Close image preview">×</button>
+            <img src="" alt="Chat image preview" data-chat-image-preview>
+        </div>
+    </div>
 
     <div class="srf-status-modal-backdrop" id="status-confirm-modal" aria-hidden="true">
         <div class="srf-status-modal" role="dialog" aria-modal="true" aria-labelledby="status-confirm-title">
@@ -1399,6 +1520,33 @@
 
             officeInput.addEventListener('change', syncAddress);
             officeInput.addEventListener('blur', syncAddress);
+
+            const initAdaptiveDescriptionFont = function () {
+                const descriptionTextarea = document.querySelector('textarea[name="description_request"]');
+                if (!descriptionTextarea) {
+                    return;
+                }
+
+                const getFontSize = function (valueLength) {
+                    if (valueLength <= 280) return 16;
+                    if (valueLength <= 650) return 14;
+                    if (valueLength <= 1000) return 13;
+                    if (valueLength <= 1450) return 12;
+                    return 11;
+                };
+
+                const applyAdaptiveSize = function () {
+                    const length = descriptionTextarea.value.trim().length;
+                    const size = getFontSize(length);
+                    descriptionTextarea.style.fontSize = size + 'px';
+                    descriptionTextarea.style.lineHeight = size >= 14 ? '1.45' : '1.35';
+                };
+
+                descriptionTextarea.addEventListener('input', applyAdaptiveSize);
+                applyAdaptiveSize();
+            };
+
+            initAdaptiveDescriptionFont();
 
             const initSignatureInput = function () {
                 const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');
@@ -1567,6 +1715,8 @@
                 const notifCount = document.getElementById('admin-chat-notif-count');
                 const notifEndpoint = @json(route('service-requests.notifications'));
                 const chatForms = document.querySelectorAll('[data-chat-enter-form]');
+                const chatImageModal = document.querySelector('[data-chat-image-modal]');
+                const chatImagePreview = chatImageModal ? chatImageModal.querySelector('[data-chat-image-preview]') : null;
                 let unreadNotifications = 0;
                 let knownNotificationKeys = new Set();
                 let notificationItems = [];
@@ -1610,6 +1760,51 @@
 
                     adminChatPanel.dataset.adminChatStatus = normalizeChatState(state);
                 };
+
+                const openChatImageModal = function (src) {
+                    if (!chatImageModal || !chatImagePreview || !src) {
+                        return;
+                    }
+
+                    chatImagePreview.src = src;
+                    chatImageModal.classList.add('open');
+                    document.body.style.overflow = 'hidden';
+                };
+
+                const closeChatImageModal = function () {
+                    if (!chatImageModal || !chatImagePreview) {
+                        return;
+                    }
+
+                    chatImageModal.classList.remove('open');
+                    chatImagePreview.src = '';
+                    document.body.style.overflow = '';
+                };
+
+                document.addEventListener('click', function (event) {
+                    const imageOpenTrigger = event.target.closest('[data-chat-image-open]');
+                    if (imageOpenTrigger) {
+                        const imageSrc = imageOpenTrigger.getAttribute('data-chat-image-src') || '';
+                        if (imageSrc !== '') {
+                            openChatImageModal(imageSrc);
+                        }
+                        return;
+                    }
+
+                    if (!chatImageModal || !chatImageModal.classList.contains('open')) {
+                        return;
+                    }
+
+                    if (event.target === chatImageModal || event.target.closest('[data-chat-image-close]')) {
+                        closeChatImageModal();
+                    }
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape' && chatImageModal && chatImageModal.classList.contains('open')) {
+                        closeChatImageModal();
+                    }
+                });
 
                 const showChatRequestToast = function (message) {
                     let stack = document.getElementById('admin-chat-toast-stack');
@@ -1796,6 +1991,8 @@
 
                 chatForms.forEach(function (form) {
                     const textarea = form.querySelector('textarea[name="message"]');
+                    const attachmentInput = form.querySelector('input[name="attachment"]');
+                    const attachmentNameLine = form.querySelector('[data-chat-attachment-name]');
                     const chatSection = form.closest('.p-4');
                     const chatList = chatSection ? chatSection.querySelector('[data-chat-list]') : null;
                     const chatEndpoint = chatList ? chatList.dataset.chatEndpoint : '';
@@ -1804,6 +2001,38 @@
                     if (!textarea || !chatList || chatEndpoint === '') {
                         return;
                     }
+
+                    const refreshAttachmentLabel = function () {
+                        if (!attachmentNameLine || !attachmentInput) {
+                            return;
+                        }
+
+                        const file = attachmentInput.files && attachmentInput.files[0] ? attachmentInput.files[0] : null;
+                        if (!file) {
+                            attachmentNameLine.textContent = '';
+                            attachmentNameLine.classList.add('hidden');
+                            return;
+                        }
+
+                        attachmentNameLine.textContent = 'Attached image: ' + file.name;
+                        attachmentNameLine.classList.remove('hidden');
+                    };
+
+                    const setAttachmentFile = function (file) {
+                        if (!attachmentInput || !file) {
+                            return false;
+                        }
+
+                        try {
+                            const dataTransfer = new DataTransfer();
+                            dataTransfer.items.add(file);
+                            attachmentInput.files = dataTransfer.files;
+                            refreshAttachmentLabel();
+                            return true;
+                        } catch (error) {
+                            return false;
+                        }
+                    };
 
                     const renderMessages = function (messages, scrollToBottom) {
                         if (!Array.isArray(messages) || messages.length === 0) {
@@ -1816,11 +2045,17 @@
                             const senderLabel = escapeHtml(message.sender_label || '');
                             const createdAt = escapeHtml(message.created_at_label || '');
                             const text = escapeHtml(message.message || '').replace(/\n/g, '<br>');
+                            const attachmentUrl = escapeHtml(String(message.attachment_url || ''));
+                            const textHtml = text !== '' ? ('<p class="srf-chat-text">' + text + '</p>') : '';
+                            const attachmentHtml = attachmentUrl !== ''
+                                ? ('<button type="button" class="srf-chat-attachment" data-chat-image-open data-chat-image-src="' + attachmentUrl + '" aria-label="View chat image"><img src="' + attachmentUrl + '" alt="Chat attachment" loading="lazy"></button>')
+                                : '';
 
                             return '<div class="srf-chat-item ' + senderType + '">' +
                                 '<div class="srf-chat-bubble ' + senderType + '">' +
                                 '<p class="srf-chat-meta">' + senderLabel + ' • ' + createdAt + '</p>' +
-                                '<p class="srf-chat-text">' + text + '</p>' +
+                                textHtml +
+                                attachmentHtml +
                                 '</div>' +
                                 '</div>';
                         }).join('');
@@ -1876,7 +2111,9 @@
 
                     const sendMessage = async function () {
                         const messageValue = textarea.value.trim();
-                        if (messageValue === '') {
+                        const attachmentFile = attachmentInput && attachmentInput.files ? attachmentInput.files[0] : null;
+
+                        if (messageValue === '' && !attachmentFile) {
                             return;
                         }
 
@@ -1885,30 +2122,40 @@
                             errorBox.textContent = '';
                         }
 
-                        const body = new URLSearchParams();
-                        body.set('_token', csrfToken);
-                        body.set('message', messageValue);
+                        const body = new FormData();
+                        body.append('_token', csrfToken);
+                        if (messageValue !== '') {
+                            body.append('message', messageValue);
+                        }
+                        if (attachmentFile) {
+                            body.append('attachment', attachmentFile);
+                        }
 
                         try {
                             const response = await fetch(form.action, {
                                 method: 'POST',
                                 headers: {
                                     'Accept': 'application/json',
-                                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                                     'X-Requested-With': 'XMLHttpRequest',
                                 },
-                                body: body.toString(),
+                                body: body,
                             });
 
                             if (response.ok) {
                                 textarea.value = '';
+                                if (attachmentInput) {
+                                    attachmentInput.value = '';
+                                    refreshAttachmentLabel();
+                                }
                                 await loadMessages(true);
                                 return;
                             }
 
                             if (response.status === 422) {
                                 const payload = await response.json();
-                                const messageError = payload?.errors?.message?.[0] || 'Unable to send message.';
+                                const messageError = payload?.errors?.message?.[0]
+                                    || payload?.errors?.attachment?.[0]
+                                    || 'Unable to send message.';
 
                                 if (errorBox) {
                                     errorBox.textContent = messageError;
@@ -1932,6 +2179,31 @@
                         if (event.key === 'Enter' && !event.shiftKey) {
                             event.preventDefault();
                             sendMessage();
+                        }
+                    });
+
+                    if (attachmentInput) {
+                        attachmentInput.addEventListener('change', refreshAttachmentLabel);
+                        refreshAttachmentLabel();
+                    }
+
+                    textarea.addEventListener('paste', function (event) {
+                        const clipboardData = event.clipboardData;
+                        if (!clipboardData || !clipboardData.items) {
+                            return;
+                        }
+
+                        for (let i = 0; i < clipboardData.items.length; i += 1) {
+                            const item = clipboardData.items[i];
+                            if (!item || typeof item.type !== 'string' || !item.type.startsWith('image/')) {
+                                continue;
+                            }
+
+                            const file = item.getAsFile();
+                            if (file && setAttachmentFile(file)) {
+                                event.preventDefault();
+                            }
+                            break;
                         }
                     });
 

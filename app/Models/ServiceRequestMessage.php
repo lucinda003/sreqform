@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
     'sender_user_id',
     'sender_type',
     'message',
+    'attachment_path',
 ])]
 class ServiceRequestMessage extends Model
 {

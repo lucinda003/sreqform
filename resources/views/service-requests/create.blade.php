@@ -673,7 +673,8 @@
                                 Please clearly write down the details of the request.
                             </div>
                             <div class="srf-desc-body">
-                                <textarea name="description_request" class="srf-textarea" required>{{ old('description_request') }}</textarea>
+                                <textarea name="description_request" class="srf-textarea" maxlength="2000" required>{{ old('description_request') }}</textarea>
+                                <p class="mt-1 text-[11px] text-slate-500" data-description-char-count>0/2000 characters</p>
                                 <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
 
                                 <div class="srf-upload-wrap">
@@ -975,6 +976,37 @@
 
             officeInput.addEventListener('change', syncAddress);
             officeInput.addEventListener('blur', syncAddress);
+
+            const initAdaptiveDescriptionFont = function () {
+                const descriptionTextarea = document.querySelector('textarea[name="description_request"]');
+                const counter = document.querySelector('[data-description-char-count]');
+                const maxChars = 2000;
+                if (!descriptionTextarea) return;
+
+                descriptionTextarea.setAttribute('maxlength', String(maxChars));
+
+                const getFontSize = function (valueLength) {
+                    if (valueLength <= 280) return 20;
+                    if (valueLength <= 900) return 16;
+                    if (valueLength <= 1500) return 15;
+                    return 14;
+                };
+
+                const applyAdaptiveSize = function () {
+                    const length = descriptionTextarea.value.length;
+                    const size = getFontSize(length);
+                    descriptionTextarea.style.fontSize = size + 'px';
+                    descriptionTextarea.style.lineHeight = size >= 14 ? '1.45' : '1.35';
+                    if (counter) {
+                        counter.textContent = length + '/' + maxChars + ' characters';
+                    }
+                };
+
+                descriptionTextarea.addEventListener('input', applyAdaptiveSize);
+                applyAdaptiveSize();
+            };
+
+            initAdaptiveDescriptionFont();
 
             const initSignatureInput = function () {
                 const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');

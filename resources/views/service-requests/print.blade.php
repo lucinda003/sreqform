@@ -535,9 +535,11 @@
 
     <div class="screen-shell">
     <div class="sheet">
-        <div class="controls">
-            <button class="btn" onclick="window.print()">Print</button>
-        </div>
+        @if (! request()->boolean('embedded'))
+            <div class="controls">
+                <button class="btn" onclick="window.print()">Print</button>
+            </div>
+        @endif
 
         <table class="print-header">
             <tr>
@@ -600,7 +602,7 @@
                 <td style="padding:0;">
                     <table style="width:95%; border-collapse:collapse; table-layout:fixed; border:0;">
                         <tr>
-                            <td class="noborder" style="width:31%; padding:4px 6px; vertical-align:top;">5) Name of Contact Person :</td>
+                            <td class="noborder" style="width:31%; padding:4    px 6px; vertical-align:top;">5) Name of Contact Person :</td>
                             <td class="noborder center" style="width:17%; border-bottom:1px solid #111827 !important;">{{ $serviceRequest->contact_last_name }}</td>
                             <td class="noborder center" style="width:17%; border-bottom:1px solid #111827 !important;">{{ $serviceRequest->contact_first_name }}</td>
                             <td class="noborder center" style="width:17%; border-bottom:1px solid #111827 !important;">{{ $serviceRequest->contact_middle_name ?: '' }}</td>
@@ -639,7 +641,24 @@
         <div class="desc-title">
             12) <span class="bold">DESCRIPTION OF REQUEST</span> : <span style="font-style:italic;">(Please clearly write down the details of the request.)</span>
         </div>
-        <div class="desc-body">{{ \Illuminate\Support\Str::limit((string) $serviceRequest->description_request, 1800, '...') }}</div>
+        @php
+            $descriptionPreview = \Illuminate\Support\Str::limit((string) $serviceRequest->description_request, 1800, '...');
+            $descriptionLength = \Illuminate\Support\Str::length($descriptionPreview);
+            $descriptionFontSize = '13px';
+            $descriptionLineHeight = '1.35';
+
+            if ($descriptionLength > 1500) {
+                $descriptionFontSize = '10px';
+                $descriptionLineHeight = '1.2';
+            } elseif ($descriptionLength > 1200) {
+                $descriptionFontSize = '11px';
+                $descriptionLineHeight = '1.24';
+            } elseif ($descriptionLength > 900) {
+                $descriptionFontSize = '12px';
+                $descriptionLineHeight = '1.3';
+            }
+        @endphp
+        <div class="desc-body" style="font-size: {{ $descriptionFontSize }}; line-height: {{ $descriptionLineHeight }};">{{ $descriptionPreview }}</div>
 
         <table style="margin-top:0;">
             <tr>
@@ -649,18 +668,18 @@
                         <div style="flex:1;">
                             <div style="min-height:56px; margin-top:4px;">
                                 @php
-                                    $approvedSignatureDataUri = '';
-                                    $approvedSignaturePath = trim((string) ($serviceRequest->approved_by_signature ?? ''));
-
-                                    if ($approvedSignaturePath !== '' && \Illuminate\Support\Facades\Storage::disk('public')->exists($approvedSignaturePath)) {
-                                        $approvedSignatureMime = \Illuminate\Support\Facades\Storage::disk('public')->mimeType($approvedSignaturePath) ?: 'image/png';
-                                        $approvedSignatureDataUri = 'data:' . $approvedSignatureMime . ';base64,' . base64_encode((string) \Illuminate\Support\Facades\Storage::disk('public')->get($approvedSignaturePath));
-                                    }
+                                    $approvedSignatureUrl = trim((string) ($serviceRequest->approved_by_signature ?? '')) !== ''
+                                        ? route('service-requests.signature.approved', [
+                                            'serviceRequest' => $serviceRequest,
+                                            'reference_code' => $serviceRequest->reference_code,
+                                            'token' => (string) ($signatureViewToken ?? ''),
+                                        ])
+                                        : '';
                                 @endphp
 
-                                @if ($approvedSignatureDataUri !== '')
+                                @if ($approvedSignatureUrl !== '')
                                     <div style="width:100%; min-height:34px; margin-bottom:0; display:flex; align-items:flex-end; justify-content:center;">
-                                        <img src="{{ $approvedSignatureDataUri }}" alt="Signature" draggable="false" style="max-height:60px; max-width:220px; object-fit:contain; display:block; margin:0 auto; margin-bottom:-10px; user-select:none; -webkit-user-drag:none;">
+                                        <img src="{{ $approvedSignatureUrl }}" alt="Signature" draggable="false" style="max-height:60px; max-width:220px; object-fit:contain; display:block; margin:0 auto; margin-bottom:-10px; user-select:none; -webkit-user-drag:none;">
                                     </div>
                                 @else
                                     <div style="min-height:34px;"></div>
@@ -743,7 +762,7 @@
             <tr>
                 <td style="padding:1px 6px; border-top:0 !important;">
                     <div class="line-value2 center">{{ \Illuminate\Support\Str::limit((string) ($serviceRequest->noted_by_name ?: ''), 70, '...') }}</div>
-                    <div class="center" style="padding-top:1px;">Name and Signature of Supervisor</div>
+                    <div class="center" style="padding-top:1px;">Name of Supervisor</div>
                 </td>
                 <td style="padding:1px 6px; border-top:0 !important;">
                     <div class="line-value2 center">{{ \Illuminate\Support\Str::limit((string) ($serviceRequest->noted_by_position ?: ''), 60, '...') }}</div>

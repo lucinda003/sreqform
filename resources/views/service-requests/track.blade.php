@@ -243,6 +243,72 @@
 
     .trk-btn-right { display: flex; gap: 8px; flex-wrap: wrap; }
 
+    .trk-print-preview {
+        position: fixed;
+        inset: 0;
+        z-index: 90;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+    }
+
+    .trk-print-preview.show {
+        display: flex;
+    }
+
+    .trk-print-preview-backdrop {
+        position: absolute;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.52);
+    }
+
+    .trk-print-preview-panel {
+        position: relative;
+        width: min(980px, 96vw);
+        height: min(88vh, 920px);
+        background: #fff;
+        border: 1px solid #cbd5e1;
+        border-radius: 12px;
+        box-shadow: 0 28px 50px rgba(15, 23, 42, 0.35);
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        z-index: 1;
+    }
+
+    .trk-print-preview-head {
+        padding: 0.65rem 0.8rem;
+        border-bottom: 1px solid #e2e8f0;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        background: #f8fafc;
+    }
+
+    .trk-print-preview-title {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        text-transform: uppercase;
+        color: #0f172a;
+    }
+
+    .trk-print-preview-actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+
+    .trk-print-preview-frame {
+        width: 100%;
+        height: 100%;
+        border: 0;
+        background: #fff;
+    }
+
     /* ── Summary card (no request found / basic) ── */
     .trk-summary-card {
         border: 1px solid #e2e8f0;
@@ -320,6 +386,75 @@
         color: #0f172a;
         white-space: pre-wrap;
         word-break: break-word;
+    }
+
+    .trk-chat-attachment {
+        margin-top: 0.45rem;
+        display: inline-block;
+        max-width: min(340px, 100%);
+        border-radius: 0.55rem;
+        overflow: hidden;
+        border: 1px solid #cbd5e1;
+        background: #fff;
+        padding: 0;
+        cursor: pointer;
+    }
+
+    .trk-chat-attachment img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-height: 280px;
+        object-fit: cover;
+        cursor: pointer;
+    }
+
+    .trk-image-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 120;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1rem;
+        background: rgba(2, 6, 23, 0.82);
+        backdrop-filter: blur(2px);
+    }
+
+    .trk-image-modal.open {
+        display: flex;
+    }
+
+    .trk-image-modal-content {
+        position: relative;
+        width: 100%;
+        max-width: 920px;
+    }
+
+    .trk-image-modal-content img {
+        display: block;
+        width: 100%;
+        max-height: 88vh;
+        object-fit: contain;
+        border-radius: 10px;
+        border: 1px solid rgba(255, 255, 255, 0.3);
+        background: #020617;
+    }
+
+    .trk-image-modal-close {
+        position: absolute;
+        top: -14px;
+        right: -14px;
+        width: 34px;
+        height: 34px;
+        border: 0;
+        border-radius: 999px;
+        background: #fff;
+        color: #0f172a;
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+        box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
     }
 
     .trk-chat-empty {
@@ -528,12 +663,12 @@
                     <p class="text-sm font-semibold text-slate-700">Verification required before proceeding.</p>
                     <p class="mt-1 text-xs text-slate-600">A 6-digit code will be sent to {{ $maskedTrackEmail }}.</p>
 
-                    <form method="POST" action="{{ route('service-requests.track.verify.send-code', ['referenceCode' => $serviceRequest->reference_code]) }}" class="mt-3">
+                    <form method="POST" action="{{ route('service-requests.track.verify.send-code', ['referenceCode' => $serviceRequest->reference_code]) }}" class="mt-3" data-track-lock-submit>
                         @csrf
                         <button type="submit" class="auth-login-secondary w-full">Send Code to Email</button>
                     </form>
 
-                    <form method="POST" action="{{ route('service-requests.track.verify', ['referenceCode' => $serviceRequest->reference_code]) }}" class="auth-login-form mt-3">
+                    <form method="POST" action="{{ route('service-requests.track.verify', ['referenceCode' => $serviceRequest->reference_code]) }}" class="auth-login-form mt-3" data-track-lock-submit>
                         @csrf
                         <div>
                             <label for="track_code" class="auth-login-label">Verification Code</label>
@@ -777,7 +912,7 @@
                                     </span>
                                 </button>
                             @endif
-                            <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" target="_blank" class="trk-btn trk-btn-print">
+                            <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" data-track-print-button data-track-print-url="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" class="trk-btn trk-btn-print">
                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="12" height="5" rx="1"/><path d="M4 7H2a1 1 0 00-1 1v6a1 1 0 001 1h2v3h12v-3h2a1 1 0 001-1V8a1 1 0 00-1-1h-2"/></svg>
                                 Print Status Report
                             </a>
@@ -805,7 +940,7 @@
                 </div>
 
                 @if (! $chatLocked)
-                    <div class="trk-chat-widget" data-chat-widget>
+                    <div class="trk-chat-widget {{ $chatAccepted ? '' : 'hidden' }}" data-chat-widget>
                         <div class="trk-chat-widget-head">
                             <div>
                                 <p class="trk-chat-widget-title">Contact Admin Personnel</p>
@@ -826,7 +961,14 @@
                                     <div class="trk-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
                                         <div class="trk-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
                                             <p class="trk-chat-meta">{{ $senderLabel }} • {{ $chatMessage->created_at?->format('M j, Y g:i A') }}</p>
-                                            <p class="trk-chat-text">{{ $chatMessage->message }}</p>
+                                                @if (filled($chatMessage->message))
+                                                    <p class="trk-chat-text">{{ $chatMessage->message }}</p>
+                                                @endif
+                                                @if (filled($chatMessage->attachment_path))
+                                                    <button type="button" class="trk-chat-attachment" data-chat-image-open data-chat-image-src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}" aria-label="View chat image">
+                                                        <img src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}" alt="Chat attachment" loading="lazy">
+                                                    </button>
+                                                @endif
                                         </div>
                                     </div>
                                 @empty
@@ -834,13 +976,16 @@
                                 @endforelse
                             </div>
 
-                            <form method="POST" action="{{ route('service-requests.track.messages.store', ['referenceCode' => $serviceRequest->reference_code]) }}" data-chat-enter-form>
+                                <form method="POST" action="{{ route('service-requests.track.messages.store', ['referenceCode' => $serviceRequest->reference_code]) }}" data-chat-enter-form enctype="multipart/form-data">
                                 @csrf
-                                <textarea name="message" class="trk-chat-input" placeholder="Type your message for admin personnel..." maxlength="1000" required>{{ old('message') }}</textarea>
+                                    <textarea name="message" class="trk-chat-input" placeholder="Type your message for admin personnel..." maxlength="1000">{{ old('message') }}</textarea>
+                                    <input type="file" name="attachment" accept="image/*" class="mt-2 block w-full text-xs text-slate-600 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:font-semibold file:text-white">
+                                    <p class="mt-1 hidden text-[11px] text-slate-500" data-chat-attachment-name></p>
                                 <x-input-error :messages="$errors->get('message')" class="mt-1" />
+                                    <x-input-error :messages="$errors->get('attachment')" class="mt-1" />
                                 <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
                                 <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new line.</p>
-                                <button type="submit" class="trk-chat-submit">Send Message</button>
+                                <button type="submit" class="trk-chat-submit">Send</button>
                             </form>
                         </div>
                     </div>
@@ -855,6 +1000,32 @@
             @endif
         </section>
     @endif
+
+    @if ($referenceCode !== '' && $serviceRequest && (! $trackAccessRequired || $trackAccessGranted))
+        <div class="trk-print-preview" data-track-print-modal>
+            <div class="trk-print-preview-backdrop" data-track-print-close></div>
+            <div class="trk-print-preview-panel" role="dialog" aria-modal="true" aria-label="Print Status Report Preview">
+                <div class="trk-print-preview-head">
+                    <p class="trk-print-preview-title">Print Status Report Preview</p>
+                    <div class="trk-print-preview-actions">
+                        <button type="button" class="trk-btn trk-btn-print" data-track-print-now>
+                            <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="12" height="5" rx="1"/><path d="M4 7H2a1 1 0 00-1 1v6a1 1 0 001 1h2v3h12v-3h2a1 1 0 001-1V8a1 1 0 00-1-1h-2"/></svg>
+                            Print
+                        </button>
+                        <button type="button" class="trk-btn trk-btn-back" data-track-print-close>Close</button>
+                    </div>
+                </div>
+                <iframe class="trk-print-preview-frame" data-track-print-frame title="Status Report Preview"></iframe>
+            </div>
+        </div>
+    @endif
+
+    <div class="trk-image-modal" data-chat-image-modal>
+        <div class="trk-image-modal-content">
+            <button type="button" class="trk-image-modal-close" data-chat-image-close aria-label="Close image preview">×</button>
+            <img src="" alt="Chat image preview" data-chat-image-preview>
+        </div>
+    </div>
 </div>
 <script>
     document.addEventListener('DOMContentLoaded', function () {
@@ -868,6 +1039,104 @@
         const chatOpenButtons = document.querySelectorAll('[data-chat-toggle]');
         const chatCloseButton = document.querySelector('[data-chat-close]');
         const chatStatusLine = document.querySelector('[data-chat-request-status]');
+        const chatOpenPrefKey = 'track-chat-open-' + (trackReferenceCode !== '' ? trackReferenceCode : 'default');
+        const lockSubmitForms = document.querySelectorAll('[data-track-lock-submit]');
+        const chatImageModal = document.querySelector('[data-chat-image-modal]');
+        const chatImagePreview = chatImageModal ? chatImageModal.querySelector('[data-chat-image-preview]') : null;
+
+        lockSubmitForms.forEach(function (form) {
+            form.addEventListener('submit', function (event) {
+                const submitButton = form.querySelector('button[type="submit"], input[type="submit"]');
+                if (!submitButton) {
+                    return;
+                }
+
+                if (form.dataset.submitting === '1') {
+                    event.preventDefault();
+                    return;
+                }
+
+                form.dataset.submitting = '1';
+                submitButton.disabled = true;
+                submitButton.classList.add('opacity-70', 'cursor-not-allowed');
+
+                if (submitButton.tagName === 'BUTTON') {
+                    submitButton.dataset.originalLabel = submitButton.innerHTML;
+                    submitButton.innerHTML = 'Please wait...';
+                } else {
+                    submitButton.dataset.originalLabel = submitButton.value;
+                    submitButton.value = 'Please wait...';
+                }
+            });
+        });
+
+        const initTrackPrintPreview = function () {
+            const printButtons = document.querySelectorAll('[data-track-print-button]');
+            const printModal = document.querySelector('[data-track-print-modal]');
+            const previewFrame = printModal ? printModal.querySelector('[data-track-print-frame]') : null;
+            const printNowButton = printModal ? printModal.querySelector('[data-track-print-now]') : null;
+            const closeButtons = printModal ? printModal.querySelectorAll('[data-track-print-close]') : [];
+
+            if (printButtons.length === 0 || !printModal || !previewFrame) {
+                return;
+            }
+
+            let currentPreviewUrl = '';
+
+            const openPreview = function (baseUrl) {
+                currentPreviewUrl = baseUrl;
+                const ts = Date.now();
+                previewFrame.src = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'embedded=1&preview_ts=' + ts;
+                printModal.classList.add('show');
+                document.body.style.overflow = 'hidden';
+            };
+
+            const closePreview = function () {
+                printModal.classList.remove('show');
+                previewFrame.src = 'about:blank';
+                document.body.style.overflow = '';
+            };
+
+            printButtons.forEach(function (button) {
+                button.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    const baseUrl = button.dataset.trackPrintUrl || button.getAttribute('href') || '';
+                    if (baseUrl === '') {
+                        return;
+                    }
+
+                    openPreview(baseUrl);
+                });
+            });
+
+            closeButtons.forEach(function (button) {
+                button.addEventListener('click', closePreview);
+            });
+
+            document.addEventListener('keydown', function (event) {
+                if (event.key === 'Escape' && printModal.classList.contains('show')) {
+                    closePreview();
+                }
+            });
+
+            if (printNowButton) {
+                printNowButton.addEventListener('click', function () {
+                    if (!currentPreviewUrl) {
+                        return;
+                    }
+
+                    try {
+                        previewFrame.contentWindow.focus();
+                        previewFrame.contentWindow.print();
+                    } catch (error) {
+                        window.open(currentPreviewUrl + (currentPreviewUrl.includes('?') ? '&' : '?') + 'autoprint=1', '_blank');
+                    }
+                });
+            }
+        };
+
+        initTrackPrintPreview();
 
         const redirectToTrackVerification = function () {
             const params = new URLSearchParams();
@@ -914,15 +1183,73 @@
 
         const openChatWidget = function () {
             if (chatWidget) {
+                chatWidget.classList.remove('hidden');
                 chatWidget.classList.add('open');
+                try {
+                    window.localStorage.setItem(chatOpenPrefKey, '1');
+                } catch (error) {
+                    // Ignore storage write errors.
+                }
             }
         };
 
         const closeChatWidget = function () {
             if (chatWidget) {
                 chatWidget.classList.remove('open');
+                try {
+                    window.localStorage.setItem(chatOpenPrefKey, '0');
+                } catch (error) {
+                    // Ignore storage write errors.
+                }
             }
         };
+
+        const shouldReopenChatWidget = function () {
+            try {
+                return window.localStorage.getItem(chatOpenPrefKey) === '1';
+            } catch (error) {
+                return false;
+            }
+        };
+
+        const openChatImageModal = function (src) {
+            if (!chatImageModal || !chatImagePreview || !src) {
+                return;
+            }
+
+            chatImagePreview.src = src;
+            chatImageModal.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        };
+
+        const closeChatImageModal = function () {
+            if (!chatImageModal || !chatImagePreview) {
+                return;
+            }
+
+            chatImageModal.classList.remove('open');
+            chatImagePreview.src = '';
+            document.body.style.overflow = '';
+        };
+
+        document.addEventListener('click', function (event) {
+            const imageOpenTrigger = event.target.closest('[data-chat-image-open]');
+            if (imageOpenTrigger) {
+                const imageSrc = imageOpenTrigger.getAttribute('data-chat-image-src') || '';
+                if (imageSrc !== '') {
+                    openChatImageModal(imageSrc);
+                }
+                return;
+            }
+
+            if (!chatImageModal || !chatImageModal.classList.contains('open')) {
+                return;
+            }
+
+            if (event.target === chatImageModal || event.target.closest('[data-chat-image-close]')) {
+                closeChatImageModal();
+            }
+        });
 
         const setChatStatusLine = function (state, message) {
             if (!chatStatusLine) {
@@ -990,6 +1317,15 @@
 
             setChatStatusLine(normalizedState, customMessage || defaultStatusMessage(normalizedState));
 
+            if (chatWidget) {
+                if (normalizedState === 'accepted') {
+                    chatWidget.classList.remove('hidden');
+                } else {
+                    closeChatWidget();
+                    chatWidget.classList.add('hidden');
+                }
+            }
+
             if (autoOpen && normalizedState === 'accepted') {
                 openChatWidget();
             }
@@ -1039,6 +1375,10 @@
         if (chatOpenButtons.length > 0) {
             const initialState = normalizeChatState(String(chatOpenButtons[0].dataset.chatAccess || 'none').toLowerCase());
             applyChatAccessState(initialState, null, false);
+
+            if (initialState === 'accepted' && shouldReopenChatWidget()) {
+                openChatWidget();
+            }
         }
 
         chatOpenButtons.forEach(function (button) {
@@ -1069,14 +1409,67 @@
 
         chatForms.forEach(function (form) {
             const textarea = form.querySelector('textarea[name="message"]');
+            const attachmentInput = form.querySelector('input[name="attachment"]');
+            const attachmentNameLine = form.querySelector('[data-chat-attachment-name]');
             const chatCard = form.closest('.trk-chat-card');
             const chatList = chatCard ? chatCard.querySelector('[data-chat-list]') : null;
             const chatEndpoint = chatList ? chatList.dataset.chatEndpoint : '';
             const errorBox = form.querySelector('[data-chat-error]');
+            let hasLoadedMessages = false;
+            let latestIncomingMessageId = 0;
 
             if (!textarea || !chatList || chatEndpoint === '') {
                 return;
             }
+
+            const getLatestIncomingMessageId = function (messages) {
+                if (!Array.isArray(messages)) {
+                    return 0;
+                }
+
+                return messages.reduce(function (maxId, message) {
+                    const senderType = String(message.sender_type || '').toLowerCase();
+                    const messageId = Number(message.id || 0);
+
+                    if (senderType === 'admin' && Number.isFinite(messageId) && messageId > maxId) {
+                        return messageId;
+                    }
+
+                    return maxId;
+                }, 0);
+            };
+
+            const refreshAttachmentLabel = function () {
+                if (!attachmentNameLine || !attachmentInput) {
+                    return;
+                }
+
+                const file = attachmentInput.files && attachmentInput.files[0] ? attachmentInput.files[0] : null;
+                if (!file) {
+                    attachmentNameLine.textContent = '';
+                    attachmentNameLine.classList.add('hidden');
+                    return;
+                }
+
+                attachmentNameLine.textContent = 'Attached image: ' + file.name;
+                attachmentNameLine.classList.remove('hidden');
+            };
+
+            const setAttachmentFile = function (file) {
+                if (!attachmentInput || !file) {
+                    return false;
+                }
+
+                try {
+                    const dataTransfer = new DataTransfer();
+                    dataTransfer.items.add(file);
+                    attachmentInput.files = dataTransfer.files;
+                    refreshAttachmentLabel();
+                    return true;
+                } catch (error) {
+                    return false;
+                }
+            };
 
             const renderMessages = function (messages, scrollToBottom) {
                 if (!Array.isArray(messages) || messages.length === 0) {
@@ -1089,11 +1482,17 @@
                     const senderLabel = escapeHtml(message.sender_label || '');
                     const createdAt = escapeHtml(message.created_at_label || '');
                     const text = escapeHtml(message.message || '').replace(/\n/g, '<br>');
+                    const attachmentUrl = escapeHtml(String(message.attachment_url || ''));
+                    const textHtml = text !== '' ? ('<p class="trk-chat-text">' + text + '</p>') : '';
+                    const attachmentHtml = attachmentUrl !== ''
+                        ? ('<button type="button" class="trk-chat-attachment" data-chat-image-open data-chat-image-src="' + attachmentUrl + '" aria-label="View chat image"><img src="' + attachmentUrl + '" alt="Chat attachment" loading="lazy"></button>')
+                        : '';
 
                     return '<div class="trk-chat-item ' + senderType + '">' +
                         '<div class="trk-chat-bubble ' + senderType + '">' +
                         '<p class="trk-chat-meta">' + senderLabel + ' • ' + createdAt + '</p>' +
-                        '<p class="trk-chat-text">' + text + '</p>' +
+                        textHtml +
+                        attachmentHtml +
                         '</div>' +
                         '</div>';
                 }).join('');
@@ -1126,7 +1525,16 @@
                         : 'none';
 
                     applyChatAccessState(polledState, null, currentState !== 'accepted' && polledState === 'accepted');
-                    renderMessages(payload.messages || [], scrollToBottom);
+                            const messages = Array.isArray(payload.messages) ? payload.messages : [];
+                            const nextIncomingMessageId = getLatestIncomingMessageId(messages);
+
+                            if (hasLoadedMessages && nextIncomingMessageId > latestIncomingMessageId && chatWidget && !chatWidget.classList.contains('open')) {
+                                openChatWidget();
+                            }
+
+                            latestIncomingMessageId = Math.max(latestIncomingMessageId, nextIncomingMessageId);
+                            hasLoadedMessages = true;
+                            renderMessages(messages, scrollToBottom);
                 } catch (error) {
                     // Keep the last rendered list if background refresh fails.
                 }
@@ -1134,7 +1542,9 @@
 
             const sendMessage = async function () {
                 const messageValue = textarea.value.trim();
-                if (messageValue === '') {
+                const attachmentFile = attachmentInput && attachmentInput.files ? attachmentInput.files[0] : null;
+
+                if (messageValue === '' && !attachmentFile) {
                     return;
                 }
 
@@ -1143,23 +1553,31 @@
                     errorBox.textContent = '';
                 }
 
-                const body = new URLSearchParams();
-                body.set('_token', csrfToken);
-                body.set('message', messageValue);
+                const body = new FormData();
+                body.append('_token', csrfToken);
+                if (messageValue !== '') {
+                    body.append('message', messageValue);
+                }
+                if (attachmentFile) {
+                    body.append('attachment', attachmentFile);
+                }
 
                 try {
                     const response = await fetch(form.action, {
                         method: 'POST',
                         headers: {
                             'Accept': 'application/json',
-                            'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
                             'X-Requested-With': 'XMLHttpRequest',
                         },
-                        body: body.toString(),
+                        body: body,
                     });
 
                     if (response.ok) {
                         textarea.value = '';
+                        if (attachmentInput) {
+                            attachmentInput.value = '';
+                            refreshAttachmentLabel();
+                        }
                         openChatWidget();
                         await loadMessages(true);
                         return;
@@ -1167,7 +1585,9 @@
 
                     if (response.status === 422) {
                         const payload = await response.json();
-                        const messageError = payload?.errors?.message?.[0] || 'Unable to send message.';
+                        const messageError = payload?.errors?.message?.[0]
+                            || payload?.errors?.attachment?.[0]
+                            || 'Unable to send message.';
 
                         if (errorBox) {
                             errorBox.textContent = messageError;
@@ -1206,6 +1626,31 @@
                 }
             });
 
+            if (attachmentInput) {
+                attachmentInput.addEventListener('change', refreshAttachmentLabel);
+                refreshAttachmentLabel();
+            }
+
+            textarea.addEventListener('paste', function (event) {
+                const clipboardData = event.clipboardData;
+                if (!clipboardData || !clipboardData.items) {
+                    return;
+                }
+
+                for (let i = 0; i < clipboardData.items.length; i += 1) {
+                    const item = clipboardData.items[i];
+                    if (!item || typeof item.type !== 'string' || !item.type.startsWith('image/')) {
+                        continue;
+                    }
+
+                    const file = item.getAsFile();
+                    if (file && setAttachmentFile(file)) {
+                        event.preventDefault();
+                    }
+                    break;
+                }
+            });
+
             loadMessages(true);
             window.setInterval(function () {
                 loadMessages(false);
@@ -1215,6 +1660,12 @@
         if (chatWidget && (document.querySelector('[data-chat-error]:not(.hidden)') || @json(old('message', '')) !== '')) {
             openChatWidget();
         }
+
+        document.addEventListener('keydown', function (event) {
+            if (event.key === 'Escape' && chatImageModal && chatImageModal.classList.contains('open')) {
+                closeChatImageModal();
+            }
+        });
     });
 </script>
 </x-guest-layout>

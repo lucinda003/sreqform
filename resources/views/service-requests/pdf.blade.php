@@ -133,12 +133,10 @@
             <td>
                 <span class="label">Signature</span>
                 @php
-                    $signatureFile = !empty($serviceRequest->approved_by_signature)
-                        ? public_path('storage/' . ltrim($serviceRequest->approved_by_signature, '/'))
-                        : null;
+                    $approvedSignatureDataUri = \App\Support\EncryptedSignature::dataUriFromPath((string) ($serviceRequest->approved_by_signature ?? ''));
                 @endphp
-                @if ($signatureFile && file_exists($signatureFile))
-                    <div class="value"><img src="{{ $signatureFile }}" alt="Signature" style="max-height:48px; max-width:180px;"></div>
+                @if ($approvedSignatureDataUri !== '')
+                    <div class="value"><img src="{{ $approvedSignatureDataUri }}" alt="Signature" style="max-height:48px; max-width:180px;"></div>
                 @else
                     <div class="value">__________________________</div>
                 @endif
@@ -197,11 +195,7 @@
             </td>
         </tr>
         <tr>
-            <td>
-                <span class="label">Signature</span>
-                <div class="value">__________________________</div>
-            </td>
-            <td>
+            <td colspan="2">
                 <span class="label">15. Date Signed</span>
                 <div class="value">{{ optional($serviceRequest->noted_by_date_signed)->format('F d, Y') ?: '-' }}</div>
             </td>

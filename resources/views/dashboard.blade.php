@@ -51,18 +51,22 @@
                 </div>
 
                 <div class="mt-3 flex flex-wrap gap-3">
-                    <div class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4">
+                    <a href="{{ route('service-requests.index', ['status' => 'pending']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Pending</p>
                         <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($pendingRequests) }}</p>
-                    </div>
-                    <div class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4">
+                    </a>
+                    <a href="{{ route('service-requests.index', ['status' => 'checking']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-sky-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Checking</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($checkingRequests) }}</p>
+                    </a>
+                    <a href="{{ route('service-requests.index', ['status' => 'approved']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Approved</p>
                         <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($approvedRequests) }}</p>
-                    </div>
-                    <div class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4">
+                    </a>
+                    <a href="{{ route('service-requests.index', ['status' => 'rejected']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-rose-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Rejected</p>
                         <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($rejectedRequests) }}</p>
-                    </div>
+                    </a>
                 </div>
             </div>
 
@@ -87,11 +91,11 @@
                             <tbody>
                                 @forelse ($recentRequests as $request)
                                     <tr class="border-t border-slate-200/90 hover:bg-slate-50">
-                                        <td class="py-3 pe-4 font-semibold text-slate-900 break-all">
+                                        <td class="py-3 pe-4 font-semibold text-slate-900 whitespace-nowrap">
                                             <a href="{{ route('service-requests.show', $request) }}" class="auth-link">{{ $request->reference_code }}</a>
                                         </td>
-                                        <td class="py-3 pe-4 text-slate-700 break-all">{{ $request->office }}</td>
-                                        <td class="py-3 pe-4 text-slate-700 break-all">{{ $request->contact_last_name }}, {{ $request->contact_first_name }}</td>
+                                        <td class="py-3 pe-4 text-slate-700">{{ $request->office }}</td>
+                                        <td class="py-3 pe-4 text-slate-700">{{ $request->contact_last_name }}, {{ $request->contact_first_name }}</td>
                                         <td class="py-3 pe-4">
                                             @php
                                                 $statusClasses = match ($request->status) {

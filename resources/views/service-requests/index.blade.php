@@ -2,7 +2,9 @@
     <x-slot name="header" style="display:none;"></x-slot>
 
     @php
-        $isArchiveView = ($statusFilter ?? '') === 'archived';
+        $statusFilterValue = trim((string) ($statusFilter ?? ''));
+        $isExplicitStatusFilter = in_array($statusFilterValue, ['pending', 'checking', 'approved', 'rejected', 'archived'], true);
+        $isArchiveView = in_array($statusFilterValue, ['archived', 'approved', 'rejected'], true);
         $searchQuery = trim((string) ($search ?? ''));
         $chatFilter = trim((string) ($chatRequestFilter ?? ''));
 
@@ -22,7 +24,10 @@
             $archiveParams['chat_request'] = $chatFilter;
         }
 
-        $clearParams = $isArchiveView ? ['status' => 'archived'] : [];
+        $clearParams = [];
+        if ($isExplicitStatusFilter) {
+            $clearParams['status'] = $statusFilterValue;
+        }
         if ($chatFilter !== '') {
             $clearParams['chat_request'] = $chatFilter;
         }
@@ -54,8 +59,8 @@
         </div>
 
         <form method="GET" action="{{ route('service-requests.index') }}" class="mb-4 flex flex-wrap items-center gap-2" data-srf-auto-search-form>
-            @if ($isArchiveView)
-                <input type="hidden" name="status" value="archived">
+            @if ($isExplicitStatusFilter)
+                <input type="hidden" name="status" value="{{ $statusFilterValue }}">
             @endif
             @if ($chatFilter !== '')
                 <input type="hidden" name="chat_request" value="{{ $chatFilter }}">

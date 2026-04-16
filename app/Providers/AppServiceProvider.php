@@ -33,8 +33,8 @@ class AppServiceProvider extends ServiceProvider
             $referenceCode = $normalizeReferenceCode($request);
 
             return [
-                Limit::perMinute(3)->by('track-send-minute:' . $referenceCode . '|' . $request->ip()),
-                Limit::perMinutes(15, 8)->by('track-send-window:' . $referenceCode . '|' . $request->ip()),
+                Limit::perMinute(12)->by('track-send-minute:' . $referenceCode . '|' . $request->ip()),
+                Limit::perMinutes(15, 60)->by('track-send-window:' . $referenceCode . '|' . $request->ip()),
             ];
         });
 
@@ -42,8 +42,8 @@ class AppServiceProvider extends ServiceProvider
             $referenceCode = $normalizeReferenceCode($request);
 
             return [
-                Limit::perMinute(10)->by('track-verify-minute:' . $referenceCode . '|' . $request->ip()),
-                Limit::perMinutes(15, 30)->by('track-verify-window:' . $referenceCode . '|' . $request->ip()),
+                Limit::perMinute(30)->by('track-verify-minute:' . $referenceCode . '|' . $request->ip()),
+                Limit::perMinutes(15, 120)->by('track-verify-window:' . $referenceCode . '|' . $request->ip()),
             ];
         });
     }

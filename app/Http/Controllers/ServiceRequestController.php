@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\ServiceRequest;
 use App\Models\ServiceRequestMessage;
 use App\Models\User;
+use App\Support\EncryptedSignature;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
@@ -32,7 +33,7 @@ class ServiceRequestController extends Controller
 
         if ($statusFilter === 'archived') {
             $serviceRequestsQuery->whereIn('status', ['approved', 'rejected']);
-        } elseif (in_array($statusFilter, ['pending', 'checking'], true)) {
+        } elseif (in_array($statusFilter, ['pending', 'checking', 'approved', 'rejected'], true)) {
             $serviceRequestsQuery->where('status', $statusFilter);
         } else {
             $statusFilter = '';
@@ -512,22 +513,30 @@ class ServiceRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'message' => ['required', 'string', 'max:1000'],
+            'message' => ['nullable', 'string', 'max:1000'],
+            'attachment' => ['nullable', 'image', 'max:5120'],
         ]);
 
-        $message = trim((string) $validated['message']);
-        if ($message === '') {
+        $message = trim((string) ($validated['message'] ?? ''));
+        $attachmentFile = $request->file('attachment');
+
+        if ($message === '' && $attachmentFile === null) {
             return redirect()
                 ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
                 ->withErrors(['message' => 'Message cannot be empty.'])
                 ->withInput();
         }
 
+        $attachmentPath = $attachmentFile !== null
+            ? $attachmentFile->store('service-request-chat-attachments', 'public')
+            : null;
+
         ServiceRequestMessage::create([
             'service_request_id' => $serviceRequest->id,
             'sender_user_id' => null,
             'sender_type' => 'requestor',
             'message' => $message,
+            'attachment_path' => $attachmentPath,
         ]);
 
         if ($request->expectsJson()) {
@@ -580,7 +589,10 @@ class ServiceRequestController extends Controller
         abort_unless($this->canAccess($serviceRequest), 403);
 
         if (! $this->isChatAccepted($serviceRequest)) {
-            $errorMessage = 'Chat is not available yet. Accept the chat request first.';
+            $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+            $errorMessage = $chatStatus === 'pending'
+                ? 'Chat request is pending. Accept it first before replying.'
+                : 'Chat is disabled. Wait for the requestor to request chat again.';
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -594,22 +606,30 @@ class ServiceRequestController extends Controller
         }
 
         $validated = $request->validate([
-            'message' => ['required', 'string', 'max:1000'],
+            'message' => ['nullable', 'string', 'max:1000'],
+            'attachment' => ['nullable', 'image', 'max:5120'],
         ]);
 
-        $message = trim((string) $validated['message']);
-        if ($message === '') {
+        $message = trim((string) ($validated['message'] ?? ''));
+        $attachmentFile = $request->file('attachment');
+
+        if ($message === '' && $attachmentFile === null) {
             return redirect()
                 ->route('service-requests.edit', $serviceRequest)
                 ->withErrors(['message' => 'Message cannot be empty.'])
                 ->withInput();
         }
 
+        $attachmentPath = $attachmentFile !== null
+            ? $attachmentFile->store('service-request-chat-attachments', 'public')
+            : null;
+
         ServiceRequestMessage::create([
             'service_request_id' => $serviceRequest->id,
             'sender_user_id' => Auth::id(),
             'sender_type' => 'admin',
             'message' => $message,
+            'attachment_path' => $attachmentPath,
         ]);
 
         if ($request->expectsJson()) {
@@ -685,12 +705,66 @@ class ServiceRequestController extends Controller
         ]);
 
         if ($validated['decision'] === 'rejected') {
-            $serviceRequest->chatMessages()->delete();
+            $this->deleteChatMessagesWithAttachments($serviceRequest);
         }
 
         $statusMessage = $validated['decision'] === 'accepted'
             ? 'Chat request accepted. Messaging is now available.'
             : 'Chat request declined.';
+
+        return redirect()
+            ->route('service-requests.edit', $serviceRequest)
+            ->with('status', $statusMessage);
+    }
+
+    public function toggleAdminChat(Request $request, ServiceRequest $serviceRequest): RedirectResponse|JsonResponse
+    {
+        abort_unless($this->canAccess($serviceRequest), 403);
+
+        if ($this->isChatLockedForStatus((string) $serviceRequest->status)) {
+            $statusMessage = 'Request chat is unavailable once the request is approved or rejected.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => $statusMessage,
+                ], 403);
+            }
+
+            return redirect()
+                ->route('service-requests.edit', $serviceRequest)
+                ->with('status', $statusMessage);
+        }
+
+        $enabled = filter_var($request->input('enabled', false), FILTER_VALIDATE_BOOLEAN);
+
+        if ($enabled) {
+            $serviceRequest->update([
+                'contact_chat_status' => 'accepted',
+                'contact_chat_requested_at' => $serviceRequest->contact_chat_requested_at ?? now(),
+                'contact_chat_decided_at' => now(),
+            ]);
+
+            $statusMessage = 'Chat enabled for this request.';
+            $nextStatus = 'accepted';
+        } else {
+            $serviceRequest->update([
+                'contact_chat_status' => null,
+                'contact_chat_requested_at' => null,
+                'contact_chat_decided_at' => now(),
+            ]);
+
+            $this->deleteChatMessagesWithAttachments($serviceRequest);
+
+            $statusMessage = 'Chat turned off and chat history cleared.';
+            $nextStatus = null;
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'status' => $nextStatus,
+                'message' => $statusMessage,
+            ]);
+        }
 
         return redirect()
             ->route('service-requests.edit', $serviceRequest)
@@ -712,6 +786,7 @@ class ServiceRequestController extends Controller
 
         return view('service-requests.print', [
             'serviceRequest' => $serviceRequest,
+            'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
         ]);
     }
 
@@ -940,6 +1015,7 @@ class ServiceRequestController extends Controller
             'serviceRequest' => $serviceRequest,
             'departmentOptions' => $this->approvedDepartmentOptions(true, $currentDepartment !== '' ? $currentDepartment : null),
             'chatMessages' => $chatMessages,
+            'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
         ]);
     }
 
@@ -993,12 +1069,51 @@ class ServiceRequestController extends Controller
         return redirect()->route('service-requests.edit', $serviceRequest);
     }
 
-    public function print(ServiceRequest $serviceRequest): View
+    public function approvedSignature(Request $request, ServiceRequest $serviceRequest): Response
+    {
+        $signaturePath = trim((string) ($serviceRequest->approved_by_signature ?? ''));
+        abort_if($signaturePath === '', 404);
+
+        if (Auth::check()) {
+            abort_unless($this->canAccess($serviceRequest), 403);
+        } else {
+            $providedReferenceCode = $this->normalizeReferenceCode((string) $request->query('reference_code'));
+            $expectedReferenceCode = $this->normalizeReferenceCode((string) $serviceRequest->reference_code);
+
+            abort_if($providedReferenceCode === '' || $providedReferenceCode !== $expectedReferenceCode, 403);
+
+            if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+                abort(403);
+            }
+        }
+
+        abort_unless($this->consumeSignatureViewToken($request, $serviceRequest), 403);
+
+        $decoded = EncryptedSignature::readBinaryFromPath($signaturePath);
+        abort_unless(is_array($decoded), 404);
+
+        $mime = trim((string) ($decoded['mime'] ?? 'image/png'));
+        $binary = (string) ($decoded['binary'] ?? '');
+        abort_if($binary === '', 404);
+
+        return response($binary, 200, [
+            'Content-Type' => $mime !== '' ? $mime : 'image/png',
+            'Cache-Control' => 'no-store, no-cache, must-revalidate, max-age=0, private',
+            'Pragma' => 'no-cache',
+            'Expires' => '0',
+            'X-Content-Type-Options' => 'nosniff',
+            'Cross-Origin-Resource-Policy' => 'same-origin',
+            'Content-Disposition' => 'inline; filename="signature"',
+        ]);
+    }
+
+    public function print(Request $request, ServiceRequest $serviceRequest): View
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
         return view('service-requests.print', [
             'serviceRequest' => $serviceRequest,
+            'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
         ]);
     }
 
@@ -1070,7 +1185,7 @@ class ServiceRequestController extends Controller
         $serviceRequest->update($updates);
 
         if ($validated['status'] === 'pending' || $this->isChatLockedForStatus((string) $validated['status'])) {
-            $serviceRequest->chatMessages()->delete();
+            $this->deleteChatMessagesWithAttachments($serviceRequest);
         }
 
         $routeParams = ['serviceRequest' => $serviceRequest];
@@ -1203,6 +1318,72 @@ class ServiceRequestController extends Controller
         if ($activeAccess !== $accessMap) {
             $request->session()->put('track_access', $activeAccess);
         }
+    }
+
+    private function issueSignatureViewToken(Request $request, ServiceRequest $serviceRequest): string
+    {
+        $sessionKey = 'signature_view_tokens';
+        $nowTimestamp = now()->timestamp;
+        $tokenMap = (array) $request->session()->get($sessionKey, []);
+
+        foreach ($tokenMap as $tokenHash => $payload) {
+            $expiresAt = is_array($payload) ? (int) ($payload['expires_at'] ?? 0) : 0;
+            if ($expiresAt <= $nowTimestamp) {
+                unset($tokenMap[$tokenHash]);
+            }
+        }
+
+        $token = Str::random(64);
+        $tokenHash = hash_hmac('sha256', $token, (string) config('app.key'));
+
+        $tokenMap[$tokenHash] = [
+            'service_request_id' => (int) $serviceRequest->id,
+            'expires_at' => now()->addMinutes(3)->timestamp,
+        ];
+
+        $request->session()->put($sessionKey, $tokenMap);
+
+        return $token;
+    }
+
+    private function consumeSignatureViewToken(Request $request, ServiceRequest $serviceRequest): bool
+    {
+        $token = trim((string) $request->query('token'));
+        if ($token === '') {
+            return false;
+        }
+
+        $sessionKey = 'signature_view_tokens';
+        $nowTimestamp = now()->timestamp;
+        $tokenMap = (array) $request->session()->get($sessionKey, []);
+
+        foreach ($tokenMap as $tokenHash => $payload) {
+            $expiresAt = is_array($payload) ? (int) ($payload['expires_at'] ?? 0) : 0;
+            if ($expiresAt <= $nowTimestamp) {
+                unset($tokenMap[$tokenHash]);
+            }
+        }
+
+        $tokenHash = hash_hmac('sha256', $token, (string) config('app.key'));
+        $payload = $tokenMap[$tokenHash] ?? null;
+
+        if (! is_array($payload)) {
+            $request->session()->put($sessionKey, $tokenMap);
+
+            return false;
+        }
+
+        $requestId = (int) ($payload['service_request_id'] ?? 0);
+        if ($requestId !== (int) $serviceRequest->id) {
+            $request->session()->put($sessionKey, $tokenMap);
+
+            return false;
+        }
+
+        unset($tokenMap[$tokenHash]);
+        $request->session()->put($sessionKey, $tokenMap);
+
+        return true;
     }
 
     private function hasDescriptionPhotosColumn(): bool
@@ -1340,7 +1521,9 @@ class ServiceRequestController extends Controller
         }
 
         if ($mode === 'upload' && $uploaded !== null) {
-            $newPath = $uploaded->store('service-request-signatures', 'public');
+            $binary = (string) file_get_contents((string) $uploaded->getRealPath());
+            $mime = (string) ($uploaded->getMimeType() ?: 'image/png');
+            $newPath = EncryptedSignature::storeBinary($binary, $mime);
             $this->deleteSignatureFile($existingSignaturePath);
 
             return $newPath;
@@ -1353,9 +1536,8 @@ class ServiceRequestController extends Controller
                 $binary = base64_decode(substr($drawn, strpos($drawn, ',') + 1), true);
 
                 if ($binary !== false) {
-                    $extension = $matches[1] === 'jpeg' ? 'jpg' : 'png';
-                    $path = 'service-request-signatures/' . Str::uuid()->toString() . '.' . $extension;
-                    Storage::disk('public')->put($path, $binary);
+                    $mime = $matches[1] === 'jpeg' ? 'image/jpeg' : 'image/png';
+                    $path = EncryptedSignature::storeBinary($binary, $mime);
                     $this->deleteSignatureFile($existingSignaturePath);
 
                     return $path;
@@ -1377,6 +1559,33 @@ class ServiceRequestController extends Controller
         if (Storage::disk('public')->exists($path)) {
             Storage::disk('public')->delete($path);
         }
+    }
+
+    private function deleteChatAttachmentFile(?string $attachmentPath): void
+    {
+        $path = trim((string) $attachmentPath);
+
+        if ($path === '' || ! str_starts_with($path, 'service-request-chat-attachments/')) {
+            return;
+        }
+
+        if (Storage::disk('public')->exists($path)) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function deleteChatMessagesWithAttachments(ServiceRequest $serviceRequest): void
+    {
+        $attachmentPaths = $serviceRequest->chatMessages()
+            ->whereNotNull('attachment_path')
+            ->pluck('attachment_path')
+            ->all();
+
+        foreach ($attachmentPaths as $attachmentPath) {
+            $this->deleteChatAttachmentFile(is_string($attachmentPath) ? $attachmentPath : null);
+        }
+
+        $serviceRequest->chatMessages()->delete();
     }
 
     private function validatedKmitsData(Request $request): array
@@ -1549,12 +1758,17 @@ class ServiceRequestController extends Controller
                 $senderLabel = $isAdminMessage
                     ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
                     : 'Requestor';
+                $attachmentPath = trim((string) ($chatMessage->attachment_path ?? ''));
+                $attachmentUrl = $attachmentPath !== ''
+                    ? ('/storage/' . ltrim($attachmentPath, '/'))
+                    : '';
 
                 return [
                     'id' => (int) $chatMessage->id,
                     'sender_type' => $isAdminMessage ? 'admin' : 'requestor',
                     'sender_label' => $senderLabel,
                     'message' => (string) $chatMessage->message,
+                    'attachment_url' => $attachmentUrl,
                     'created_at_label' => $chatMessage->created_at?->format('M j, Y g:i A') ?? '',
                 ];
             })

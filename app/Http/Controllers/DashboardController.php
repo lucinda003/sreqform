@@ -53,6 +53,7 @@ class DashboardController extends Controller
         ])->count();
         $uniqueOffices = (clone $baseQuery)->distinct('office')->count('office');
         $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
+        $checkingRequests = (clone $baseQuery)->where('status', 'checking')->count();
         $approvedRequests = (clone $baseQuery)->where('status', 'approved')->count();
         $rejectedRequests = (clone $baseQuery)->where('status', 'rejected')->count();
         $requestMessages = (clone $chatBaseQuery)->count();
@@ -74,6 +75,7 @@ class DashboardController extends Controller
             'thisWeekRequests' => $thisWeekRequests,
             'uniqueOffices' => $uniqueOffices,
             'pendingRequests' => $pendingRequests,
+            'checkingRequests' => $checkingRequests,
             'approvedRequests' => $approvedRequests,
             'rejectedRequests' => $rejectedRequests,
             'requestMessages' => $requestMessages,

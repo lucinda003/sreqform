@@ -65,6 +65,8 @@ Route::get('/service-requests/{serviceRequest}/capture-email', [ServiceRequestCo
 Route::post('/service-requests/{serviceRequest}/capture-email', [ServiceRequestController::class, 'captureEmailStore'])
     ->middleware('signed')
     ->name('service-requests.capture-email.store');
+Route::get('/service-requests/{serviceRequest}/signature/approved', [ServiceRequestController::class, 'approvedSignature'])
+    ->name('service-requests.signature.approved');
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
@@ -79,6 +81,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/chat-notifications', [ServiceRequestController::class, 'adminChatNotifications'])->name('service-requests.notifications');
     Route::get('/admin/chat-requests', [ServiceRequestController::class, 'chatRequests'])->name('service-requests.chat-requests');
     Route::post('/service-requests/{serviceRequest}/chat-request-decision', [ServiceRequestController::class, 'decideChatRequest'])->name('service-requests.chat-request.decision');
+    Route::post('/service-requests/{serviceRequest}/chat-toggle', [ServiceRequestController::class, 'toggleAdminChat'])->name('service-requests.chat-toggle');
     Route::post('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'postAdminMessage'])->name('service-requests.messages.store');
     Route::get('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'adminMessages'])->name('service-requests.messages.index');
     Route::get('/service-requests/{serviceRequest}/print', [ServiceRequestController::class, 'print'])->name('service-requests.print');
