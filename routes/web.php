@@ -48,17 +48,23 @@ Route::get('/track-your-request/{referenceCode}/edit', [ServiceRequestController
     ->middleware('signed')
     ->name('service-requests.track.edit');
 Route::post('/track-your-request/{referenceCode}/send-edit-link', [ServiceRequestController::class, 'sendTrackEditLink'])
+    ->middleware('throttle:track-public')
     ->name('service-requests.track.send-edit-link');
 Route::post('/track-your-request/{referenceCode}/chat-request', [ServiceRequestController::class, 'requestTrackChat'])
+    ->middleware('throttle:track-public')
     ->name('service-requests.track.chat-request');
 Route::post('/track-your-request/{referenceCode}/messages', [ServiceRequestController::class, 'postTrackMessage'])
+    ->middleware('throttle:track-public')
     ->name('service-requests.track.messages.store');
 Route::get('/track-your-request/{referenceCode}/messages', [ServiceRequestController::class, 'trackMessages'])
+    ->middleware('throttle:track-public')
     ->name('service-requests.track.messages.index');
 Route::put('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackUpdate'])
     ->middleware('signed')
     ->name('service-requests.track.update');
-Route::get('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackView'])->name('service-requests.track.view');
+Route::get('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackView'])
+    ->middleware('throttle:track-public')
+    ->name('service-requests.track.view');
 Route::get('/service-requests/{serviceRequest}/capture-email', [ServiceRequestController::class, 'captureEmailForm'])
     ->middleware('signed')
     ->name('service-requests.capture-email');

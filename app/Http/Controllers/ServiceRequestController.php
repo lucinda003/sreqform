@@ -217,14 +217,11 @@ class ServiceRequestController extends Controller
 
         $recipientEmail = $this->normalizeTrackEmail((string) ($serviceRequest->email_address ?? ''));
         if ($recipientEmail === '') {
-            $captureEmailUrl = URL::temporarySignedRoute(
-                'service-requests.capture-email',
-                now()->addMinutes(15),
-                ['serviceRequest' => $serviceRequest->id]
-            );
-
-            return redirect($captureEmailUrl)
-                ->with('status', 'No email is saved for this request. Add your email to continue verification.');
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'code' => 'No email is linked to this request yet. Please contact support to verify ownership and add an email address.',
+            ]);
         }
 
         $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -823,12 +820,24 @@ class ServiceRequestController extends Controller
                 $request,
                 $serviceRequest->description_photos
             );
+
+            if ($this->hasDescriptionPhotoMetadataColumn()) {
+                $validated['description_photo_metadata'] = $this->buildDescriptionPhotoMetadata(
+                    $validated['description_photos']
+                );
+            }
         }
 
         $validated['approved_by_signature'] = $this->storeApprovedSignature(
             $request,
             (string) ($serviceRequest->approved_by_signature ?? '')
         );
+
+        if ($this->hasApprovedSignatureMetadataColumn()) {
+            $validated['approved_signature_metadata'] = $this->buildApprovedSignatureMetadata(
+                (string) ($validated['approved_by_signature'] ?? '')
+            );
+        }
 
         // Keep immutable ownership/scoping fields unchanged for track-based edits.
         $validated['department_code'] = (string) $serviceRequest->department_code;
@@ -848,8 +857,20 @@ class ServiceRequestController extends Controller
         $validated = $this->validatedData($request);
         if ($this->hasDescriptionPhotosColumn()) {
             $validated['description_photos'] = $this->storeDescriptionPhotos($request);
+
+            if ($this->hasDescriptionPhotoMetadataColumn()) {
+                $validated['description_photo_metadata'] = $this->buildDescriptionPhotoMetadata(
+                    $validated['description_photos']
+                );
+            }
         }
         $validated['approved_by_signature'] = $this->storeApprovedSignature($request);
+
+        if ($this->hasApprovedSignatureMetadataColumn()) {
+            $validated['approved_signature_metadata'] = $this->buildApprovedSignatureMetadata(
+                (string) ($validated['approved_by_signature'] ?? '')
+            );
+        }
 
         $authUser = Auth::user();
         if ($authUser && ! $this->isAdmin() && $authUser->department_status !== 'approved') {
@@ -915,8 +936,14 @@ class ServiceRequestController extends Controller
         return redirect($signedEmailUrl);
     }
 
-    public function captureEmailForm(ServiceRequest $serviceRequest): View
+    public function captureEmailForm(ServiceRequest $serviceRequest): View|RedirectResponse
     {
+        if ($this->normalizeTrackEmail((string) ($serviceRequest->email_address ?? '')) !== '') {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->with('status', 'A contact email is already linked to this request.');
+        }
+
         return view('service-requests.capture-email', [
             'serviceRequest' => $serviceRequest,
             'signedActionUrl' => URL::signedRoute('service-requests.capture-email.store', ['serviceRequest' => $serviceRequest->id]),
@@ -929,8 +956,25 @@ class ServiceRequestController extends Controller
             'email_address' => ['required', 'string', 'email', 'max:255'],
         ]);
 
+        $normalizedEmail = $this->normalizeTrackEmail((string) $validated['email_address']);
+        $existingEmail = $this->normalizeTrackEmail((string) ($serviceRequest->email_address ?? ''));
+
+        if ($existingEmail !== '' && ! hash_equals($existingEmail, $normalizedEmail)) {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->withErrors([
+                'email_address' => 'A contact email is already linked to this request. Please contact support to update it.',
+            ]);
+        }
+
+        if ($existingEmail !== '') {
+            return redirect()->route('service-requests.track', [
+                'reference_code' => $serviceRequest->reference_code,
+            ])->with('status', 'Reference code is already linked to this email.');
+        }
+
         $serviceRequest->update([
-            'email_address' => $validated['email_address'],
+            'email_address' => $normalizedEmail,
         ]);
 
         $statusMessage = 'Reference Code saved. Check your email inbox for updates.';
@@ -1041,6 +1085,12 @@ class ServiceRequestController extends Controller
                 $request,
                 $serviceRequest->description_photos
             );
+
+            if ($this->hasDescriptionPhotoMetadataColumn()) {
+                $validated['description_photo_metadata'] = $this->buildDescriptionPhotoMetadata(
+                    $validated['description_photos']
+                );
+            }
         }
 
         if (! $isModerationEditor) {
@@ -1048,6 +1098,12 @@ class ServiceRequestController extends Controller
                 $request,
                 (string) ($serviceRequest->approved_by_signature ?? '')
             );
+
+            if ($this->hasApprovedSignatureMetadataColumn()) {
+                $validated['approved_signature_metadata'] = $this->buildApprovedSignatureMetadata(
+                    (string) ($validated['approved_by_signature'] ?? '')
+                );
+            }
         }
 
         // Keep department stable for non-admin users so requests remain in their scoped view.
@@ -1391,6 +1447,28 @@ class ServiceRequestController extends Controller
         return Schema::hasColumn('service_requests', 'description_photos');
     }
 
+    private function hasDescriptionPhotoMetadataColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('service_requests', 'description_photo_metadata');
+        }
+
+        return (bool) $hasColumn;
+    }
+
+    private function hasApprovedSignatureMetadataColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('service_requests', 'approved_signature_metadata');
+        }
+
+        return (bool) $hasColumn;
+    }
+
     private function validatedData(Request $request): array
     {
         $validated = $request->validate([
@@ -1502,10 +1580,75 @@ class ServiceRequestController extends Controller
                 continue;
             }
 
-            $stored[] = $photo->store('service-request-photos', 'public');
+            $rawBinary = (string) file_get_contents((string) $photo->getRealPath());
+            $rawMime = (string) ($photo->getMimeType() ?: 'image/png');
+
+            if ($rawBinary === '') {
+                $stored[] = $photo->store('service-request-photos', 'public');
+
+                continue;
+            }
+
+            [$binary, $mime] = EncryptedSignature::optimizePhotoBinary($rawBinary, $rawMime);
+
+            $extension = $this->photoExtensionFromMime($mime, (string) $photo->getClientOriginalExtension());
+            $path = 'service-request-photos/' . Str::uuid()->toString() . '.' . $extension;
+            Storage::disk('public')->put($path, $binary);
+
+            $stored[] = $path;
         }
 
         return $stored !== [] ? $stored : ($existingPhotos !== [] ? $existingPhotos : null);
+    }
+
+    private function photoExtensionFromMime(string $mimeType, string $fallbackExtension = ''): string
+    {
+        $normalizedMime = strtolower(trim($mimeType));
+
+        return match (true) {
+            str_contains($normalizedMime, 'jpeg'), str_contains($normalizedMime, 'jpg') => 'jpg',
+            str_contains($normalizedMime, 'webp') => 'webp',
+            str_contains($normalizedMime, 'gif') => 'gif',
+            str_contains($normalizedMime, 'png') => 'png',
+            default => ($fallbackExtension !== '' ? strtolower($fallbackExtension) : 'png'),
+        };
+    }
+
+    private function buildDescriptionPhotoMetadata(?array $photoPaths): ?array
+    {
+        $paths = array_values(array_filter(
+            array_map(static fn ($path): string => trim((string) $path), (array) $photoPaths),
+            static fn (string $path): bool => $path !== ''
+        ));
+
+        if ($paths === []) {
+            return null;
+        }
+
+        $disk = Storage::disk('public');
+        $metadata = [];
+
+        foreach ($paths as $path) {
+            if (! $disk->exists($path)) {
+                $metadata[] = [
+                    'path' => $path,
+                    'exists' => false,
+                ];
+
+                continue;
+            }
+
+            $binary = (string) $disk->get($path);
+            $metadata[] = [
+                'path' => $path,
+                'exists' => true,
+                'mime_type' => (string) ($disk->mimeType($path) ?: 'application/octet-stream'),
+                'size_bytes' => strlen($binary),
+                'sha256' => hash('sha256', $binary),
+            ];
+        }
+
+        return $metadata !== [] ? $metadata : null;
     }
 
     private function storeApprovedSignature(Request $request, ?string $existingSignature = null): ?string
@@ -1546,6 +1689,40 @@ class ServiceRequestController extends Controller
         }
 
         return filled($existingSignaturePath) ? $existingSignaturePath : '';
+    }
+
+    private function buildApprovedSignatureMetadata(?string $signaturePath): ?array
+    {
+        $path = trim((string) $signaturePath);
+        if ($path === '') {
+            return null;
+        }
+
+        $decoded = EncryptedSignature::readBinaryFromPath($path);
+        if (! is_array($decoded)) {
+            return [
+                'path' => $path,
+                'exists' => false,
+            ];
+        }
+
+        $binary = (string) ($decoded['binary'] ?? '');
+        $mime = trim((string) ($decoded['mime'] ?? 'image/png'));
+
+        if ($binary === '') {
+            return [
+                'path' => $path,
+                'exists' => false,
+            ];
+        }
+
+        return [
+            'path' => $path,
+            'exists' => true,
+            'mime_type' => $mime !== '' ? $mime : 'image/png',
+            'size_bytes' => strlen($binary),
+            'sha256' => hash('sha256', $binary),
+        ];
     }
 
     private function deleteSignatureFile(?string $signaturePath): void

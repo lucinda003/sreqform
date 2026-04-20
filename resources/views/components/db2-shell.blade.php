@@ -498,7 +498,7 @@
                             </div>
                         </div>
                         <div class="db2-notif-search-wrap">
-                            <input type="text" class="db2-notif-search" data-db2-notif-search placeholder="Search notifications...">
+                            <input id="db2-notif-search" name="notification_search" type="text" class="db2-notif-search" data-db2-notif-search placeholder="Search notifications..." autocomplete="off">
                         </div>
                         <div class="db2-notif-list" data-db2-notif-list>
                             <p class="db2-notif-empty" data-db2-notif-empty>No notifications yet.</p>

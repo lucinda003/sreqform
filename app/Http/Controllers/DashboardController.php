@@ -46,11 +46,15 @@ class DashboardController extends Controller
         }
 
         $totalRequests = (clone $baseQuery)->count();
-        $todayRequests = ServiceRequest::whereDate('created_at', today())->count();
-        $thisWeekRequests = ServiceRequest::whereBetween('created_at', [
-            now()->startOfWeek(),
-            now()->endOfWeek(),
-        ])->count();
+        $todayRequests = $this->scopeForDashboard(ServiceRequest::query())
+            ->whereDate('created_at', today())
+            ->count();
+        $thisWeekRequests = $this->scopeForDashboard(ServiceRequest::query())
+            ->whereBetween('created_at', [
+                now()->startOfWeek(),
+                now()->endOfWeek(),
+            ])
+            ->count();
         $uniqueOffices = (clone $baseQuery)->distinct('office')->count('office');
         $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
         $checkingRequests = (clone $baseQuery)->where('status', 'checking')->count();

@@ -515,10 +515,10 @@
 
                         <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
                             <div class="srf-field">
-                                <label class="srf-label">
+                                <label class="srf-label" for="department_user_id">
                                     <span class="srf-number-badge">1</span> Send to <span class="srf-required">*</span>
                                 </label>
-                                <select name="department_user_id" class="srf-select" required>
+                                <select id="department_user_id" name="department_user_id" class="srf-select" required>
                                     <option value="">Select person</option>
                                     @foreach ($departmentPersonnelOptions as $departmentPersonOption)
                                         <option value="{{ $departmentPersonOption['id'] }}" @selected((string) old('department_user_id') === (string) $departmentPersonOption['id'])>
@@ -546,7 +546,7 @@
                                     $hasCustomRequestCategory = $oldRequestCategory !== ''
                                         && ! in_array($oldRequestCategory, $requestCategoryOptions, true);
                                 @endphp
-                                <label class="srf-label">
+                                <label class="srf-label" for="request_category">
                                     <span class="srf-number-badge">2</span> Request Category <span class="srf-required">*</span>
                                 </label>
                                 <select name="request_category" id="request_category" class="srf-select">
@@ -570,18 +570,18 @@
                                 >
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label">
+                                <label class="srf-label" for="application_system_name">
                                     <span class="srf-number-badge">3</span> Application System Name <span class="srf-required">*</span>
                                 </label>
-                                <input type="text" name="application_system_name" value="{{ old('application_system_name') }}" class="srf-input" required>
+                                <input id="application_system_name" type="text" name="application_system_name" value="{{ old('application_system_name') }}" class="srf-input" required>
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label">
+                                <label class="srf-label" for="expected_completion_date">
                                     <span class="srf-number-badge">4</span> Expected Date / Time of Completion
                                 </label>
                                 <div style="display: flex; gap: 8px;">
-                                    <input type="date" name="expected_completion_date" value="{{ old('expected_completion_date') }}" class="srf-input" style="width: 180px;">
-                                    <input type="time" name="expected_completion_time" value="{{ old('expected_completion_time') }}" class="srf-input" style="width: 140px;">
+                                    <input id="expected_completion_date" type="date" name="expected_completion_date" value="{{ old('expected_completion_date') }}" class="srf-input" style="width: 180px;">
+                                    <input id="expected_completion_time" type="time" name="expected_completion_time" value="{{ old('expected_completion_time') }}" class="srf-input" style="width: 140px;">
                                 </div>
                             </div>
                         </div>
@@ -596,20 +596,20 @@
                         </p>
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
-                                <label class="srf-label">Last Name <span class="srf-required">*</span></label>
-                                <input name="contact_last_name" value="{{ old('contact_last_name') }}" class="srf-input" required>
+                                <label class="srf-label" for="contact_last_name">Last Name <span class="srf-required">*</span></label>
+                                <input id="contact_last_name" name="contact_last_name" value="{{ old('contact_last_name') }}" class="srf-input" autocomplete="family-name" required>
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label">First Name <span class="srf-required">*</span></label>
-                                <input name="contact_first_name" value="{{ old('contact_first_name') }}" class="srf-input" required>
+                                <label class="srf-label" for="contact_first_name">First Name <span class="srf-required">*</span></label>
+                                <input id="contact_first_name" name="contact_first_name" value="{{ old('contact_first_name') }}" class="srf-input" autocomplete="given-name" required>
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label">Middle Name</label>
-                                <input name="contact_middle_name" value="{{ old('contact_middle_name') }}" class="srf-input">
+                                <label class="srf-label" for="contact_middle_name">Middle Name</label>
+                                <input id="contact_middle_name" name="contact_middle_name" value="{{ old('contact_middle_name') }}" class="srf-input" autocomplete="additional-name">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label">Suffix</label>
-                                <input name="contact_suffix_name" value="{{ old('contact_suffix_name') }}" class="srf-input">
+                                <label class="srf-label" for="contact_suffix_name">Suffix</label>
+                                <input id="contact_suffix_name" name="contact_suffix_name" value="{{ old('contact_suffix_name') }}" class="srf-input" autocomplete="honorific-suffix">
                             </div>
                         </div>
                     </div>
@@ -622,7 +622,7 @@
 
                         <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
                             <div class="srf-field">
-                                <label class="srf-label">
+                                <label class="srf-label" for="office">
                                     <span class="srf-number-badge">5</span> Office <span class="srf-required">*</span>
                                 </label>
                                 <input id="office" list="hospital-office-options" name="office"
@@ -631,32 +631,32 @@
                                 <p class="srf-hint">Type or pick from the regional hospital list.</p>
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label">
+                                <label class="srf-label" for="address">
                                     <span class="srf-number-badge">6</span> Address <span class="srf-required">*</span>
                                 </label>
-                                <input id="address" name="address" value="{{ old('address') }}" class="srf-input" required>
+                                <input id="address" name="address" value="{{ old('address') }}" class="srf-input" autocomplete="street-address" required>
                             </div>
                         </div>
 
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
-                                <label class="srf-label"><span class="srf-number-badge">7</span> Landline</label>
-                                <input name="landline" value="{{ old('landline') }}" inputmode="numeric"
+                                <label class="srf-label" for="landline"><span class="srf-number-badge">7</span> Landline</label>
+                                <input id="landline" name="landline" value="{{ old('landline') }}" inputmode="numeric"
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input" autocomplete="tel">
+                            </div>
+                            <div class="srf-field">
+                                <label class="srf-label" for="fax_no"><span class="srf-number-badge">8</span> Fax No</label>
+                                <input id="fax_no" name="fax_no" value="{{ old('fax_no') }}" inputmode="numeric"
                                     oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label"><span class="srf-number-badge">8</span> Fax No</label>
-                                <input name="fax_no" value="{{ old('fax_no') }}" inputmode="numeric"
-                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input">
+                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile No <span class="srf-required">*</span></label>
+                                <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="numeric"
+                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input" autocomplete="tel-national" required>
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label"><span class="srf-number-badge">9</span> Mobile No <span class="srf-required">*</span></label>
-                                <input name="mobile_no" value="{{ old('mobile_no') }}" inputmode="numeric"
-                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input" required>
-                            </div>
-                            <div class="srf-field">
-                                <label class="srf-label"><span class="srf-number-badge">10</span> Email Address</label>
-                                <input type="text" name="email_address" value="{{ old('email_address') }}" class="srf-input">
+                                <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span> Email Address</label>
+                                <input id="email_address" type="text" name="email_address" value="{{ old('email_address') }}" class="srf-input" autocomplete="email">
                             </div>
                         </div>
                     </div>

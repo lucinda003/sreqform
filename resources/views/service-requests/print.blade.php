@@ -469,7 +469,7 @@
 
             .datetime-wrap {
                 width: 100%;
-                margin-left: 340px;
+                margin-left: 330px;
                 margin-top: 7px;
                 display: flex;
                 align-items: center;

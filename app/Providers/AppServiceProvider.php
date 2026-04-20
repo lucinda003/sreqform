@@ -23,7 +23,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $normalizeReferenceCode = static function (Request $request): string {
-            $rawReferenceCode = (string) $request->route('referenceCode');
+            $rawReferenceCode = (string) ($request->route('referenceCode') ?? $request->query('reference_code', ''));
             $normalizedReferenceCode = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $rawReferenceCode));
 
             return $normalizedReferenceCode !== '' ? $normalizedReferenceCode : 'UNKNOWN';
@@ -44,6 +44,15 @@ class AppServiceProvider extends ServiceProvider
             return [
                 Limit::perMinute(30)->by('track-verify-minute:' . $referenceCode . '|' . $request->ip()),
                 Limit::perMinutes(15, 120)->by('track-verify-window:' . $referenceCode . '|' . $request->ip()),
+            ];
+        });
+
+        RateLimiter::for('track-public', function (Request $request) use ($normalizeReferenceCode): array {
+            $referenceCode = $normalizeReferenceCode($request);
+
+            return [
+                Limit::perMinute(60)->by('track-public-minute:' . $referenceCode . '|' . $request->ip()),
+                Limit::perMinutes(15, 450)->by('track-public-window:' . $referenceCode . '|' . $request->ip()),
             ];
         });
     }

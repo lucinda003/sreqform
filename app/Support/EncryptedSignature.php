@@ -16,7 +16,13 @@ class EncryptedSignature
 
     public static function storeBinary(string $binary, string $mimeType): string
     {
-        [$binary] = self::optimizeBeforeEncryption($binary, $mimeType);
+        [$binary] = self::optimizeImageBinary(
+            $binary,
+            $mimeType,
+            self::MAX_IMAGE_DIMENSION,
+            self::JPEG_QUALITY,
+            self::PNG_COMPRESSION
+        );
 
         $path = self::DIRECTORY . Str::uuid()->toString() . '.encsig';
 
@@ -120,7 +126,13 @@ class EncryptedSignature
         return 'image/png';
     }
 
-    private static function optimizeBeforeEncryption(string $binary, string $mimeType): array
+    public static function optimizeImageBinary(
+        string $binary,
+        string $mimeType,
+        int $maxImageDimension,
+        int $jpegQuality,
+        int $pngCompression
+    ): array
     {
         if (! function_exists('imagecreatefromstring') || ! function_exists('imagecopyresampled')) {
             return [$binary, $mimeType];
@@ -141,9 +153,10 @@ class EncryptedSignature
 
         $targetImage = $sourceImage;
         $longestSide = max($sourceWidth, $sourceHeight);
+        $maxDimension = max(1, $maxImageDimension);
 
-        if ($longestSide > self::MAX_IMAGE_DIMENSION) {
-            $scale = self::MAX_IMAGE_DIMENSION / $longestSide;
+        if ($longestSide > $maxDimension) {
+            $scale = $maxDimension / $longestSide;
             $targetWidth = max(1, (int) floor($sourceWidth * $scale));
             $targetHeight = max(1, (int) floor($sourceHeight * $scale));
 
@@ -173,13 +186,15 @@ class EncryptedSignature
 
         $normalizedMime = strtolower(trim($mimeType));
         $useJpeg = str_contains($normalizedMime, 'jpeg') || str_contains($normalizedMime, 'jpg');
+        $safeJpegQuality = max(1, min(100, $jpegQuality));
+        $safePngCompression = max(0, min(9, $pngCompression));
 
         ob_start();
         if ($useJpeg) {
-            imagejpeg($targetImage, null, self::JPEG_QUALITY);
+            imagejpeg($targetImage, null, $safeJpegQuality);
             $outputMime = 'image/jpeg';
         } else {
-            imagepng($targetImage, null, self::PNG_COMPRESSION);
+            imagepng($targetImage, null, $safePngCompression);
             $outputMime = 'image/png';
         }
         $encoded = (string) ob_get_clean();
@@ -195,5 +210,33 @@ class EncryptedSignature
         }
 
         return [$encoded, $outputMime];
+    }
+
+    public static function optimizePhotoBinary(string $binary, string $mimeType): array
+    {
+        [$bestBinary, $bestMime] = self::optimizeImageBinary($binary, $mimeType, 1280, 75, 9);
+
+        if (! function_exists('imagecreatefromstring') || ! function_exists('imagewebp')) {
+            return [$bestBinary, $bestMime];
+        }
+
+        $image = @imagecreatefromstring($bestBinary);
+        if ($image === false) {
+            return [$bestBinary, $bestMime];
+        }
+
+        imagealphablending($image, true);
+        imagesavealpha($image, true);
+
+        ob_start();
+        imagewebp($image, null, 80);
+        $webpBinary = (string) ob_get_clean();
+        imagedestroy($image);
+
+        if ($webpBinary !== '' && strlen($webpBinary) < strlen($bestBinary)) {
+            return [$webpBinary, 'image/webp'];
+        }
+
+        return [$bestBinary, $bestMime];
     }
 }

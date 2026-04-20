@@ -149,17 +149,17 @@
                     @csrf
                     <div class="sm:col-span-2">
                         <label class="auth-label block text-sm font-medium text-slate-700" for="name">Full Name</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="name" name="name" type="text" required>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="name" name="name" type="text" autocomplete="name" required>
                     </div>
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="email">Email Address</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="email" name="email" type="email" required>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="email" name="email" type="email" autocomplete="email" required>
                     </div>
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="password">Initial Password</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="password" name="password" type="password" required>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="password" name="password" type="password" autocomplete="new-password" required>
                     </div>
 
                     <div>
@@ -207,17 +207,17 @@
                     
                     <div class="sm:col-span-2">
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_name">Full Name</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_name" name="name" type="text" required>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_name" name="name" type="text" autocomplete="name" required>
                     </div>
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_email">Email Address</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_email" name="email" type="email" required>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_email" name="email" type="email" autocomplete="email" required>
                     </div>
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_password">Reset Password</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_password" name="password" type="password" placeholder="Leave empty to keep current">
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_password" name="password" type="password" autocomplete="new-password" placeholder="Leave empty to keep current">
                     </div>
 
                     <div>
