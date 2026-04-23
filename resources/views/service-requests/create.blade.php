@@ -1,3 +1,4 @@
+@php View::share('pageTitle', 'Service Request Form'); @endphp
 <x-guest-layout>
     @php
         $hospitalOfficeMap = [
@@ -47,6 +48,36 @@
             font-family: 'DM Sans', sans-serif;
             font-size: 15px;
             color: #000;
+        }
+
+        .srf-root .auth-login-topbar {
+            gap: 1rem;
+            padding: 0.55rem 0.95rem;
+        }
+
+        .srf-root .auth-login-brand {
+            gap: 0.65rem;
+        }
+
+        .srf-root .auth-login-brand-logo {
+            width: 48px;
+            height: 48px;
+        }
+
+        .srf-root .auth-login-brand-title {
+            font-size: 1.18rem;
+            line-height: 1.04;
+            letter-spacing: 0.01em;
+        }
+
+        .srf-root .auth-login-brand-subtitle {
+            display: block;
+            font-size: 0.78rem;
+            margin-top: 0;
+            line-height: 1.12;
+            color: #334155;
+            max-width: 420px;
+            white-space: normal;
         }
 
         /* ── Header ── */
@@ -129,10 +160,34 @@
             align-items: center;
             gap: 12px;
         }
+
+        .srf-header-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: none;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            border-radius: 8px;
+            padding: 3px 9px;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+            flex-shrink: 0;
+        }
+
+        .srf-header-back:hover {
+            background: rgba(255, 255, 255, 0.22);
+            border-color: rgba(255, 255, 255, 0.7);
+            transform: translateY(-1px);
+        }
         .srf-form-header-text {
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.14em;
+            font-size: 21px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #fff;
             margin: 0;
@@ -479,20 +534,17 @@
 
     <div class="srf-root">
 
-        {{-- Top bar --}}
         <header class="auth-login-topbar">
-        <div class="auth-login-brand">
-            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
-            <div>
-                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
-                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
+            <div class="auth-login-brand">
+                <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
+                <div>
+                    <h1 class="auth-login-brand-title">KMITS</h1>
+                    <p class="auth-login-brand-subtitle">Knowledge Management and Information Technology Service</p>
+                </div>
             </div>
-        </div>
 
-        <div class="auth-login-top-actions">
-            <a href="{{ route('service-requests.track') }}" class="auth-login-register">Track Request</a>
-        </div>
-    </header>
+            <div class="auth-login-top-actions"></div>
+        </header>
 
         {{-- Main card --}}
         <section style="max-width: 1300px; margin: 1.5rem auto; padding: 0 1rem 2rem;">
@@ -500,12 +552,20 @@
 
                 {{-- Form header --}}
                 <div class="srf-form-header">
+                    <a href="{{ route('service-requests.track') }}" class="srf-header-back" aria-label="Back to tracking page">&larr; Back</a>
                     <span class="srf-form-header-text">Service Request Form</span>
                     <div class="srf-form-header-line"></div>
                 </div>
 
+                @if ($errors->has('form'))
+                    <div class="mx-5 mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                        {{ $errors->first('form') }}
+                    </div>
+                @endif
+
                 <form method="POST" action="{{ route('service-requests.store') }}" enctype="multipart/form-data">
                     @csrf
+                    <input type="hidden" name="submission_token" value="{{ $submissionToken ?? '' }}">
                     <input id="request_date" name="request_date" type="hidden" value="{{ old('request_date', now()->toDateString()) }}">
                     <input name="time_received" type="hidden" value="{{ old('time_received', now()->format('H:i')) }}">
 
@@ -515,18 +575,18 @@
 
                         <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
                             <div class="srf-field">
-                                <label class="srf-label" for="department_user_id">
-                                    <span class="srf-number-badge">1</span> Send to <span class="srf-required">*</span>
+                                <label class="srf-label" for="department_code">
+                                    <span class="srf-number-badge">1</span> Send to Department <span class="srf-required">*</span>
                                 </label>
-                                <select id="department_user_id" name="department_user_id" class="srf-select" required>
-                                    <option value="">Select person</option>
-                                    @foreach ($departmentPersonnelOptions as $departmentPersonOption)
-                                        <option value="{{ $departmentPersonOption['id'] }}" @selected((string) old('department_user_id') === (string) $departmentPersonOption['id'])>
-                                            {{ $departmentPersonOption['name'] }}
+                                <select id="department_code" name="department_code" class="srf-select" required>
+                                    <option value="">Select department</option>
+                                    @foreach ($departmentOptions as $department)
+                                        <option value="{{ $department }}" @selected((string) old('department_code') === (string) $department)>
+                                            {{ $department }}
                                         </option>
                                     @endforeach
                                 </select>
-                                <x-input-error :messages="$errors->get('department_user_id')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('department_code')" class="mt-1" />
                             </div>
                         </div>
 
@@ -681,7 +741,8 @@
                                     <span class="srf-upload-label">Attach Photos (1 to 3)</span>
                                     <input id="description_photos" name="description_photos[]" type="file"
                                         accept="image/*" multiple class="srf-file-input">
-                                    <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 images, 5MB each.</p>
+                                    <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 images, 5MB each. You can choose files multiple times.</p>
+                                    <p id="description-photos-selected" style="font-size:11px; color:#0f766e; margin: 4px 0 0;"></p>
                                     <x-input-error :messages="$errors->get('description_photos')" class="mt-1" />
                                     <x-input-error :messages="$errors->get('description_photos.*')" class="mt-1" />
                                 </div>
@@ -875,6 +936,9 @@
             };
 
             if (createForm) {
+                let formSubmitting = false;
+                const submitButton = createForm.querySelector('button[type="submit"]');
+
                 const navigationEntry = (window.performance && window.performance.getEntriesByType)
                     ? window.performance.getEntriesByType('navigation')[0]
                     : null;
@@ -899,6 +963,20 @@
                 createForm.addEventListener('input', queueDraftSave);
                 createForm.addEventListener('change', queueDraftSave);
                 createForm.addEventListener('submit', clearDraftStorage);
+                createForm.addEventListener('submit', function (event) {
+                    if (formSubmitting) {
+                        event.preventDefault();
+                        return;
+                    }
+
+                    formSubmitting = true;
+
+                    if (submitButton) {
+                        submitButton.disabled = true;
+                        submitButton.classList.add('opacity-60', 'cursor-not-allowed');
+                        submitButton.textContent = 'Submitting...';
+                    }
+                });
             }
 
             const syncRequestCategoryOther = function () {
@@ -1007,6 +1085,74 @@
             };
 
             initAdaptiveDescriptionFont();
+
+            const initDescriptionPhotoSelection = function () {
+                const photoInput = document.getElementById('description_photos');
+                const selectedLabel = document.getElementById('description-photos-selected');
+
+                if (!photoInput || typeof DataTransfer === 'undefined') {
+                    return;
+                }
+
+                const maxFiles = 3;
+                let selectedFiles = [];
+
+                const fileKey = function (file) {
+                    return [file.name, file.size, file.lastModified, file.type].join('::');
+                };
+
+                const syncInputFiles = function () {
+                    const transfer = new DataTransfer();
+                    selectedFiles.forEach(function (file) {
+                        transfer.items.add(file);
+                    });
+                    photoInput.files = transfer.files;
+                };
+
+                const syncSelectedLabel = function () {
+                    if (!selectedLabel) {
+                        return;
+                    }
+
+                    if (selectedFiles.length === 0) {
+                        selectedLabel.textContent = '';
+                        return;
+                    }
+
+                    selectedLabel.textContent = selectedFiles.length + ' file(s) selected: ' + selectedFiles.map(function (file) {
+                        return file.name;
+                    }).join(', ');
+                };
+
+                photoInput.addEventListener('change', function () {
+                    const incoming = Array.from(photoInput.files || []);
+                    if (incoming.length === 0) {
+                        return;
+                    }
+
+                    const known = new Set(selectedFiles.map(fileKey));
+
+                    incoming.forEach(function (file) {
+                        const key = fileKey(file);
+                        if (known.has(key) || selectedFiles.length >= maxFiles) {
+                            return;
+                        }
+
+                        known.add(key);
+                        selectedFiles.push(file);
+                    });
+
+                    syncInputFiles();
+                    syncSelectedLabel();
+                    saveDraftToStorage();
+                });
+
+                selectedFiles = Array.from(photoInput.files || []).slice(0, maxFiles);
+                syncInputFiles();
+                syncSelectedLabel();
+            };
+
+            initDescriptionPhotoSelection();
 
             const initSignatureInput = function () {
                 const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');

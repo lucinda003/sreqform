@@ -1,3 +1,11 @@
+@php
+    $trackTabTitle = strtolower((string) request()->query('tab'));
+    View::share('pageTitle', match($trackTabTitle) {
+        'about' => 'About',
+        'contact' => 'Contact Us',
+        default => 'Track Request',
+    });
+@endphp
 <x-guest-layout>
 <style>
     .trk-wrap {
@@ -11,10 +19,44 @@
         background: rgba(255,255,255,0.82);
         border: 1px solid rgba(147,176,173,0.6);
         border-radius: 1.1rem;
-        padding: 1.5rem 1.35rem 1.25rem;
+        padding: 1.5rem 1.4rem;
         box-shadow: 0 8px 18px rgba(26,73,69,0.18);
-        max-width: 420px;
+        max-width: 540px;
         margin: 0 auto;
+    }
+
+    .trk-search-card .auth-login-card-title {
+        font-size: 2.2rem;
+        line-height: 1.1;
+    }
+
+    .trk-search-card .auth-login-label {
+        font-size: 1.2rem;
+        font-weight: 600;
+    }
+
+    .trk-search-card .auth-login-input {
+        font-size: 1.05rem;
+        padding-top: 0.65rem;
+        padding-bottom: 0.65rem;
+        padding-left: 2.6rem;
+    }
+
+    .trk-search-card .auth-login-input-icon {
+        height: 18px;
+        width: 18px;
+        left: 0.8rem;
+    }
+
+    .trk-search-card .auth-login-button {
+        font-size: 1.28rem;
+        padding-top: 0.8rem;
+        padding-bottom: 0.8rem;
+    }
+
+    .trk-search-card .auth-track-separator,
+    .trk-search-card .auth-login-secondary {
+        font-size: 0.95rem;
     }
 
     /* ── Status card ── */
@@ -28,6 +70,47 @@
         box-shadow: 0 8px 24px rgba(26,73,69,0.18);
         max-width: 820px;
         margin: 0 auto;
+    }
+
+    .trk-about-card {
+        background: rgba(255, 255, 255, 0.86);
+        border: 1px solid rgba(147, 176, 173, 0.52);
+        border-radius: 0.95rem;
+        padding: 1rem 1.1rem;
+        box-shadow: 0 7px 18px rgba(26, 73, 69, 0.15);
+    }
+
+    .trk-about-title {
+        margin: 0;
+        font-size: 1.05rem;
+        font-weight: 700;
+        letter-spacing: 0.05em;
+        text-transform: uppercase;
+        color: #1c5a5a;
+    }
+
+    .trk-about-copy {
+        margin: 0.5rem 0 0;
+        font-size: 0.9rem;
+        line-height: 1.55;
+        color: #35525f;
+    }
+
+    .trk-contact-list {
+        margin: 0.6rem 0 0;
+        display: grid;
+        gap: 0.45rem;
+    }
+
+    .trk-contact-item {
+        font-size: 0.9rem;
+        color: #35525f;
+        line-height: 1.5;
+    }
+
+    .trk-contact-item strong {
+        color: #1c5a5a;
+        font-weight: 700;
     }
 
     .trk-ref-title {
@@ -614,26 +697,39 @@
     data-track-access-expires-at="{{ $trackAccessExpiresAt ?? '' }}"
     data-track-reference-code="{{ $serviceRequest?->reference_code ?? '' }}"
 >
-    <header class="auth-login-topbar">
-        <div class="auth-login-brand">
-            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
-            <div>
-                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
-                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
+    @php
+        $trackTab = strtolower((string) request()->query('tab'));
+        $isAboutTab = $trackTab === 'about';
+        $isContactTab = $trackTab === 'contact';
+    @endphp
+    <x-public-nav-header :active="$isAboutTab ? 'about' : ($isContactTab ? 'contact' : 'faq')" />
+
+    @if ($isAboutTab)
+        <section id="about" style="position:relative; z-index:5; max-width:860px; margin: 1rem auto 0.75rem; padding: 0 1rem;">
+            <div class="trk-about-card">
+                <h2 class="trk-about-title">About</h2>
+                <p class="trk-about-copy">The Service Request Form System helps users submit, monitor, and manage service requests in a clear and organized workflow. It centralizes request tracking, status updates, and coordination to make support handling faster and more transparent.</p>
             </div>
-        </div>
-        <div class="auth-login-top-actions">
-            @if ($referenceCode === '')
-                <a href="{{ route('login') }}" class="auth-login-register">Login</a>
-            @else
-                <a href="{{ route('service-requests.create') }}" class="auth-login-register">Create Service Request</a>
-            @endif
-        </div>
-    </header>
+        </section>
+    @endif
+
+    @if ($isContactTab)
+        <section id="contact" style="position:relative; z-index:5; max-width:860px; margin: 1rem auto 0.75rem; padding: 0 1rem;">
+            <div class="trk-about-card">
+                <h2 class="trk-about-title">Contact Us</h2>
+                <p class="trk-about-copy">You can reach our service support team through the channels below for follow-up concerns and request assistance.</p>
+                <div class="trk-contact-list">
+                    <p class="trk-contact-item"><strong>Email:</strong> support@doh.gov.ph</p>
+                    <p class="trk-contact-item"><strong>Telephone:</strong> (02) 8651-7800 local 1111</p>
+                    <p class="trk-contact-item"><strong>Office Hours:</strong> Monday to Friday, 8:00 AM - 5:00 PM</p>
+                </div>
+            </div>
+        </section>
+    @endif
 
     {{-- Search form --}}
-    <section style="position:relative; z-index:5; max-width:420px; width:100%; margin: 1.4rem auto 1.2rem; padding: 0 1rem;">
-           @if (! ($referenceCode !== '' && $serviceRequest && (! $trackAccessRequired || $trackAccessGranted)))
+    <section style="position:relative; z-index:5; max-width:540px; width:100%; margin: 4rem auto 1.2rem; padding: 0 1rem;">
+           @if (! $isAboutTab && ! $isContactTab && ! ($referenceCode !== '' && $serviceRequest && (! $trackAccessRequired || $trackAccessGranted)))
            <div class="trk-search-card">
             <div class="auth-login-card-head">
                 <h2 class="auth-login-card-title">TRACK REQUEST</h2>

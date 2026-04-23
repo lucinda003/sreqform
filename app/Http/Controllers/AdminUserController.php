@@ -2,10 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\SendCreatedAccountCredentials;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 class AdminUserController extends Controller
@@ -40,7 +43,6 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'password' => ['required', 'string', 'min:8'],
             'department_code' => ['required', 'string', 'max:30'],
             'department_status' => ['required', 'in:approved,pending'],
         ]);
@@ -64,16 +66,35 @@ class AdminUserController extends Controller
             $departmentStatus = 'approved';
         }
 
-        User::create([
+        // Generate username from email (part before @)
+        $emailPrefix = explode('@', $validated['email'])[0];
+        $username = $emailPrefix;
+        $counter = 1;
+        
+        // Ensure username uniqueness
+        while (User::where('username', $username)->exists()) {
+            $username = $emailPrefix . $counter;
+            $counter++;
+        }
+
+        // Generate a random password
+        $generatedPassword = Str::random(12);
+
+        $user = User::create([
             'name' => $validated['name'],
+            'username' => $username,
             'email' => $validated['email'],
-            'password' => Hash::make($validated['password']),
+            'password' => Hash::make($generatedPassword),
             'department' => $departmentCode,
             'department_status' => $departmentStatus,
             'email_verified_at' => now(),
+            'password_changed_at' => null,
         ]);
 
-        return redirect()->route('admin.users.index')->with('status', 'Account created successfully.');
+        // Send the credentials via email
+        Mail::to($user->email)->send(new SendCreatedAccountCredentials($user, $username, $generatedPassword));
+
+        return redirect()->route('admin.users.index')->with('status', 'Account created successfully. Credentials have been sent to the email address.');
     }
 
     public function update(Request $request, User $user): RedirectResponse

@@ -1,15 +1,6 @@
+@php View::share('pageTitle', 'Forgot Password'); @endphp
 <x-guest-layout>
-    <header class="auth-login-topbar">
-        <div class="auth-login-brand">
-            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
-            <div>
-                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
-                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
-            </div>
-        </div>
-
-        <a href="{{ route('login') }}" class="auth-login-register">Login</a>
-    </header>
+    <x-public-nav-header active="sign-in" />
 
     <section class="auth-login-card-wrap auth-register-card-wrap">
         <div class="auth-login-card auth-register-card">

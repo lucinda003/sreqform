@@ -1,10 +1,11 @@
+@php View::share('pageTitle', $serviceRequest->reference_code ?? 'Edit Request'); @endphp
 <x-guest-layout>
     @php
         $isAdmin = strtoupper((string) auth()->user()?->department) === 'ADMIN';
         $isKmits = strtoupper((string) auth()->user()?->department) === 'KMITS';
-        $canModerateChat = $isAdmin || $isKmits;
+        $canModerateChat = auth()->check();
         $canPersonnelChat = auth()->check();
-        $isReadOnlyForm = $isAdmin || $isKmits;
+        $isReadOnlyForm = auth()->check();
         $hospitalOfficeMap = [
             'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
             'National Kidney and Transplant Institute' => 'East Avenue, Quezon City, Metro Manila',
@@ -54,6 +55,36 @@
             color: #000;
         }
 
+        .srf-root .auth-login-topbar {
+            gap: 1rem;
+            padding: 0.55rem 0.95rem;
+        }
+
+        .srf-root .auth-login-brand {
+            gap: 0.65rem;
+        }
+
+        .srf-root .auth-login-brand-logo {
+            width: 48px;
+            height: 48px;
+        }
+
+        .srf-root .auth-login-brand-title {
+            font-size: 1.18rem;
+            line-height: 1.04;
+            letter-spacing: 0.01em;
+        }
+
+        .srf-root .auth-login-brand-subtitle {
+            display: block;
+            font-size: 0.78rem;
+            margin-top: 0;
+            line-height: 1.12;
+            color: #334155;
+            max-width: 420px;
+            white-space: normal;
+        }
+
         .srf-card {
             background: #fff;
             border-radius: 12px;
@@ -71,33 +102,33 @@
         }
 
         .srf-header-back {
-            width: 30px;
-            height: 30px;
-            border-radius: 999px;
             display: inline-flex;
             align-items: center;
-            justify-content: center;
-            border: 1px solid rgba(255, 255, 255, 0.5);
+            justify-content: flex-start;
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            text-transform: none;
             color: #fff;
             text-decoration: none;
-            background: rgba(255, 255, 255, 0.08);
-            transition: background 0.15s ease;
+            background: rgba(255, 255, 255, 0.12);
+            border: 1px solid rgba(255, 255, 255, 0.42);
+            border-radius: 8px;
+            padding: 3px 9px;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
             flex-shrink: 0;
         }
 
         .srf-header-back:hover {
-            background: rgba(255, 255, 255, 0.18);
-        }
-
-        .srf-header-back svg {
-            width: 16px;
-            height: 16px;
+            background: rgba(255, 255, 255, 0.22);
+            border-color: rgba(255, 255, 255, 0.7);
+            transform: translateY(-1px);
         }
 
         .srf-form-header-text {
-            font-size: 15px;
-            font-weight: 600;
-            letter-spacing: 0.14em;
+            font-size: 21px;
+            font-weight: 700;
+            letter-spacing: 0.08em;
             text-transform: uppercase;
             color: #fff;
             margin: 0;
@@ -407,6 +438,182 @@
             text-transform: uppercase;
         }
 
+        .srf-log-signature-cell {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .srf-log-signature-trigger {
+            width: 100%;
+            min-height: 42px;
+            border: 1px dashed #94a3b8;
+            border-radius: 6px;
+            background: #f8fafc;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            overflow: hidden;
+            transition: border-color 0.15s ease, background 0.15s ease;
+        }
+
+        .srf-log-signature-trigger:hover {
+            border-color: #0f766e;
+            background: #f0fdfa;
+        }
+
+        .srf-log-signature-preview {
+            width: 100%;
+            max-height: 34px;
+            object-fit: contain;
+        }
+
+        .srf-log-signature-placeholder {
+            font-size: 11px;
+            font-weight: 600;
+            color: #64748b;
+            text-align: center;
+        }
+
+        .srf-log-signature-clear {
+            align-self: flex-end;
+            border: 1px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            color: #475569;
+            font-size: 10px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            padding: 2px 8px;
+            cursor: pointer;
+        }
+
+        .srf-log-signature-clear:hover {
+            border-color: #94a3b8;
+            color: #0f172a;
+        }
+
+        .srf-log-signature-modal {
+            position: fixed;
+            inset: 0;
+            z-index: 140;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(2, 6, 23, 0.78);
+            backdrop-filter: blur(2px);
+        }
+
+        .srf-log-signature-modal.open {
+            display: flex;
+        }
+
+        .srf-log-signature-dialog {
+            width: min(900px, 100%);
+            height: min(72vh, 620px);
+            border: 1px solid #cbd5e1;
+            border-radius: 12px;
+            background: #fff;
+            box-shadow: 0 24px 50px rgba(15, 23, 42, 0.35);
+            padding: 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .srf-log-signature-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .srf-log-signature-title {
+            margin: 0;
+            font-size: 14px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .srf-log-signature-close {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .srf-log-signature-close:hover {
+            background: #f8fafc;
+        }
+
+        .srf-log-signature-canvas-wrap {
+            flex: 1;
+            border: 1px solid #e2e8f0;
+            border-radius: 10px;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+
+        .srf-log-signature-canvas {
+            width: 100%;
+            height: 100%;
+            display: block;
+            background: #fff;
+            cursor: default;
+            touch-action: none;
+        }
+
+        .srf-log-signature-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        .srf-log-signature-btn {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            color: #0f172a;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            padding: 7px 12px;
+            cursor: pointer;
+        }
+
+        .srf-log-signature-btn:hover {
+            background: #f8fafc;
+            border-color: #94a3b8;
+        }
+
+        .srf-log-signature-btn.primary {
+            background: #0f766e;
+            border-color: #0f766e;
+            color: #fff;
+        }
+
+        .srf-log-signature-btn.primary:hover {
+            background: #115e59;
+            border-color: #115e59;
+        }
+
         .srf-chat-attachment {
             margin-top: 0.45rem;
             display: inline-block;
@@ -474,6 +681,114 @@
             line-height: 1;
             cursor: pointer;
             box-shadow: 0 8px 24px rgba(15, 23, 42, 0.28);
+        }
+
+        .srf-print-preview-backdrop {
+            position: fixed;
+            inset: 0;
+            z-index: 150;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+            background: rgba(2, 6, 23, 0.72);
+            backdrop-filter: blur(2px);
+        }
+
+        .srf-print-preview-backdrop.open {
+            display: flex;
+        }
+
+        .srf-print-preview-dialog {
+            width: min(1200px, 100%);
+            height: min(92vh, 900px);
+            background: #fff;
+            border: 1px solid #cbd5e1;
+            border-radius: 14px;
+            box-shadow: 0 24px 54px rgba(15, 23, 42, 0.35);
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .srf-print-preview-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            padding: 10px 14px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #f8fafc;
+        }
+
+        .srf-print-preview-title {
+            margin: 0;
+            font-size: 13px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #0f172a;
+        }
+
+        .srf-print-preview-close {
+            width: 32px;
+            height: 32px;
+            border: 1px solid #cbd5e1;
+            border-radius: 999px;
+            background: #fff;
+            color: #0f172a;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+        }
+
+        .srf-print-preview-close:hover {
+            background: #f1f5f9;
+        }
+
+        .srf-print-preview-frame {
+            width: 100%;
+            flex: 1;
+            border: 0;
+            background: #e2e8f0;
+        }
+
+        .srf-print-preview-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            padding: 10px 14px;
+            border-top: 1px solid #e2e8f0;
+            background: #fff;
+        }
+
+        .srf-print-preview-btn {
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            background: #fff;
+            color: #0f172a;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.04em;
+            text-transform: uppercase;
+            padding: 7px 12px;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .srf-print-preview-btn:hover {
+            background: #f8fafc;
+        }
+
+        .srf-print-preview-btn.primary {
+            background: #0f766e;
+            border-color: #0f766e;
+            color: #fff;
+        }
+
+        .srf-print-preview-btn.primary:hover {
+            background: #115e59;
+            border-color: #115e59;
         }
 
         .srf-chat-locked {
@@ -553,6 +868,30 @@
             color: #0f172a;
             border-bottom: 1px solid #e2e8f0;
             background: #f8fafc;
+        }
+
+        .srf-notif-search-wrap {
+            padding: 8px 10px;
+            border-bottom: 1px solid #e2e8f0;
+            background: #fff;
+        }
+
+        .srf-notif-search {
+            width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 12px;
+            color: #0f172a;
+            background: #f8fafc;
+            outline: none;
+            transition: border-color 0.15s ease, box-shadow 0.15s ease;
+        }
+
+        .srf-notif-search:focus {
+            border-color: #0f766e;
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.12);
+            background: #fff;
         }
 
         .srf-notif-list {
@@ -787,6 +1126,97 @@
                 opacity: 1;
             }
         }
+
+        .srf-sticky-bar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 90;
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 20px;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(10px);
+            border-bottom: 1.5px solid #e2e8f0;
+            box-shadow: 0 4px 20px rgba(15, 23, 42, 0.1);
+            animation: srf-sticky-slide-in 200ms ease-out;
+        }
+
+        .srf-sticky-bar.visible {
+            display: flex;
+        }
+
+        @keyframes srf-sticky-slide-in {
+            from { transform: translateY(-100%); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        .srf-sticky-ref {
+            font-size: 13px;
+            font-weight: 700;
+            color: #0f172a;
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 220px;
+        }
+
+        .srf-sticky-status {
+            display: inline-flex;
+            border-radius: 999px;
+            border: 1px solid;
+            padding: 2px 10px;
+            font-size: 11px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .srf-sticky-actions {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .srf-scroll-top {
+            position: fixed;
+            bottom: 28px;
+            right: 24px;
+            z-index: 88;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: 1.5px solid #cbd5e1;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            color: #0f172a;
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+        }
+
+        .srf-scroll-top.visible {
+            display: inline-flex;
+        }
+
+        .srf-scroll-top:hover {
+            background: #f0fdfa;
+            border-color: #0f766e;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(15, 118, 110, 0.2);
+        }
+
+        .srf-scroll-top svg {
+            width: 20px;
+            height: 20px;
+        }
     </style>
 
     <div class="srf-root">
@@ -795,8 +1225,8 @@
         <div class="auth-login-brand">
             <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
             <div>
-                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
-                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
+                <h1 class="auth-login-brand-title">KMITS</h1>
+                <p class="auth-login-brand-subtitle">Knowledge Management and Information Technology Service</p>
             </div>
         </div>
 
@@ -813,6 +1243,9 @@
 
                     <div class="srf-notif-panel hidden" id="admin-chat-notif-panel">
                         <div class="srf-notif-panel-head">Notifications</div>
+                        <div class="srf-notif-search-wrap">
+                            <input id="admin-chat-notif-search" name="notification_search" type="text" class="srf-notif-search" placeholder="Search notifications..." autocomplete="off">
+                        </div>
                         <div class="srf-notif-list" id="admin-chat-notif-list">
                             <p class="srf-notif-empty" id="admin-chat-notif-empty">No notifications yet.</p>
                         </div>
@@ -833,11 +1266,7 @@
 
     <div class="srf-card">
         <div class="srf-form-header">
-            <a href="{{ route('service-requests.index') }}" class="srf-header-back" aria-label="Back to Service Requests list">
-                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                    <path d="M12 4L6 10L12 16"></path>
-                </svg>
-            </a>
+            <a href="{{ route('service-requests.index') }}" class="srf-header-back" aria-label="Back to Service Requests list">&larr; Back</a>
             <span class="srf-form-header-text">Service Request Form</span>
             <div class="srf-form-header-line"></div>
         </div>
@@ -1215,6 +1644,7 @@
                         $logActionTimes = old('action_log_action_time', collect($existingLogs)->pluck('action_time')->pad(5, '')->values()->all());
                         $logActions = old('action_log_action_taken', collect($existingLogs)->pluck('action_taken')->pad(5, '')->values()->all());
                         $logOfficers = old('action_log_action_officer', collect($existingLogs)->pluck('action_officer')->pad(5, '')->values()->all());
+                        $logSignatures = old('action_log_signature_drawn', collect($existingLogs)->pluck('signature')->pad(5, '')->values()->all());
                     @endphp
 
                     <div class="px-4 pb-3">
@@ -1236,6 +1666,9 @@
                                     </thead>
                                     <tbody>
                                         @for ($i = 0; $i < 5; $i++)
+                                            @php
+                                                $rowSignature = (string) ($logSignatures[$i] ?? '');
+                                            @endphp
                                             <tr>
                                                 <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
                                                 <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
@@ -1243,7 +1676,9 @@
                                                 <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
                                                 <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
                                                 <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
-                                                <td class="border border-slate-300 px-2 py-1 text-center text-[11px] text-slate-500">________________</td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="hidden" name="action_log_signature_drawn[]" value="{{ $rowSignature }}">
+                                                </td>
                                             </tr>
                                         @endfor
                                     </tbody>
@@ -1251,9 +1686,17 @@
                             </div>
 
                             <div class="mt-4 grid gap-3 md:grid-cols-2">
+                                @php
+                                    $notedBySignatureValue = (string) old('noted_by_signature_drawn', $serviceRequest->noted_by_signature);
+                                @endphp
                                 <label class="block text-[12px] text-slate-700 md:col-span-2">
                                     <span class="font-semibold">13. Noted by (Name of Supervisor)</span>
                                     <input type="text" name="noted_by_name" value="{{ old('noted_by_name', $serviceRequest->noted_by_name) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                </label>
+
+                                <label class="block text-[12px] text-slate-700 md:col-span-2">
+                                    <span class="font-semibold">Supervisor Signature</span>
+                                    <input type="hidden" name="noted_by_signature_drawn" value="{{ $notedBySignatureValue }}">
                                 </label>
 
                                 <label class="block text-[12px] text-slate-700">
@@ -1273,7 +1716,9 @@
                             <x-input-error :messages="$errors->get('action_log_action_time')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_action_taken')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_action_officer')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_signature_drawn')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_name')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('noted_by_signature_drawn')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
                         </div>
@@ -1408,6 +1853,25 @@
         </div>
     </div>
 
+    <div class="srf-print-preview-backdrop" id="print-preview-modal" aria-hidden="true">
+        <div class="srf-print-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="print-preview-title">
+            <div class="srf-print-preview-head">
+                <h3 class="srf-print-preview-title" id="print-preview-title">Print Preview</h3>
+                <button type="button" class="srf-print-preview-close" id="print-preview-close" aria-label="Close print preview">×</button>
+            </div>
+
+            <iframe id="print-preview-frame" class="srf-print-preview-frame" title="Service Request Print Preview"></iframe>
+
+            <div class="srf-print-preview-actions">
+                <a id="print-preview-open-full" href="#" target="_blank" rel="noopener" class="srf-print-preview-btn">Open Full View</a>
+                <button type="button" id="print-preview-signature" class="srf-print-preview-btn">Add Signature</button>
+                <button type="button" id="print-preview-signature-smaller" class="srf-print-preview-btn">Signature -</button>
+                <button type="button" id="print-preview-signature-larger" class="srf-print-preview-btn">Signature +</button>
+                <button type="button" id="print-preview-trigger" class="srf-print-preview-btn primary">Print</button>
+            </div>
+        </div>
+    </div>
+
     <div class="srf-status-modal-backdrop" id="status-confirm-modal" aria-hidden="true">
         <div class="srf-status-modal" role="dialog" aria-modal="true" aria-labelledby="status-confirm-title">
             <div class="srf-status-modal-head">
@@ -1449,6 +1913,48 @@
             </div>
         </div>
     </div>
+
+    <div class="srf-log-signature-modal" id="action-log-signature-modal" aria-hidden="true">
+        <div class="srf-log-signature-dialog" role="dialog" aria-modal="true" aria-labelledby="action-log-signature-title">
+            <div class="srf-log-signature-head">
+                <h3 class="srf-log-signature-title" id="action-log-signature-title">Draw Signature</h3>
+                <button type="button" class="srf-log-signature-close" id="action-log-signature-close" aria-label="Close signature modal">×</button>
+            </div>
+
+            <div class="srf-log-signature-canvas-wrap">
+                <canvas id="action-log-signature-canvas" class="srf-log-signature-canvas"></canvas>
+            </div>
+
+            <div class="srf-log-signature-actions">
+                <button type="button" class="srf-log-signature-btn" id="action-log-signature-clear">Clear</button>
+                <button type="button" class="srf-log-signature-btn" id="action-log-signature-cancel">Cancel</button>
+                <button type="button" class="srf-log-signature-btn primary" id="action-log-signature-apply">Use Signature</button>
+            </div>
+        </div>
+    </div>
+
+    @if ($canModerateChat)
+        <div class="srf-sticky-bar" id="srf-sticky-bar">
+            <span class="srf-sticky-ref">{{ $serviceRequest->reference_code }}</span>
+            <span class="srf-sticky-status {{ $statusClasses }}">{{ $serviceRequest->status }}</span>
+            <div class="srf-sticky-actions">
+                <a id="sticky-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
+                <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex items-center gap-2" data-status-action-form>
+                    @csrf
+                    @method('PATCH')
+                    <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
+                    @if ($showDecisionButtons)
+                        <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
+                        <button type="submit" name="status" value="rejected" data-status-target="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                    @endif
+                </form>
+            </div>
+        </div>
+    @endif
+
+    <button type="button" class="srf-scroll-top" id="srf-scroll-top" aria-label="Scroll to top">
+        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V5"></path><path d="M5 9l5-5 5 5"></path></svg>
+    </button>
 
     </div>
 
@@ -1661,48 +2167,6 @@
                 syncMode();
             };
 
-            const initDirectPrint = function () {
-                const printButton = document.getElementById('admin-print-button');
-                if (!printButton) {
-                    return;
-                }
-
-                const frameId = 'service-request-print-frame';
-                let printFrame = document.getElementById(frameId);
-
-                if (!printFrame) {
-                    printFrame = document.createElement('iframe');
-                    printFrame.id = frameId;
-                    printFrame.style.display = 'none';
-                    document.body.appendChild(printFrame);
-                }
-
-                printButton.addEventListener('click', function (event) {
-                    event.preventDefault();
-
-                    const baseUrl = printButton.getAttribute('href') || '';
-                    if (baseUrl === '') {
-                        return;
-                    }
-
-                    const ts = Date.now();
-                    const iframeUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'print_ts=' + ts;
-
-                    printFrame.onload = function () {
-                        setTimeout(function () {
-                            try {
-                                printFrame.contentWindow.focus();
-                                printFrame.contentWindow.print();
-                            } catch (error) {
-                                window.open(baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'autoprint=1', '_blank');
-                            }
-                        }, 120);
-                    };
-
-                    printFrame.src = iframeUrl;
-                });
-            };
-
             const initChatEnterSubmit = function () {
                 const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
                 const adminChatPanel = document.querySelector('[data-admin-chat-panel]');
@@ -1713,6 +2177,7 @@
                 const notifList = document.getElementById('admin-chat-notif-list');
                 const notifEmpty = document.getElementById('admin-chat-notif-empty');
                 const notifCount = document.getElementById('admin-chat-notif-count');
+                const notifSearch = document.getElementById('admin-chat-notif-search');
                 const notifEndpoint = @json(route('service-requests.notifications'));
                 const chatForms = document.querySelectorAll('[data-chat-enter-form]');
                 const chatImageModal = document.querySelector('[data-chat-image-modal]');
@@ -1850,15 +2315,34 @@
                         return;
                     }
 
-                    if (!Array.isArray(items) || items.length === 0) {
+                    const searchText = notifSearch
+                        ? String(notifSearch.value || '').trim().toLowerCase()
+                        : '';
+                    const normalizedItems = Array.isArray(items) ? items : [];
+                    const filteredItems = normalizedItems.filter(function (item) {
+                        if (searchText === '') {
+                            return true;
+                        }
+
+                        const haystack = [
+                            item.message || '',
+                            item.requested_at_label || '',
+                            item.edit_url || '',
+                        ].join(' ').toLowerCase();
+
+                        return haystack.includes(searchText);
+                    });
+
+                    if (filteredItems.length === 0) {
                         notifList.innerHTML = '';
+                        notifEmpty.textContent = searchText === '' ? 'No notifications yet.' : 'No matching notifications.';
                         notifEmpty.classList.remove('hidden');
                         notifList.appendChild(notifEmpty);
                         return;
                     }
 
                     notifEmpty.classList.add('hidden');
-                    notifList.innerHTML = items.map(function (item) {
+                    notifList.innerHTML = filteredItems.map(function (item) {
                         const message = escapeHtml(item.message || 'Chat request received');
                         const requestedAt = escapeHtml(item.requested_at_label || '');
                         const editUrl = escapeHtml(item.edit_url || '#');
@@ -1914,6 +2398,12 @@
                 };
 
                 if (notifToggle && notifPanel) {
+                    if (notifSearch) {
+                        notifSearch.addEventListener('input', function () {
+                            renderNotificationList(notificationItems);
+                        });
+                    }
+
                     notifToggle.addEventListener('click', function () {
                         notifPanel.classList.toggle('hidden');
                         if (!notifPanel.classList.contains('hidden')) {
@@ -2381,6 +2871,391 @@
                 });
             };
 
+            const initFloatingPrintPreview = function () {
+                const printButton = document.getElementById('admin-print-button');
+                const modal = document.getElementById('print-preview-modal');
+                const frame = document.getElementById('print-preview-frame');
+                const closeButton = document.getElementById('print-preview-close');
+                const printTrigger = document.getElementById('print-preview-trigger');
+                const openFullLink = document.getElementById('print-preview-open-full');
+                const signatureTrigger = document.getElementById('print-preview-signature');
+                const signatureSmallerTrigger = document.getElementById('print-preview-signature-smaller');
+                const signatureLargerTrigger = document.getElementById('print-preview-signature-larger');
+
+                if (
+                    !printButton ||
+                    !modal ||
+                    !frame ||
+                    !closeButton ||
+                    !printTrigger ||
+                    !openFullLink ||
+                    !signatureTrigger ||
+                    !signatureSmallerTrigger ||
+                    !signatureLargerTrigger
+                ) {
+                    return;
+                }
+
+                const closeModal = function () {
+                    modal.classList.remove('open');
+                    modal.setAttribute('aria-hidden', 'true');
+                    document.body.classList.remove('overflow-hidden');
+                };
+
+                const openModal = function (previewUrl, fullUrl) {
+                    frame.src = previewUrl;
+                    openFullLink.href = fullUrl;
+                    modal.classList.add('open');
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.classList.add('overflow-hidden');
+                };
+
+                printButton.addEventListener('click', function (event) {
+                    event.preventDefault();
+
+                    const baseUrl = printButton.getAttribute('href') || '';
+                    if (baseUrl === '') {
+                        return;
+                    }
+
+                    const previewUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'embedded=1&print_ts=' + Date.now();
+                    const fullUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'print_ts=' + Date.now();
+                    openModal(previewUrl, fullUrl);
+                });
+
+                var stickyPrintButton = document.getElementById('sticky-print-button');
+                if (stickyPrintButton) {
+                    stickyPrintButton.addEventListener('click', function (event) {
+                        event.preventDefault();
+
+                        var baseUrl = stickyPrintButton.getAttribute('href') || '';
+                        if (baseUrl === '') {
+                            return;
+                        }
+
+                        var previewUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'embedded=1&print_ts=' + Date.now();
+                        var fullUrl = baseUrl + (baseUrl.includes('?') ? '&' : '?') + 'print_ts=' + Date.now();
+                        openModal(previewUrl, fullUrl);
+                    });
+                }
+
+                closeButton.addEventListener('click', closeModal);
+
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape' && modal.classList.contains('open')) {
+                        closeModal();
+                    }
+                });
+
+                printTrigger.addEventListener('click', function () {
+                    try {
+                        frame.contentWindow.focus();
+                        frame.contentWindow.print();
+                    } catch (error) {
+                        const fallbackUrl = openFullLink.getAttribute('href') || '';
+                        if (fallbackUrl !== '') {
+                            window.open(fallbackUrl, '_blank', 'noopener');
+                        }
+                    }
+                });
+
+                signatureTrigger.addEventListener('click', function () {
+                    try {
+                        frame.contentWindow.focus();
+                        frame.contentWindow.postMessage({ type: 'open-print-signature-pad' }, '*');
+                    } catch (error) {
+                        // Ignore messaging failures.
+                    }
+                });
+
+                signatureSmallerTrigger.addEventListener('click', function () {
+                    try {
+                        frame.contentWindow.focus();
+                        frame.contentWindow.postMessage({ type: 'resize-print-signature', delta: -0.1 }, '*');
+                    } catch (error) {
+                        // Ignore messaging failures.
+                    }
+                });
+
+                signatureLargerTrigger.addEventListener('click', function () {
+                    try {
+                        frame.contentWindow.focus();
+                        frame.contentWindow.postMessage({ type: 'resize-print-signature', delta: 0.1 }, '*');
+                    } catch (error) {
+                        // Ignore messaging failures.
+                    }
+                });
+            };
+
+            const initActionLogSignaturePad = function () {
+                const cells = Array.from(document.querySelectorAll('[data-log-signature-cell]'));
+                const modal = document.getElementById('action-log-signature-modal');
+                const canvas = document.getElementById('action-log-signature-canvas');
+                const closeBtn = document.getElementById('action-log-signature-close');
+                const cancelBtn = document.getElementById('action-log-signature-cancel');
+                const clearBtn = document.getElementById('action-log-signature-clear');
+                const applyBtn = document.getElementById('action-log-signature-apply');
+
+                if (cells.length === 0 || !modal || !canvas || !closeBtn || !cancelBtn || !clearBtn || !applyBtn) {
+                    return;
+                }
+
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    return;
+                }
+
+                let activeCell = null;
+                let drawing = false;
+
+                const configureCanvas = function () {
+                    const ratio = window.devicePixelRatio || 1;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+                    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+                    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                    ctx.lineWidth = 2.4;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#0f172a';
+                };
+
+                const clearCanvas = function () {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                };
+
+                const pointFromEvent = function (event) {
+                    const rect = canvas.getBoundingClientRect();
+                    const source = event.touches ? event.touches[0] : event;
+                    return {
+                        x: source.clientX - rect.left,
+                        y: source.clientY - rect.top,
+                    };
+                };
+
+                const drawDataUrlOnCanvas = function (dataUrl) {
+                    clearCanvas();
+                    if (!dataUrl) {
+                        return;
+                    }
+
+                    const img = new Image();
+                    img.onload = function () {
+                        clearCanvas();
+                        ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
+                    };
+                    img.src = dataUrl;
+                };
+
+                const getCenteredSignatureDataUrl = function () {
+                    const width = canvas.width;
+                    const height = canvas.height;
+                    const imageData = ctx.getImageData(0, 0, width, height);
+                    const data = imageData.data;
+
+                    let minX = width;
+                    let minY = height;
+                    let maxX = -1;
+                    let maxY = -1;
+
+                    for (let y = 0; y < height; y++) {
+                        for (let x = 0; x < width; x++) {
+                            const alpha = data[(y * width + x) * 4 + 3];
+                            if (alpha > 0) {
+                                if (x < minX) minX = x;
+                                if (y < minY) minY = y;
+                                if (x > maxX) maxX = x;
+                                if (y > maxY) maxY = y;
+                            }
+                        }
+                    }
+
+                    if (maxX < minX || maxY < minY) {
+                        return '';
+                    }
+
+                    const cropWidth = maxX - minX + 1;
+                    const cropHeight = maxY - minY + 1;
+
+                    const targetCanvas = document.createElement('canvas');
+                    targetCanvas.width = width;
+                    targetCanvas.height = height;
+
+                    const targetCtx = targetCanvas.getContext('2d');
+                    if (!targetCtx) {
+                        return canvas.toDataURL('image/png');
+                    }
+
+                    const scale = Math.min((width * 0.9) / cropWidth, (height * 0.8) / cropHeight, 1);
+                    const drawWidth = cropWidth * scale;
+                    const drawHeight = cropHeight * scale;
+                    const drawX = (width - drawWidth) / 2;
+                    const drawY = (height - drawHeight) / 2;
+
+                    targetCtx.clearRect(0, 0, width, height);
+                    targetCtx.drawImage(
+                        canvas,
+                        minX,
+                        minY,
+                        cropWidth,
+                        cropHeight,
+                        drawX,
+                        drawY,
+                        drawWidth,
+                        drawHeight
+                    );
+
+                    return targetCanvas.toDataURL('image/png');
+                };
+
+                const syncCellSignature = function (cell, signatureData) {
+                    const input = cell.querySelector('[data-log-signature-input]');
+                    const preview = cell.querySelector('[data-log-signature-preview]');
+                    const placeholder = cell.querySelector('[data-log-signature-placeholder]');
+                    const clearControl = cell.querySelector('[data-log-signature-clear]');
+
+                    if (input) {
+                        input.value = signatureData;
+                    }
+
+                    if (preview) {
+                        if (signatureData !== '') {
+                            preview.src = signatureData;
+                            preview.classList.remove('hidden');
+                        } else {
+                            preview.removeAttribute('src');
+                            preview.classList.add('hidden');
+                        }
+                    }
+
+                    if (placeholder) {
+                        placeholder.classList.toggle('hidden', signatureData !== '');
+                    }
+
+                    if (clearControl) {
+                        clearControl.classList.toggle('hidden', signatureData === '');
+                    }
+                };
+
+                const closeModal = function () {
+                    modal.classList.remove('open');
+                    modal.setAttribute('aria-hidden', 'true');
+                    document.body.style.overflow = '';
+                    activeCell = null;
+                    drawing = false;
+                };
+
+                const openModal = function (cell) {
+                    activeCell = cell;
+                    modal.classList.add('open');
+                    modal.setAttribute('aria-hidden', 'false');
+                    document.body.style.overflow = 'hidden';
+
+                    const input = cell.querySelector('[data-log-signature-input]');
+                    window.requestAnimationFrame(function () {
+                        configureCanvas();
+                        drawDataUrlOnCanvas(input ? String(input.value || '') : '');
+                    });
+                };
+
+                const startDrawing = function (event) {
+                    if (!modal.classList.contains('open')) {
+                        return;
+                    }
+
+                    drawing = true;
+                    const point = pointFromEvent(event);
+                    ctx.beginPath();
+                    ctx.moveTo(point.x, point.y);
+                    event.preventDefault();
+                };
+
+                const moveDrawing = function (event) {
+                    if (!drawing) {
+                        return;
+                    }
+
+                    const point = pointFromEvent(event);
+                    ctx.lineTo(point.x, point.y);
+                    ctx.stroke();
+                    event.preventDefault();
+                };
+
+                const endDrawing = function () {
+                    drawing = false;
+                };
+
+                canvas.addEventListener('mousedown', startDrawing);
+                canvas.addEventListener('mousemove', moveDrawing);
+                window.addEventListener('mouseup', endDrawing);
+                canvas.addEventListener('touchstart', startDrawing, { passive: false });
+                canvas.addEventListener('touchmove', moveDrawing, { passive: false });
+                canvas.addEventListener('touchend', endDrawing);
+
+                cells.forEach(function (cell) {
+                    const input = cell.querySelector('[data-log-signature-input]');
+                    const trigger = cell.querySelector('[data-log-signature-trigger]');
+                    const clearControl = cell.querySelector('[data-log-signature-clear]');
+
+                    syncCellSignature(cell, input ? String(input.value || '') : '');
+
+                    if (trigger) {
+                        trigger.addEventListener('click', function () {
+                            openModal(cell);
+                        });
+                    }
+
+                    if (clearControl) {
+                        clearControl.addEventListener('click', function () {
+                            syncCellSignature(cell, '');
+                        });
+                    }
+                });
+
+                clearBtn.addEventListener('click', clearCanvas);
+
+                applyBtn.addEventListener('click', function () {
+                    if (!activeCell) {
+                        closeModal();
+                        return;
+                    }
+
+                    const signatureData = getCenteredSignatureDataUrl();
+                    syncCellSignature(activeCell, signatureData);
+                    closeModal();
+                });
+
+                closeBtn.addEventListener('click', closeModal);
+                cancelBtn.addEventListener('click', closeModal);
+
+                modal.addEventListener('click', function (event) {
+                    if (event.target === modal) {
+                        closeModal();
+                    }
+                });
+
+                document.addEventListener('keydown', function (event) {
+                    if (event.key === 'Escape' && modal.classList.contains('open')) {
+                        closeModal();
+                    }
+                });
+
+                window.addEventListener('resize', function () {
+                    if (!modal.classList.contains('open') || !activeCell) {
+                        return;
+                    }
+
+                    configureCanvas();
+                    const input = activeCell.querySelector('[data-log-signature-input]');
+                    drawDataUrlOnCanvas(input ? String(input.value || '') : '');
+                });
+            };
+
             const initUploadedPhotoPreview = function () {
                 const triggers = document.querySelectorAll('[data-uploaded-photo-trigger]');
                 const modal = document.getElementById('uploaded-photo-modal');
@@ -2439,10 +3314,58 @@
             };
 
             initSignatureInput();
-            initDirectPrint();
+            initFloatingPrintPreview();
             initChatEnterSubmit();
             initStatusActionConfirm();
+            initActionLogSignaturePad();
             initUploadedPhotoPreview();
+
+            // Sticky action bar + scroll-to-top
+            var stickyBar = document.getElementById('srf-sticky-bar');
+            var scrollTopBtn = document.getElementById('srf-scroll-top');
+            var statusBlock = document.querySelector('.srf-status-block');
+
+            if (scrollTopBtn) {
+                scrollTopBtn.addEventListener('click', function () {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+            }
+
+            if (statusBlock) {
+                var lastScrollY = 0;
+                var ticking = false;
+
+                var handleScroll = function () {
+                    var rect = statusBlock.getBoundingClientRect();
+                    var pastBlock = rect.bottom < 0;
+                    var scrolledDown = window.scrollY > 200;
+
+                    if (stickyBar) {
+                        if (pastBlock) {
+                            stickyBar.classList.add('visible');
+                        } else {
+                            stickyBar.classList.remove('visible');
+                        }
+                    }
+
+                    if (scrollTopBtn) {
+                        if (scrolledDown) {
+                            scrollTopBtn.classList.add('visible');
+                        } else {
+                            scrollTopBtn.classList.remove('visible');
+                        }
+                    }
+
+                    ticking = false;
+                };
+
+                window.addEventListener('scroll', function () {
+                    if (!ticking) {
+                        window.requestAnimationFrame(handleScroll);
+                        ticking = true;
+                    }
+                }, { passive: true });
+            }
         });
 
     </script>

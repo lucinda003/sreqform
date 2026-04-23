@@ -1,3 +1,4 @@
+@php View::share('pageTitle', 'Chat Requests'); @endphp
 <x-app-layout>
     <x-slot name="header" style="display:none;"></x-slot>
 

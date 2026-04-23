@@ -195,7 +195,15 @@
             </td>
         </tr>
         <tr>
-            <td colspan="2">
+            <td>
+                <span class="label">Supervisor Signature</span>
+                @if (filled($serviceRequest->noted_by_signature))
+                    <div class="value"><img src="{{ $serviceRequest->noted_by_signature }}" alt="Supervisor Signature" style="max-height:48px; max-width:180px;"></div>
+                @else
+                    <div class="value">__________________________</div>
+                @endif
+            </td>
+            <td>
                 <span class="label">15. Date Signed</span>
                 <div class="value">{{ optional($serviceRequest->noted_by_date_signed)->format('F d, Y') ?: '-' }}</div>
             </td>

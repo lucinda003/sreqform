@@ -116,8 +116,29 @@ class ServiceRequestController extends Controller
 
     public function create(): View
     {
+        $submissionToken = (string) Str::uuid();
+        session()->put('service_request_submission_token', $submissionToken);
+
+        $departmentOptions = [];
+        $authUser = Auth::user();
+
+        if ($authUser === null) {
+            // Guest/unauthenticated users see all departments
+            $departmentOptions = $this->approvedDepartmentOptions(true);
+        } elseif ($this->isAdmin()) {
+            // Admin users see all departments
+            $departmentOptions = $this->approvedDepartmentOptions(true);
+        } else {
+            // Non-admin logged-in users see only their own department
+            $userDepartment = trim((string) ($authUser->department ?? ''));
+            if ($userDepartment !== '') {
+                $departmentOptions = [$userDepartment];
+            }
+        }
+
         return view('service-requests.create', [
-            'departmentPersonnelOptions' => $this->approvedDepartmentPersonnelOptions(),
+            'departmentOptions' => $departmentOptions,
+            'submissionToken' => $submissionToken,
         ]);
     }
 
@@ -854,6 +875,16 @@ class ServiceRequestController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $submittedToken = trim((string) $request->input('submission_token'));
+        $sessionToken = trim((string) $request->session()->pull('service_request_submission_token', ''));
+
+        if ($submittedToken === '' || $sessionToken === '' || ! hash_equals($sessionToken, $submittedToken)) {
+            return redirect()
+                ->route('service-requests.create')
+                ->withErrors(['form' => 'Duplicate or expired submission detected. Please submit once and wait for completion.'])
+                ->withInput();
+        }
+
         $validated = $this->validatedData($request);
         if ($this->hasDescriptionPhotosColumn()) {
             $validated['description_photos'] = $this->storeDescriptionPhotos($request);
@@ -875,16 +906,25 @@ class ServiceRequestController extends Controller
         $authUser = Auth::user();
         if ($authUser && ! $this->isAdmin() && $authUser->department_status !== 'approved') {
             return back()
-                ->withErrors(['department_user_id' => 'Your department is pending admin approval.'])
+                ->withErrors(['department_code' => 'Your department is pending admin approval.'])
                 ->withInput();
         }
 
         $departmentSelection = $request->validate([
-            'department_user_id' => ['required', 'integer'],
+            'department_code' => ['required', 'string', 'max:255'],
         ]);
 
+        $selectedDepartment = trim((string) $departmentSelection['department_code']);
+
+        if ($selectedDepartment === '') {
+            return back()
+                ->withErrors(['department_code' => 'Please select a valid department.'])
+                ->withInput();
+        }
+
+        // Find an approved user in the selected department to assign the request
         $selectedDepartmentUserQuery = User::query()
-            ->whereKey((int) $departmentSelection['department_user_id'])
+            ->where('department', $selectedDepartment)
             ->where('department_status', 'approved')
             ->whereNotNull('department')
             ->whereRaw('TRIM(department) <> ?', ['']);
@@ -899,13 +939,11 @@ class ServiceRequestController extends Controller
             }
         }
 
-        $selectedDepartmentUser = $selectedDepartmentUserQuery->first();
+        $selectedDepartmentUser = $selectedDepartmentUserQuery->orderBy('name')->first();
 
-        $selectedDepartment = trim((string) ($selectedDepartmentUser?->department ?? ''));
-
-        if ($selectedDepartment === '') {
+        if (! $selectedDepartmentUser) {
             return back()
-                ->withErrors(['department_user_id' => 'Please select a valid name.'])
+                ->withErrors(['department_code' => 'No approved personnel found in the selected department.'])
                 ->withInput();
         }
 
@@ -1074,7 +1112,7 @@ class ServiceRequestController extends Controller
                 ->withInput();
         }
 
-        $isModerationEditor = $this->isAdmin() || $this->isKmits();
+        $isModerationEditor = auth()->check();
 
         $validated = $isModerationEditor
             ? $this->validatedKmitsData($request)
@@ -1469,6 +1507,17 @@ class ServiceRequestController extends Controller
         return (bool) $hasColumn;
     }
 
+    private function hasNotedBySignatureColumn(): bool
+    {
+        static $hasColumn = null;
+
+        if ($hasColumn === null) {
+            $hasColumn = Schema::hasColumn('service_requests', 'noted_by_signature');
+        }
+
+        return (bool) $hasColumn;
+    }
+
     private function validatedData(Request $request): array
     {
         $validated = $request->validate([
@@ -1512,7 +1561,10 @@ class ServiceRequestController extends Controller
             'action_log_action_taken.*' => ['nullable', 'string', 'max:255'],
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
             'action_log_action_officer.*' => ['nullable', 'string', 'max:255'],
+            'action_log_signature_drawn' => ['nullable', 'array', 'max:5'],
+            'action_log_signature_drawn.*' => ['nullable', 'string'],
             'noted_by_name' => ['nullable', 'string', 'max:255'],
+            'noted_by_signature_drawn' => ['nullable', 'string'],
             'noted_by_position' => ['nullable', 'string', 'max:255'],
             'noted_by_date_signed' => ['nullable', 'date'],
         ]);
@@ -1530,6 +1582,7 @@ class ServiceRequestController extends Controller
         $actionTimeRows = $validated['action_log_action_time'] ?? [];
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
+        $signatureRows = $validated['action_log_signature_drawn'] ?? [];
 
         $actionLogs = [];
         for ($i = 0; $i < 5; $i++) {
@@ -1540,6 +1593,7 @@ class ServiceRequestController extends Controller
                 'action_time' => $actionTimeRows[$i] ?? null,
                 'action_taken' => $actionRows[$i] ?? null,
                 'action_officer' => $officerRows[$i] ?? null,
+                'signature' => $signatureRows[$i] ?? null,
             ];
 
             if (
@@ -1549,6 +1603,7 @@ class ServiceRequestController extends Controller
                 || filled($row['action_time'])
                 || filled($row['action_taken'])
                 || filled($row['action_officer'])
+                || filled($row['signature'])
             ) {
                 $actionLogs[] = $row;
             }
@@ -1556,13 +1611,20 @@ class ServiceRequestController extends Controller
 
         $validated['action_logs'] = $actionLogs !== [] ? $actionLogs : null;
 
+        if ($this->hasNotedBySignatureColumn()) {
+            $notedBySignature = trim((string) ($validated['noted_by_signature_drawn'] ?? ''));
+            $validated['noted_by_signature'] = $notedBySignature !== '' ? $notedBySignature : null;
+        }
+
         unset(
             $validated['action_log_date'],
             $validated['action_log_time'],
             $validated['action_log_action_date'],
             $validated['action_log_action_time'],
             $validated['action_log_action_taken'],
-            $validated['action_log_action_officer']
+            $validated['action_log_action_officer'],
+            $validated['action_log_signature_drawn'],
+            $validated['noted_by_signature_drawn']
         );
 
         return $validated;
@@ -1782,7 +1844,10 @@ class ServiceRequestController extends Controller
             'action_log_action_taken.*' => ['nullable', 'string', 'max:255'],
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
             'action_log_action_officer.*' => ['nullable', 'string', 'max:255'],
+            'action_log_signature_drawn' => ['nullable', 'array', 'max:5'],
+            'action_log_signature_drawn.*' => ['nullable', 'string'],
             'noted_by_name' => ['nullable', 'string', 'max:255'],
+            'noted_by_signature_drawn' => ['nullable', 'string'],
             'noted_by_position' => ['nullable', 'string', 'max:255'],
             'noted_by_date_signed' => ['nullable', 'date'],
         ]);
@@ -1795,6 +1860,7 @@ class ServiceRequestController extends Controller
         $actionTimeRows = $validated['action_log_action_time'] ?? [];
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
+        $signatureRows = $validated['action_log_signature_drawn'] ?? [];
 
         $actionLogs = [];
         for ($i = 0; $i < 5; $i++) {
@@ -1805,6 +1871,7 @@ class ServiceRequestController extends Controller
                 'action_time' => $actionTimeRows[$i] ?? null,
                 'action_taken' => $actionRows[$i] ?? null,
                 'action_officer' => $officerRows[$i] ?? null,
+                'signature' => $signatureRows[$i] ?? null,
             ];
 
             if (
@@ -1814,6 +1881,7 @@ class ServiceRequestController extends Controller
                 || filled($row['action_time'])
                 || filled($row['action_taken'])
                 || filled($row['action_officer'])
+                || filled($row['signature'])
             ) {
                 $actionLogs[] = $row;
             }
@@ -1821,13 +1889,20 @@ class ServiceRequestController extends Controller
 
         $validated['action_logs'] = $actionLogs !== [] ? $actionLogs : null;
 
+        if ($this->hasNotedBySignatureColumn()) {
+            $notedBySignature = trim((string) ($validated['noted_by_signature_drawn'] ?? ''));
+            $validated['noted_by_signature'] = $notedBySignature !== '' ? $notedBySignature : null;
+        }
+
         unset(
             $validated['action_log_date'],
             $validated['action_log_time'],
             $validated['action_log_action_date'],
             $validated['action_log_action_time'],
             $validated['action_log_action_taken'],
-            $validated['action_log_action_officer']
+            $validated['action_log_action_officer'],
+            $validated['action_log_signature_drawn'],
+            $validated['noted_by_signature_drawn']
         );
 
         return $validated;
@@ -1895,14 +1970,6 @@ class ServiceRequestController extends Controller
 
     private function canManageStatus(ServiceRequest $serviceRequest): bool
     {
-        if ($this->isAdmin()) {
-            return true;
-        }
-
-        if (! $this->isKmits()) {
-            return false;
-        }
-
         return $this->canAccess($serviceRequest);
     }
 

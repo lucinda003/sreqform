@@ -46,6 +46,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'actions_taken',
     'action_logs',
     'noted_by_name',
+    'noted_by_signature',
     'noted_by_position',
     'noted_by_date_signed',
     'user_id',

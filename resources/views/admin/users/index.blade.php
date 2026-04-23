@@ -74,6 +74,7 @@
                                     <td class="px-6 py-4">
                                         <p class="font-bold text-slate-900">{{ $user->name }}</p>
                                         <p class="text-xs text-slate-500">{{ $user->email }}</p>
+                                        <p class="text-xs text-slate-400 mt-0.5">@{{ $user->username }}</p>
                                     </td>
                                     <td class="px-6 py-4">
                                         @if ($user->department !== null && trim((string)$user->department) !== '')
@@ -152,14 +153,9 @@
                         <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="name" name="name" type="text" autocomplete="name" required>
                     </div>
 
-                    <div>
+                    <div class="sm:col-span-2">
                         <label class="auth-label block text-sm font-medium text-slate-700" for="email">Email Address</label>
                         <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="email" name="email" type="email" autocomplete="email" required>
-                    </div>
-
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="password">Initial Password</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="password" name="password" type="password" autocomplete="new-password" required>
                     </div>
 
                     <div>

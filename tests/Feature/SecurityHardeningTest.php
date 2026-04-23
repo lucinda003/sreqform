@@ -112,6 +112,31 @@ class SecurityHardeningTest extends TestCase
         $response->assertSessionHasErrors(['code']);
     }
 
+    public function test_store_rejects_duplicate_submission_token(): void
+    {
+        $departmentUser = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $submissionToken = (string) Str::uuid();
+        $payload = $this->validStorePayload($departmentUser, $submissionToken);
+
+        $firstResponse = $this
+            ->withSession(['service_request_submission_token' => $submissionToken])
+            ->post(route('service-requests.store'), $payload);
+
+        $firstResponse->assertStatus(302);
+        $this->assertSame(1, ServiceRequest::query()->count());
+
+        $secondResponse = $this->post(route('service-requests.store'), $payload);
+
+        $secondResponse->assertRedirect(route('service-requests.create'));
+        $secondResponse->assertSessionHasErrors(['form']);
+
+        $this->assertSame(1, ServiceRequest::query()->count());
+    }
+
     public function test_authenticated_edit_page_has_expected_csp_font_sources(): void
     {
         $admin = User::factory()->create([
@@ -156,5 +181,36 @@ class SecurityHardeningTest extends TestCase
             'status' => 'pending',
             'user_id' => $owner->id,
         ], $overrides));
+    }
+
+    private function validStorePayload(User $departmentUser, string $submissionToken): array
+    {
+        return [
+            'submission_token' => $submissionToken,
+            'department_user_id' => (string) $departmentUser->id,
+            'request_date' => now()->toDateString(),
+            'request_category' => 'Technical Assistance',
+            'application_system_name' => 'System Alpha',
+            'expected_completion_date' => now()->addDays(3)->toDateString(),
+            'expected_completion_time' => '10:00',
+            'contact_last_name' => 'Doe',
+            'contact_first_name' => 'Jane',
+            'contact_middle_name' => 'Q',
+            'contact_suffix_name' => '',
+            'office' => 'Main Office',
+            'address' => '123 Test Street',
+            'landline' => '1234567',
+            'fax_no' => '1234567',
+            'mobile_no' => '09171234567',
+            'email_address' => 'owner@example.com',
+            'description_request' => 'Testing duplicate submission protection.',
+            'approved_by_name' => 'Approver Name',
+            'approved_by_position' => 'Manager',
+            'approved_date' => now()->toDateString(),
+            'kmits_date' => now()->toDateString(),
+            'time_received' => now()->format('H:i'),
+            'approved_by_signature_mode' => 'draw',
+            'approved_by_signature_drawn' => '',
+        ];
     }
 }
