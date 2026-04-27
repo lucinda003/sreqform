@@ -549,13 +549,15 @@
             .line-caption { font-size: 12px; }
             .action-row { height: 34px; }
             .version { font-size: 14px; }
+            .persisted-tracking-signature { display: block !important; }
+            .persisted-tracking-signature-wrap { display: flex !important; }
         }
 
         @if (request()->boolean('embedded'))
             body { background: #fff; min-height: auto; overflow: visible; }
             .screen-shell { min-height: auto; padding: 0; }
             .screen-aurora, .screen-wave, .controls { display: none; }
-            .sheet { max-width: auto; width: 70%; transform: scale(1.3); margin-top: 200px; background: #fff; border-radius: 0; box-shadow: none; padding: 0; }
+            .sheet { width: 210mm !important; max-width: 210mm !important; margin: 24px auto; transform-origin: top center; transform: scale(1); background: #fff; border-radius: 0; box-shadow: none; padding: 0; }
             td, th { padding: 7px 9px; font-size: 13px; }
             .small { font-size: 12px; }
             .tiny { font-size: 11px; }
@@ -580,6 +582,34 @@
             .line-caption { font-size: 12px; }
             .action-row { height: 34px; }
             .version { font-size: 14px; }
+            .persisted-tracking-signature,
+            .persisted-tracking-signature-wrap {
+                display: none !important;
+            }
+
+            @media print {
+                .sheet {
+                    max-width: auto !important;
+                    width: 70% !important;
+                    transform: scale(1.3) !important;
+                    transform-origin: top center;
+                    margin-top: 25px !important;
+                    margin-left: auto !important;
+                    margin-right: auto !important;
+                }
+
+                .persisted-tracking-signature {
+                    display: block !important;
+                }
+
+                .persisted-tracking-signature-wrap {
+                    display: flex !important;
+                }
+            }
+        @endif
+        @if (request()->routeIs('service-requests.track.view'))
+            .floating-signature { pointer-events: none !important; cursor: default !important; border-color: transparent !important; }
+            .sig-toolbar { display: none !important; }
         @endif
     </style>
 </head>
@@ -597,7 +627,9 @@
                 <button class="btn secondary" type="button" id="ctrl-shrink">Signature −</button>
                 <button class="btn secondary" type="button" id="ctrl-grow">Signature +</button>
                 <button class="btn secondary" type="button" id="ctrl-delete" style="border-color:#dc2626; color:#b91c1c;">Delete Signature</button>
+                <button class="btn secondary" type="button" id="save-floating-signatures">Save Signatures</button>
                 <button class="btn" onclick="window.print()">Print</button>
+                <span id="save-signature-status" style="font-size:12px; font-weight:600; color:#334155;"></span>
             </div>
         @endif
 
@@ -774,7 +806,19 @@
                     <td>{{ $formatLogTime(data_get($logs, $i . '.action_time', '')) }}</td>
                     <td>{{ (string) data_get($logs, $i . '.action_taken', '') }}</td>
                     <td>{{ \Illuminate\Support\Str::limit((string) data_get($logs, $i . '.action_officer', ''), 28, '...') }}</td>
-                    <td class="center">&nbsp;</td>
+                    @php
+                        $actionSignature = trim((string) data_get($logs, $i . '.signature', ''));
+                        $resolvedActionSignature = $actionSignature !== '' && str_starts_with($actionSignature, 'service-request-signatures/')
+                            ? \App\Support\EncryptedSignature::dataUriFromPath($actionSignature)
+                            : $actionSignature;
+
+                        if ($resolvedActionSignature === '' && $i === 0) {
+                            $resolvedActionSignature = (string) ($approvedSignatureUrl ?? '');
+                        }
+                    @endphp
+                    <td class="center">
+                        &nbsp;
+                    </td>
                 </tr>
             @endfor
         </table>
@@ -785,6 +829,12 @@
                 <td style="width:33%; border-bottom:0 !important;">16)</td>
                 <td style="width:33%; border-bottom:0 !important;">17)</td>
             </tr>
+            @php
+                $notedSignatureRaw = trim((string) ($serviceRequest->noted_by_signature ?? ''));
+                $notedSignatureUrl = $notedSignatureRaw !== '' && str_starts_with($notedSignatureRaw, 'service-request-signatures/')
+                    ? \App\Support\EncryptedSignature::dataUriFromPath($notedSignatureRaw)
+                    : $notedSignatureRaw;
+            @endphp
             <tr>
                 <td style="padding:1px 6px; border-top:0 !important;">
                     <div class="line-value2 center">{{ \Illuminate\Support\Str::limit((string) ($serviceRequest->noted_by_name ?: ''), 70, '...') }}</div>
@@ -836,12 +886,40 @@
 
     @if (request()->boolean('autoprint'))
         <script>
-            window.addEventListener('load', function () { setTimeout(function () { window.print(); }, 150); });
-        </script>
     @endif
 
     <script>
+        @php
+            $logs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
+            $firstRowSig = trim((string) data_get($logs, '0.signature', ''));
+            $actionSigUrl = $firstRowSig !== '' && str_starts_with($firstRowSig, 'service-request-signatures/')
+                ? \App\Support\EncryptedSignature::dataUriFromPath($firstRowSig)
+                : $firstRowSig;
+            
+            $notedSigRaw = trim((string) ($serviceRequest->noted_by_signature ?? ''));
+            $notedSigUrl = $notedSigRaw !== '' && str_starts_with($notedSigRaw, 'service-request-signatures/')
+                ? \App\Support\EncryptedSignature::dataUriFromPath($notedSigRaw)
+                : $notedSigRaw;
+        @endphp
+        window.__persistedSignatures = {
+            action: @json($actionSigUrl),
+            actionCoords: {
+                xRatio: @json(data_get($logs, '0.action_sig_x', 0.24)),
+                yRatio: @json(data_get($logs, '0.action_sig_y', 0.55)),
+                scale: @json(data_get($logs, '0.action_sig_scale', 1))
+            },
+            noted: @json($notedSigUrl),
+            notedCoords: {
+                xRatio: @json(data_get($logs, '0.noted_sig_x', 0.65)),
+                yRatio: @json(data_get($logs, '0.noted_sig_y', 0.72)),
+                scale: @json(data_get($logs, '0.noted_sig_scale', 0.9))
+            }
+        };
+    </script>
+
+    <script>
         (function () {
+            const isReadonlyMode = @json(request()->routeIs('service-requests.track.view'));
             const referenceCode = document.body.getAttribute('data-print-reference') || 'default';
             const signaturesStorageKey = 'print-floating-signatures:' + referenceCode;
             const legacyDataStorageKey     = 'print-floating-signature-data:'     + referenceCode;
@@ -850,6 +928,8 @@
 
             const resetButton      = document.getElementById('reset-signature-positions');
             const openButton       = document.getElementById('open-floating-signature');
+            const saveAllButton    = document.getElementById('save-floating-signatures');
+            const saveStatus       = document.getElementById('save-signature-status');
             const floatingLayer    = document.getElementById('floating-signature-layer');
             const floatingTemplate = document.getElementById('floating-signature-image');
             const modal            = document.getElementById('signature-pad-modal');
@@ -859,6 +939,8 @@
             const modalRemoveButton = document.getElementById('signature-pad-remove');
             const modalCancelButton = document.getElementById('signature-pad-cancel');
             const modalApplyButton  = document.getElementById('signature-pad-apply');
+            const saveEndpoint = @json(route('service-requests.print-signature.save', $serviceRequest));
+            const csrfToken = @json(csrf_token());
 
             // Inline toolbar elements
             const toolbar     = document.getElementById('sig-toolbar');
@@ -881,6 +963,7 @@
             const signatureNodes = new Map();
             let signatures       = [];
             let activeSignatureId = null;
+            const pendingClearSlots = new Set();
             let padMode          = 'add';
             let padTargetId      = null;
 
@@ -941,8 +1024,9 @@
                 return {
                     id:     sanitizeValue(raw && raw.id) || generateSignatureId(),
                     src,
+                    slot:   sanitizeValue(raw && raw.slot),
                     xRatio: Number.isFinite(xRatio) ? clamp(xRatio, 0, 1) : clamp(0.24 + offset, 0, 1),
-                    yRatio: Number.isFinite(yRatio) ? clamp(yRatio, 0, 1) : clamp(0.55 + offset, 0, 1),
+                    yRatio: Number.isFinite(yRatio) ? clamp(yRatio, 0, 1) : clamp(0.80 + offset, 0, 1),
                     scale:  Number.isFinite(scale)  ? clamp(scale, minSignatureScale, maxSignatureScale) : 1,
                 };
             };
@@ -950,8 +1034,253 @@
             const findSignatureById = id =>
                 signatures.find(s => s.id === id) || null;
 
+            const setSaveStatus = (message, isError = false, tone = 'success') => {
+                if (!saveStatus) return;
+                saveStatus.textContent = String(message || '');
+                if (isError || tone === 'delete') {
+                    saveStatus.style.color = '#b91c1c';
+                    return;
+                }
+
+                saveStatus.style.color = '#065f46';
+            };
+
+            const setSavingState = disabled => {
+                if (saveAllButton) saveAllButton.disabled = disabled;
+            };
+
+            const normalizeSlot = slot => {
+                const value = sanitizeValue(slot).toLowerCase();
+                return value === 'noted' ? 'noted' : (value === 'action' ? 'action' : '');
+            };
+
+            const requestSaveSlot = async (target, signature) => {
+                const source = sanitizeValue(signature && signature.src);
+                if (source === '') {
+                    return {
+                        ok: false,
+                        message: 'Please add a signature before saving.',
+                    };
+                }
+
+                const response = await fetch(saveEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        signature_data: source,
+                        target,
+                        xRatio: signature?.xRatio ?? null,
+                        yRatio: signature?.yRatio ?? null,
+                        scale: signature?.scale ?? null,
+                    }),
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || payload.ok === false) {
+                    return {
+                        ok: false,
+                        message: String(payload.message || 'Unable to save signature.'),
+                    };
+                }
+
+                return {
+                    ok: true,
+                    message: String(payload.message || 'Signature saved successfully.'),
+                };
+            };
+
+            const requestClearSlot = async target => {
+                const response = await fetch(saveEndpoint, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    body: JSON.stringify({
+                        target,
+                        clear: true,
+                    }),
+                });
+
+                const payload = await response.json().catch(() => ({}));
+                if (!response.ok || payload.ok === false) {
+                    return {
+                        ok: false,
+                        message: String(payload.message || 'Unable to delete signature.'),
+                    };
+                }
+
+                return {
+                    ok: true,
+                    message: String(payload.message || 'Signature deleted successfully.'),
+                };
+            };
+
+            const removeSignaturesBySlot = slot => {
+                const normalizedSlot = slot === 'noted' ? 'noted' : 'action';
+                signatures = signatures.filter(s => sanitizeValue(s.slot) !== normalizedSlot);
+                if (!findSignatureById(activeSignatureId)) {
+                    activeSignatureId = signatures.length > 0 ? signatures[signatures.length - 1].id : null;
+                }
+                hideToolbar();
+                rebuildSignatureNodes();
+                persistSignatures();
+            };
+
+            const findSignatureForSlot = (slot, excludedIds = new Set()) => {
+                const normalizedSlot = normalizeSlot(slot);
+                if (normalizedSlot === '') return null;
+
+                const bySlot = signatures.find(sig =>
+                    !excludedIds.has(sig.id) && normalizeSlot(sig.slot) === normalizedSlot
+                );
+                if (bySlot) return bySlot;
+
+                const pool = signatures.filter(sig => !excludedIds.has(sig.id));
+                if (pool.length === 0) return null;
+
+                const sorted = [...pool].sort((a, b) => Number(a.yRatio ?? 0) - Number(b.yRatio ?? 0));
+                if (normalizedSlot === 'action') {
+                    return sorted[0] || null;
+                }
+
+                return sorted[sorted.length - 1] || null;
+            };
+
+            const saveAllSignatures = async () => {
+                setSaveStatus('Saving signatures...', false);
+                setSavingState(true);
+
+                try {
+                    const excludedIds = new Set();
+                    const actionSignature = findSignatureForSlot('action', excludedIds);
+                    if (actionSignature) {
+                        actionSignature.slot = 'action';
+                        excludedIds.add(actionSignature.id);
+                        pendingClearSlots.delete('action');
+                    }
+
+                    const notedSignature = findSignatureForSlot('noted', excludedIds);
+                    if (notedSignature) {
+                        notedSignature.slot = 'noted';
+                        excludedIds.add(notedSignature.id);
+                        pendingClearSlots.delete('noted');
+                    }
+
+                    if (!actionSignature && !notedSignature && pendingClearSlots.size === 0) {
+                        setSaveStatus('Nothing to save.');
+                        return {
+                            ok: true,
+                            message: 'Nothing to save.',
+                        };
+                    }
+
+                    const messages = [];
+
+                    if (actionSignature) {
+                        const saveActionResult = await requestSaveSlot('action', actionSignature);
+                        if (!saveActionResult.ok) {
+                            setSaveStatus(saveActionResult.message, true);
+                            return saveActionResult;
+                        }
+
+                        messages.push(saveActionResult.message);
+                        pendingClearSlots.delete('action');
+                    } else if (pendingClearSlots.has('action')) {
+                        const clearActionResult = await requestClearSlot('action');
+                        if (!clearActionResult.ok) {
+                            setSaveStatus(clearActionResult.message, true);
+                            return clearActionResult;
+                        }
+
+                        messages.push(clearActionResult.message);
+                        pendingClearSlots.delete('action');
+                    }
+
+                    if (notedSignature) {
+                        const saveNotedResult = await requestSaveSlot('noted', notedSignature);
+                        if (!saveNotedResult.ok) {
+                            setSaveStatus(saveNotedResult.message, true);
+                            return saveNotedResult;
+                        }
+
+                        messages.push(saveNotedResult.message);
+                        pendingClearSlots.delete('noted');
+                    } else if (pendingClearSlots.has('noted')) {
+                        const clearNotedResult = await requestClearSlot('noted');
+                        if (!clearNotedResult.ok) {
+                            setSaveStatus(clearNotedResult.message, true);
+                            return clearNotedResult;
+                        }
+
+                        messages.push(clearNotedResult.message);
+                        pendingClearSlots.delete('noted');
+                    }
+
+                    signatures = signatures.filter(sig => {
+                        const slot = normalizeSlot(sig.slot);
+                        if (slot === 'action' && actionSignature) {
+                            return sig.id === actionSignature.id;
+                        }
+                        if (slot === 'noted' && notedSignature) {
+                            return sig.id === notedSignature.id;
+                        }
+
+                        return slot === '';
+                    });
+
+                    rebuildSignatureNodes();
+                    persistSignatures();
+
+                    const uniqueMessages = [...new Set(messages
+                        .map(msg => String(msg || '').trim())
+                        .filter(msg => msg !== '')
+                    )];
+                    const finalMessage = uniqueMessages.length > 0
+                        ? uniqueMessages.join(' ')
+                        : 'Saved successfully.';
+                    const hasDeleteMessage = uniqueMessages.some(msg => msg.toLowerCase().includes('deleted'));
+                    setSaveStatus(finalMessage, false, hasDeleteMessage ? 'delete' : 'success');
+                    return {
+                        ok: true,
+                        message: finalMessage,
+                    };
+                } catch (error) {
+                    const message = error instanceof Error ? error.message : 'Unable to save signatures.';
+                    setSaveStatus(message, true);
+                    return {
+                        ok: false,
+                        message,
+                    };
+                } finally {
+                    setSavingState(false);
+                }
+            };
+
+            const deleteActiveSignature = async () => {
+                const active = findSignatureById(activeSignatureId);
+                if (!active) return;
+
+                const slot = sanitizeValue(active.slot).toLowerCase();
+                if (slot === 'action' || slot === 'noted') {
+                    pendingClearSlots.add(slot);
+                    removeSignaturesBySlot(slot);
+                    setSaveStatus('Deleted successfully. Click Save Signatures to apply.', false, 'delete');
+                    return;
+                }
+
+                removeSignatureById(active.id);
+                setSaveStatus('Deleted successfully. Click Save Signatures to apply.', false, 'delete');
+            };
+
             const persistSignatures = () => {
-                try { localStorage.setItem(signaturesStorageKey, JSON.stringify(signatures)); } catch (e) {}
+                // Persisted signatures now come from DB; keep local stack disabled
+                // to prevent old layers from reappearing after delete operations.
             };
 
             const removeAllNodes = () => {
@@ -968,9 +1297,8 @@
             };
 
             const applyNodeLayout = (signature, node) => {
-                const bounds = getLayerBounds();
-                node.style.left     = (signature.xRatio * bounds.width) + 'px';
-                node.style.top      = (signature.yRatio * bounds.height) + 'px';
+                node.style.left     = (signature.xRatio * 100) + '%';
+                node.style.top      = (signature.yRatio * 100) + '%';
                 node.style.width    = Math.round(baseSignatureWidth  * signature.scale) + 'px';
                 node.style.maxHeight = Math.round(baseSignatureHeight * signature.scale) + 'px';
             };
@@ -1094,6 +1422,7 @@
             };
 
             const attachNodeEvents = node => {
+                if (isReadonlyMode) return;
                 // Double-click → redraw
                 node.addEventListener('dblclick', () => {
                     const id = sanitizeValue(node.getAttribute('data-signature-id'));
@@ -1208,9 +1537,9 @@
 
             btnShrink.addEventListener('click', e => { e.stopPropagation(); resizeActive(-scaleStep); });
             btnGrow.addEventListener('click',   e => { e.stopPropagation(); resizeActive(+scaleStep); });
-            btnDelete.addEventListener('click', e => {
+            btnDelete.addEventListener('click', async e => {
                 e.stopPropagation();
-                if (activeSignatureId) removeSignatureById(activeSignatureId);
+                await deleteActiveSignature();
             });
 
             // ── Control bar buttons (shrink / grow / delete) ─────────────────
@@ -1219,43 +1548,59 @@
             const ctrlDelete = document.getElementById('ctrl-delete');
             if (ctrlShrink) ctrlShrink.addEventListener('click', () => resizeActive(-scaleStep));
             if (ctrlGrow)   ctrlGrow.addEventListener('click',   () => resizeActive(+scaleStep));
-            if (ctrlDelete) ctrlDelete.addEventListener('click', () => {
-                if (activeSignatureId) removeSignatureById(activeSignatureId);
+            if (ctrlDelete) ctrlDelete.addEventListener('click', async () => {
+                await deleteActiveSignature();
             });
+
+            if (saveAllButton) {
+                saveAllButton.addEventListener('click', async () => {
+                    await saveAllSignatures();
+                });
+            }
 
             // ── Storage load ─────────────────────────────────────────────────
 
             const loadSignaturesFromStorage = () => {
-                let loaded = [];
                 try {
-                    const parsed = JSON.parse(localStorage.getItem(signaturesStorageKey) || '[]');
-                    if (Array.isArray(parsed)) loaded = parsed;
-                } catch (e) { loaded = []; }
-
-                const normalized = loaded.map((e, i) => normalizeSignature(e, i)).filter(Boolean);
-                if (normalized.length > 0) return normalized;
-
-                // Legacy single-sig migration
-                let legacySrc = '', legacyPos = { xRatio: 0.24, yRatio: 0.55 }, legacyScale = 1;
-                try { legacySrc = sanitizeValue(localStorage.getItem(legacyDataStorageKey) || ''); } catch (e) {}
-                try {
-                    const pp = JSON.parse(localStorage.getItem(legacyPositionStorageKey) || '{}');
-                    if (pp && typeof pp === 'object') {
-                        const xR = Number(pp.xRatio), yR = Number(pp.yRatio);
-                        if (Number.isFinite(xR) && Number.isFinite(yR))
-                            legacyPos = { xRatio: clamp(xR, 0, 1), yRatio: clamp(yR, 0, 1) };
-                    }
-                } catch (e) {}
-                try {
-                    const ps = Number(localStorage.getItem(legacySizeStorageKey) || '1');
-                    if (Number.isFinite(ps)) legacyScale = clamp(ps, minSignatureScale, maxSignatureScale);
+                    localStorage.removeItem(signaturesStorageKey);
+                    localStorage.removeItem(legacyDataStorageKey);
+                    localStorage.removeItem(legacyPositionStorageKey);
+                    localStorage.removeItem(legacySizeStorageKey);
                 } catch (e) {}
 
-                if (legacySrc === '') return [];
-                return [{ id: generateSignatureId(), src: legacySrc, ...legacyPos, scale: legacyScale }];
+                return [];
             };
 
             signatures = loadSignaturesFromStorage();
+
+            // Load persisted signatures from backend
+            if (typeof window.__persistedSignatures === 'object' && window.__persistedSignatures) {
+                if (window.__persistedSignatures.action !== '' && window.__persistedSignatures.action && !window.__persistedSignatures.action.includes('blank')) {
+                    const actionSig = {
+                        id: generateSignatureId(),
+                        src: window.__persistedSignatures.action,
+                        slot: 'action',
+                        xRatio: parseFloat(window.__persistedSignatures.actionCoords?.xRatio ?? 0.24),
+                        yRatio: parseFloat(window.__persistedSignatures.actionCoords?.yRatio ?? 0.55),
+                        scale: parseFloat(window.__persistedSignatures.actionCoords?.scale ?? 1),
+                    };
+
+                    signatures.push(actionSig);
+                }
+                if (window.__persistedSignatures.noted !== '' && window.__persistedSignatures.noted && !window.__persistedSignatures.noted.includes('blank')) {
+                    const notedSig = {
+                        id: generateSignatureId(),
+                        src: window.__persistedSignatures.noted,
+                        slot: 'noted',
+                        xRatio: parseFloat(window.__persistedSignatures.notedCoords?.xRatio ?? 0.65),
+                        yRatio: parseFloat(window.__persistedSignatures.notedCoords?.yRatio ?? 0.72),
+                        scale: parseFloat(window.__persistedSignatures.notedCoords?.scale ?? 0.9),
+                    };
+
+                    signatures.push(notedSig);
+                }
+            }
+
             if (signatures.length > 0) activeSignatureId = signatures[signatures.length - 1].id;
             rebuildSignatureNodes();
 
@@ -1308,7 +1653,7 @@
                     if (t) { t.src = sigData; setActiveSignature(t.id); }
                 } else {
                     const offset  = Math.min(signatures.length * 0.02, 0.2);
-                    const created = { id: generateSignatureId(), src: sigData, xRatio: clamp(0.24 + offset, 0, 1), yRatio: clamp(0.55 + offset, 0, 1), scale: 1 };
+                    const created = { id: generateSignatureId(), src: sigData, xRatio: clamp(0.24 + offset, 0, 1), yRatio: clamp(0.78 + offset, 0, 1), scale: 1 };
                     signatures.push(created);
                     setActiveSignature(created.id);
                 }
@@ -1350,6 +1695,22 @@
                         setActiveSignature(signatures[signatures.length - 1].id);
                     resizeActive(delta);
                 }
+
+                if (payload.type === 'save-all-print-signatures' || payload.type === 'save-print-signature') {
+                    saveAllSignatures().then(result => {
+                        try {
+                            if (window.parent && window.parent !== window) {
+                                window.parent.postMessage({
+                                    type: 'save-all-print-signatures-result',
+                                    ok: result && result.ok === true,
+                                    message: String((result && result.message) || ''),
+                                }, '*');
+                            }
+                        } catch (error) {
+                            // Ignore cross-window response failures.
+                        }
+                    });
+                }
             });
 
             // ── Misc ─────────────────────────────────────────────────────────
@@ -1367,6 +1728,11 @@
 
             if (resetButton) {
                 resetButton.addEventListener('click', () => {
+                    const hasActionSignature = signatures.some(sig => normalizeSlot(sig.slot) === 'action');
+                    const hasNotedSignature = signatures.some(sig => normalizeSlot(sig.slot) === 'noted');
+                    if (hasActionSignature) pendingClearSlots.add('action');
+                    if (hasNotedSignature) pendingClearSlots.add('noted');
+
                     signatures = []; activeSignatureId = null;
                     hideToolbar();
                     rebuildSignatureNodes();
@@ -1376,6 +1742,7 @@
                         localStorage.removeItem(legacyPositionStorageKey);
                         localStorage.removeItem(legacySizeStorageKey);
                     } catch (e) {}
+                    setSaveStatus('Signatures reset. Click Save Signatures to apply.');
                     closePadModal();
                 });
             }

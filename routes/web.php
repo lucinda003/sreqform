@@ -91,9 +91,11 @@ Route::middleware('auth')->group(function () {
     Route::post('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'postAdminMessage'])->name('service-requests.messages.store');
     Route::get('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'adminMessages'])->name('service-requests.messages.index');
     Route::get('/service-requests/{serviceRequest}/print', [ServiceRequestController::class, 'print'])->name('service-requests.print');
+    Route::post('/service-requests/{serviceRequest}/print-signature', [ServiceRequestController::class, 'savePrintSignature'])->name('service-requests.print-signature.save');
     Route::get('/service-requests/{serviceRequest}/pdf', [ServiceRequestController::class, 'downloadPdf'])->name('service-requests.pdf');
 
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+    Route::post('/admin/department-codes', [AdminUserController::class, 'storeDepartmentCode'])->name('admin.department-codes.store');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
     Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');

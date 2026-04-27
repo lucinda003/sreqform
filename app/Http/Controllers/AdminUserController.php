@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Mail\SendCreatedAccountCredentials;
+use App\Models\DepartmentCode;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\View\View;
 
 class AdminUserController extends Controller
@@ -17,9 +19,16 @@ class AdminUserController extends Controller
     {
         $this->authorizeAdmin();
 
+        $departmentCodes = $this->availableDepartmentCodes();
+
         $users = User::query()
+            ->where(function ($query): void {
+                $query
+                    ->whereNull('department')
+                    ->orWhereRaw('UPPER(department) <> ?', ['ADMIN']);
+            })
             ->orderBy('name')
-            ->get(['id', 'name', 'email', 'department', 'department_status']);
+            ->get(['id', 'name', 'username', 'email', 'department', 'department_status']);
 
         $selectedUserId = $request->query('user_id');
         $selectedUser = null;
@@ -31,9 +40,45 @@ class AdminUserController extends Controller
 
         return view('admin.users.index', [
             'users' => $users,
+            'departmentCodes' => $departmentCodes,
             'selectedUser' => $selectedUser,
             'selectedUserId' => $selectedUserId,
         ]);
+    }
+
+    public function storeDepartmentCode(Request $request): RedirectResponse
+    {
+        $this->authorizeAdmin();
+
+        $validated = $request->validate([
+            'code' => ['required', 'string', 'max:30'],
+        ]);
+
+        $departmentCode = strtoupper(trim($validated['code']));
+
+        if ($departmentCode === 'ADMIN') {
+            return back()
+                ->withErrors(['code' => 'ADMIN is reserved for super admin and cannot be added.'])
+                ->withInput();
+        }
+
+        if ($departmentCode === '') {
+            return back()
+                ->withErrors(['code' => 'Department code is required.'])
+                ->withInput();
+        }
+
+        if (DepartmentCode::query()->whereRaw('UPPER(code) = ?', [$departmentCode])->exists()) {
+            return back()
+                ->withErrors(['code' => 'Department code already exists.'])
+                ->withInput();
+        }
+
+        DepartmentCode::create([
+            'code' => $departmentCode,
+        ]);
+
+        return redirect()->route('admin.users.index')->with('status', 'Department code added successfully.');
     }
 
     public function store(Request $request): RedirectResponse
@@ -43,27 +88,16 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
-            'department_code' => ['required', 'string', 'max:30'],
-            'department_status' => ['required', 'in:approved,pending'],
+            'department_code' => ['required', 'string', 'max:30', Rule::in($this->availableDepartmentCodes())],
         ]);
 
         $departmentCode = strtoupper(trim($validated['department_code']));
-        $departmentStatus = $validated['department_status'];
+        $departmentStatus = 'pending';
 
         if ($departmentCode === '') {
             return back()
                 ->withErrors(['department_code' => 'Department code is required.'])
                 ->withInput();
-        }
-
-        if ($departmentCode === 'ADMIN' && User::query()->whereRaw('UPPER(department) = ?', ['ADMIN'])->exists()) {
-            return back()
-                ->withErrors(['department_code' => 'Only one ADMIN account is allowed.'])
-                ->withInput();
-        }
-
-        if ($departmentCode === 'ADMIN') {
-            $departmentStatus = 'approved';
         }
 
         // Generate username from email (part before @)
@@ -94,7 +128,7 @@ class AdminUserController extends Controller
         // Send the credentials via email
         Mail::to($user->email)->send(new SendCreatedAccountCredentials($user, $username, $generatedPassword));
 
-        return redirect()->route('admin.users.index')->with('status', 'Account created successfully. Credentials have been sent to the email address.');
+        return redirect()->route('admin.users.index')->with('status', 'Account created successfully. Credentials sent by email. Status is pending until first password setup is completed.');
     }
 
     public function update(Request $request, User $user): RedirectResponse
@@ -104,7 +138,7 @@ class AdminUserController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . $user->id],
-            'department_code' => ['required', 'string', 'max:30'],
+            'department_code' => ['required', 'string', 'max:30', Rule::in($this->availableDepartmentCodes(strtoupper((string) $user->department) === 'ADMIN'))],
             'department_status' => ['required', 'in:approved,pending'],
             'password' => ['nullable', 'string', 'min:8'],
         ]);
@@ -164,5 +198,32 @@ class AdminUserController extends Controller
     private function authorizeAdmin(): void
     {
         abort_unless(strtoupper((string) auth()->user()?->department) === 'ADMIN', 403);
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function availableDepartmentCodes(bool $includeAdmin = false): array
+    {
+        $codes = DepartmentCode::query()
+            ->pluck('code')
+            ->map(fn (string $code): string => strtoupper(trim($code)))
+            ->filter(fn (string $code): bool => $code !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        if (! $includeAdmin) {
+            $codes = array_values(array_filter(
+                $codes,
+                fn (string $code): bool => $code !== 'ADMIN'
+            ));
+        } elseif (! in_array('ADMIN', $codes, true)) {
+            $codes[] = 'ADMIN';
+        }
+
+        sort($codes);
+
+        return $codes;
     }
 }

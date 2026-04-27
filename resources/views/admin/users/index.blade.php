@@ -6,13 +6,22 @@
         subtitle="Manage all user accounts, roles, and department access."
     >
         <x-slot name="actions">
-            <button
-                type="button"
-                class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700"
-                onclick="document.getElementById('create-account-dialog').showModal()"
-            >
-                New Account
-            </button>
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    class="rounded-xl border border-emerald-300 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-800 shadow-sm hover:bg-emerald-100"
+                    onclick="document.getElementById('create-department-dialog').showModal()"
+                >
+                    Add Department Code
+                </button>
+                <button
+                    type="button"
+                    class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700"
+                    onclick="document.getElementById('create-account-dialog').showModal()"
+                >
+                    New Account
+                </button>
+            </div>
         </x-slot>
 
         @if (session('status'))
@@ -48,10 +57,6 @@
                             <p class="text-2xl font-bold text-amber-700">{{ $users->where('department_status', 'pending')->count() }}</p>
                             <p class="text-[11px] font-semibold uppercase text-amber-700">Pending</p>
                         </div>
-                        <div class="flex-1 min-w-[140px] rounded-xl bg-sky-50 px-3 py-3">
-                            <p class="text-2xl font-bold text-sky-700">{{ $users->where('department', 'ADMIN')->count() }}</p>
-                            <p class="text-[11px] font-semibold uppercase text-sky-700">Admin</p>
-                        </div>
                     </div>
                 </div>
             </div>
@@ -72,9 +77,7 @@
                             @foreach ($users as $user)
                                 <tr class="hover:bg-slate-50 transition-colors">
                                     <td class="px-6 py-4">
-                                        <p class="font-bold text-slate-900">{{ $user->name }}</p>
-                                        <p class="text-xs text-slate-500">{{ $user->email }}</p>
-                                        <p class="text-xs text-slate-400 mt-0.5">@{{ $user->username }}</p>
+                                        <p class="font-bold text-slate-900">{{ $user->username }}</p>
                                     </td>
                                     <td class="px-6 py-4">
                                         @if ($user->department !== null && trim((string)$user->department) !== '')
@@ -132,6 +135,37 @@
             </div>
         </div>
 
+        <!-- Department Code Dialog -->
+        <dialog id="create-department-dialog" class="w-full max-w-lg rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+            <div class="rounded-2xl bg-white p-6 sm:p-8">
+                <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
+                    <h3 class="text-lg font-bold text-slate-900">Add Department Code</h3>
+                    <button
+                        type="button"
+                        class="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-600 transition"
+                        onclick="document.getElementById('create-department-dialog').close()"
+                    >
+                        <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                    </button>
+                </div>
+
+                <form method="POST" action="{{ route('admin.department-codes.store') }}" class="mt-6 grid gap-5">
+                    @csrf
+
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="department_code_new">Department Code</label>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm uppercase" id="department_code_new" name="code" type="text" maxlength="30" placeholder="e.g. KMITS" required>
+                        <p class="mt-1.5 text-[11px] text-slate-500 leading-tight">Code will be converted to uppercase and added to dropdown options.</p>
+                    </div>
+
+                    <div class="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-5">
+                        <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('create-department-dialog').close()">Cancel</button>
+                        <button type="submit" class="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 transition">Save Code</button>
+                    </div>
+                </form>
+            </div>
+        </dialog>
+
         <!-- Create Dialog -->
         <dialog id="create-account-dialog" class="w-full max-w-2xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
             <div class="rounded-2xl bg-white p-6 sm:p-8">
@@ -158,18 +192,17 @@
                         <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="email" name="email" type="email" autocomplete="email" required>
                     </div>
 
-                    <div>
+                    <div class="sm:col-span-2">
                         <label class="auth-label block text-sm font-medium text-slate-700" for="department_code">Department Code</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm uppercase" id="department_code" name="department_code" type="text" maxlength="30" placeholder="e.g. KMITS" required>
-                        <p class="mt-1.5 text-[11px] text-slate-500 leading-tight">Leave blank if pending. Use "ADMIN" for the singular global admin.</p>
-                    </div>
-
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="department_status">Account Status</label>
-                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="department_status" name="department_status" required>
-                            <option value="approved">Approved</option>
-                            <option value="pending">Pending</option>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="department_code" name="department_code" required>
+                            <option value="" disabled @selected((string) old('department_code', '') === '')>Select department code</option>
+                            @foreach ($departmentCodes as $departmentCode)
+                                <option value="{{ $departmentCode }}" @selected((string) old('department_code') === (string) $departmentCode)>
+                                    {{ $departmentCode }}
+                                </option>
+                            @endforeach
                         </select>
+                        <p class="mt-1.5 text-[11px] text-slate-500 leading-tight">Use the Add Department Code button to manage dropdown options. New accounts are set to pending and become approved after first password setup.</p>
                     </div>
 
                     <div class="sm:col-span-2 mt-4 flex justify-end gap-3 border-t border-slate-100 pt-5">

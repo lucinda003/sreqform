@@ -756,10 +756,20 @@
         .srf-print-preview-actions {
             display: flex;
             justify-content: flex-end;
+            align-items: center;
+            flex-wrap: wrap;
             gap: 8px;
             padding: 10px 14px;
             border-top: 1px solid #e2e8f0;
             background: #fff;
+        }
+
+        .srf-print-preview-status {
+            margin-left: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            color: #0f766e;
+            min-height: 18px;
         }
 
         .srf-print-preview-btn {
@@ -1449,7 +1459,7 @@
                             </td>
                         </tr>
                         <tr>
-                            <td class="border border-slate-400 px-2 py-1">3) Application System Name : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]"></td>
+                            <td class="border border-slate-400 px-2 py-1">3) Application System Name : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" maxlength="255"></td>
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of Completion :
@@ -1463,16 +1473,16 @@
                                     <tr>
                                         <td class="border-0 px-2 py-1" style="width:32%;">5) Name of Contact Person :</td>
                                         <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_last_name" value="{{ old('contact_last_name', $serviceRequest->contact_last_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="family-name" required>
+                                            <input name="contact_last_name" value="{{ old('contact_last_name', $serviceRequest->contact_last_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="family-name" required maxlength="100">
                                         </td>
                                         <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_first_name" value="{{ old('contact_first_name', $serviceRequest->contact_first_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="given-name" required>
+                                            <input name="contact_first_name" value="{{ old('contact_first_name', $serviceRequest->contact_first_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="given-name" required maxlength="100">
                                         </td>
                                         <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_middle_name" value="{{ old('contact_middle_name', $serviceRequest->contact_middle_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="additional-name">
+                                            <input name="contact_middle_name" value="{{ old('contact_middle_name', $serviceRequest->contact_middle_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="additional-name" maxlength="100">
                                         </td>
                                         <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input type="text" name="contact_suffix_name" value="{{ old('contact_suffix_name', $serviceRequest->contact_suffix_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="honorific-suffix">
+                                            <input type="text" name="contact_suffix_name" value="{{ old('contact_suffix_name', $serviceRequest->contact_suffix_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="honorific-suffix" maxlength="100">
                                         </td>
                                     </tr>
                                     <tr>
@@ -1501,13 +1511,13 @@
                                 <table class="w-full border-collapse table-fixed text-[12px]">
                                     <tr>
                                         <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">8) Landline :
-                                            <input name="landline" value="{{ old('landline', $serviceRequest->landline) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel">
+                                            <input name="landline" value="{{ old('landline', $serviceRequest->landline) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel" maxlength="20">
                                         </td>
                                         <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">9) Fax No :
-                                            <input name="fax_no" value="{{ old('fax_no', $serviceRequest->fax_no) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
+                                            <input name="fax_no" value="{{ old('fax_no', $serviceRequest->fax_no) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" maxlength="20">
                                         </td>
                                         <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">10) Mobile No :
-                                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel-national" required>
+                                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel-national" required maxlength="20">
                                         </td>
                                         <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address :
                                             <input type="text" name="email_address" value="{{ old('email_address', $serviceRequest->email_address) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="email">
@@ -1523,7 +1533,7 @@
                     <p class="srf-section-label">Description of Request</p>
                     <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
                         <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
-                            <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
+                            <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required maxlength="5000">{{ old('description_request', $serviceRequest->description_request) }}</textarea>
 
                             @if ($canModerateChat)
                                 <div class="mt-3 border-t border-slate-300 pt-2">
@@ -1533,14 +1543,19 @@
                                         @if (is_array($serviceRequest->description_photos) && count($serviceRequest->description_photos) > 0)
                                             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                                                 @foreach ($serviceRequest->description_photos as $photoPath)
+                                                    @php
+                                                        $photoSource = str_starts_with((string) $photoPath, 'data:image/')
+                                                            ? (string) $photoPath
+                                                            : \Illuminate\Support\Facades\Storage::url((string) $photoPath);
+                                                    @endphp
                                                     <a
-                                                        href="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}"
+                                                        href="{{ $photoSource }}"
                                                         class="block overflow-hidden rounded-lg border border-slate-300 bg-white"
                                                         data-uploaded-photo-trigger
-                                                        data-photo-src="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}"
+                                                        data-photo-src="{{ $photoSource }}"
                                                         data-photo-alt="Service Request Photo"
                                                     >
-                                                        <img src="{{ \Illuminate\Support\Facades\Storage::url($photoPath) }}" alt="Service Request Photo" class="h-32 w-full object-cover">
+                                                        <img src="{{ $photoSource }}" alt="Service Request Photo" class="h-32 w-full object-cover">
                                                     </a>
                                                 @endforeach
                                             </div>
@@ -1678,6 +1693,7 @@
                                                 <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
                                                 <td class="border border-slate-300 px-2 py-1">
                                                     <input type="hidden" name="action_log_signature_drawn[]" value="{{ $rowSignature }}">
+                                                    <span class="text-[11px] text-slate-500">Manage signature in print preview.</span>
                                                 </td>
                                             </tr>
                                         @endfor
@@ -1697,6 +1713,7 @@
                                 <label class="block text-[12px] text-slate-700 md:col-span-2">
                                     <span class="font-semibold">Supervisor Signature</span>
                                     <input type="hidden" name="noted_by_signature_drawn" value="{{ $notedBySignatureValue }}">
+                                    <p class="mt-1 text-[11px] text-slate-500">Manage signature in print preview.</p>
                                 </label>
 
                                 <label class="block text-[12px] text-slate-700">
@@ -1717,8 +1734,10 @@
                             <x-input-error :messages="$errors->get('action_log_action_taken')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_action_officer')" class="mt-1" />
                             <x-input-error :messages="$errors->get('action_log_signature_drawn')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('action_log_signature_upload')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_name')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_signature_drawn')" class="mt-1" />
+                            <x-input-error :messages="$errors->get('noted_by_signature_upload')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
                         </div>
@@ -1867,7 +1886,9 @@
                 <button type="button" id="print-preview-signature" class="srf-print-preview-btn">Add Signature</button>
                 <button type="button" id="print-preview-signature-smaller" class="srf-print-preview-btn">Signature -</button>
                 <button type="button" id="print-preview-signature-larger" class="srf-print-preview-btn">Signature +</button>
+                <button type="button" id="print-preview-save-signatures" class="srf-print-preview-btn">Save Signatures</button>
                 <button type="button" id="print-preview-trigger" class="srf-print-preview-btn primary">Print</button>
+                <span id="print-preview-save-status" class="srf-print-preview-status" aria-live="polite"></span>
             </div>
         </div>
     </div>
@@ -1965,6 +1986,15 @@
     </datalist>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.files && this.files[0] && this.files[0].size > 5 * 1024 * 1024) {
+                        alert('File size must be 5MB or less.');
+                        this.value = '';
+                    }
+                });
+            });
+
             const officeInput = document.getElementById('office');
             const addressInput = document.getElementById('address');
             const optionsList = document.getElementById('hospital-office-options');
@@ -2881,6 +2911,8 @@
                 const signatureTrigger = document.getElementById('print-preview-signature');
                 const signatureSmallerTrigger = document.getElementById('print-preview-signature-smaller');
                 const signatureLargerTrigger = document.getElementById('print-preview-signature-larger');
+                const saveSignaturesTrigger = document.getElementById('print-preview-save-signatures');
+                const saveStatus = document.getElementById('print-preview-save-status');
 
                 if (
                     !printButton ||
@@ -2891,20 +2923,104 @@
                     !openFullLink ||
                     !signatureTrigger ||
                     !signatureSmallerTrigger ||
-                    !signatureLargerTrigger
+                    !signatureLargerTrigger ||
+                    !saveSignaturesTrigger ||
+                    !saveStatus
                 ) {
                     return;
                 }
+
+                let pendingSaveRequest = false;
+                let pendingSaveTimeoutId = null;
+
+                const setSaveStatus = function (message, isError, tone) {
+                    saveStatus.textContent = String(message || '');
+                    if (isError || tone === 'delete') {
+                        saveStatus.style.color = '#b91c1c';
+                        return;
+                    }
+
+                    saveStatus.style.color = '#0f766e';
+                };
+
+                const setSaveButtonsDisabled = function (disabled) {
+                    saveSignaturesTrigger.disabled = disabled;
+                };
+
+                const queueSignatureSave = function () {
+                    if (pendingSaveRequest) {
+                        return;
+                    }
+
+                    pendingSaveRequest = true;
+                    setSaveButtonsDisabled(true);
+                    setSaveStatus('Saving signatures...', false);
+
+                    try {
+                        frame.contentWindow.postMessage({
+                            type: 'save-all-print-signatures',
+                        }, '*');
+                    } catch (error) {
+                        pendingSaveRequest = false;
+                        setSaveButtonsDisabled(false);
+                        setSaveStatus('Unable to reach print preview. Reopen and try again.', true);
+                        return;
+                    }
+
+                    pendingSaveTimeoutId = window.setTimeout(function () {
+                        if (pendingSaveRequest) {
+                            pendingSaveRequest = false;
+                            setSaveButtonsDisabled(false);
+                            setSaveStatus('Save request timed out. Please try again.', true);
+                        }
+                    }, 7000);
+                };
+
+                window.addEventListener('message', function (event) {
+                    if (event.source !== frame.contentWindow) {
+                        return;
+                    }
+
+                    const payload = event.data;
+                    if (
+                        !payload ||
+                        typeof payload !== 'object' ||
+                        (payload.type !== 'save-all-print-signatures-result' && payload.type !== 'save-print-signature-result')
+                    ) {
+                        return;
+                    }
+
+                    if (pendingSaveTimeoutId !== null) {
+                        window.clearTimeout(pendingSaveTimeoutId);
+                        pendingSaveTimeoutId = null;
+                    }
+
+                    pendingSaveRequest = false;
+                    setSaveButtonsDisabled(false);
+
+                    const ok = payload.ok !== false;
+                    const message = String(payload.message || (ok ? 'Signatures saved successfully.' : 'Unable to save signatures.'));
+                    const isDeleteMessage = message.toLowerCase().includes('deleted');
+                    setSaveStatus(message, !ok, isDeleteMessage ? 'delete' : 'success');
+                });
 
                 const closeModal = function () {
                     modal.classList.remove('open');
                     modal.setAttribute('aria-hidden', 'true');
                     document.body.classList.remove('overflow-hidden');
+                    pendingSaveRequest = false;
+                    setSaveButtonsDisabled(false);
+                    if (pendingSaveTimeoutId !== null) {
+                        window.clearTimeout(pendingSaveTimeoutId);
+                        pendingSaveTimeoutId = null;
+                    }
+                    setSaveStatus('', false);
                 };
 
                 const openModal = function (previewUrl, fullUrl) {
                     frame.src = previewUrl;
                     openFullLink.href = fullUrl;
+                    setSaveStatus('', false);
                     modal.classList.add('open');
                     modal.setAttribute('aria-hidden', 'false');
                     document.body.classList.add('overflow-hidden');
@@ -2990,6 +3106,10 @@
                     } catch (error) {
                         // Ignore messaging failures.
                     }
+                });
+
+                saveSignaturesTrigger.addEventListener('click', function () {
+                    queueSignatureSave();
                 });
             };
 

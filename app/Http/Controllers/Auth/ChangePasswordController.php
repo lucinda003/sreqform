@@ -30,6 +30,7 @@ class ChangePasswordController extends Controller
         $request->user()->update([
             'password' => Hash::make($validated['password']),
             'password_changed_at' => now(),
+            'department_status' => 'approved',
         ]);
 
         $targetRoute = strtoupper((string) auth()->user()?->department) === 'ADMIN'

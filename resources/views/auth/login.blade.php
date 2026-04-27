@@ -9,7 +9,7 @@
             <div class="auth-login-card-head auth-login-card-head-simple">
                 <div class="auth-login-card-copy">
                     <h2 class="auth-login-card-title">Login to our site</h2>
-                    <p class="auth-login-card-subtitle">Enter your username and password to log on:</p>
+                    <p class="auth-login-card-subtitle">Enter your username or email and password to log on:</p>
                 </div>
             </div>
 
@@ -19,12 +19,12 @@
                 @csrf
 
                 <div>
-                    <label for="username" class="auth-login-label">Username</label>
+                    <label for="login" class="auth-login-label">Username or Email</label>
                     <div class="auth-login-input-wrap">
                         <svg viewBox="0 0 24 24" aria-hidden="true" class="auth-login-input-icon"><path fill="currentColor" d="M12 12a5 5 0 1 0-5-5a5 5 0 0 0 5 5zm0 2c-4.42 0-8 1.79-8 4v2h16v-2c0-2.21-3.58-4-8-4z"/></svg>
-                        <input id="username" class="auth-login-input" type="text" name="username" value="{{ old('username') }}" required autofocus autocomplete="username" placeholder="Enter your username" />
+                        <input id="login" class="auth-login-input" type="text" name="login" value="{{ old('login') }}" required autofocus autocomplete="username" placeholder="Enter your username or email" />
                     </div>
-                    <x-input-error :messages="$errors->get('username')" class="mt-2" />
+                    <x-input-error :messages="$errors->get('login')" class="mt-2" />
                 </div>
 
                 <div>

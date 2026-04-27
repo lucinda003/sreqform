@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\DepartmentCode;
 use App\Models\ServiceRequest;
 use App\Models\ServiceRequestMessage;
 use App\Models\User;
@@ -834,6 +835,8 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
+        abort_unless($serviceRequest->status === 'pending', 403, 'You cannot edit a request that is already being checked or completed.');
+
         $validated = $this->validatedData($request);
 
         if ($this->hasDescriptionPhotosColumn()) {
@@ -1183,7 +1186,10 @@ class ServiceRequestController extends Controller
 
         abort_unless($this->consumeSignatureViewToken($request, $serviceRequest), 403);
 
-        $decoded = EncryptedSignature::readBinaryFromPath($signaturePath);
+        $decoded = $this->decodeImageDataUri($signaturePath);
+        if (! is_array($decoded)) {
+            $decoded = EncryptedSignature::readBinaryFromPath($signaturePath);
+        }
         abort_unless(is_array($decoded), 404);
 
         $mime = trim((string) ($decoded['mime'] ?? 'image/png'));
@@ -1208,6 +1214,137 @@ class ServiceRequestController extends Controller
         return view('service-requests.print', [
             'serviceRequest' => $serviceRequest,
             'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
+        ]);
+    }
+
+    public function savePrintSignature(Request $request, ServiceRequest $serviceRequest): JsonResponse
+    {
+        abort_unless($this->canAccess($serviceRequest), 403);
+
+        $validated = $request->validate([
+            'signature_data' => ['nullable', 'string', 'max:8000000'],
+            'target' => ['required', 'in:action,noted'],
+            'clear' => ['nullable', 'boolean'],
+            'xRatio' => ['nullable', 'numeric'],
+            'yRatio' => ['nullable', 'numeric'],
+            'scale' => ['nullable', 'numeric'],
+        ]);
+
+        $signatureData = trim((string) ($validated['signature_data'] ?? ''));
+        $target = (string) $validated['target'];
+        $clearRequested = (bool) ($validated['clear'] ?? false);
+        $xRatio = $validated['xRatio'] ?? null;
+        $yRatio = $validated['yRatio'] ?? null;
+        $scale = $validated['scale'] ?? null;
+
+        if (! $clearRequested && $signatureData === '') {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Signature data is required.',
+            ], 422);
+        }
+
+        $logs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
+        $firstRow = is_array($logs[0] ?? null) ? $logs[0] : [
+            'date' => null,
+            'time' => null,
+            'action_date' => null,
+            'action_time' => null,
+            'action_taken' => null,
+            'action_officer' => null,
+            'signature' => null,
+        ];
+
+        if ($target === 'action') {
+            if ($clearRequested) {
+                $existingSignature = trim((string) ($firstRow['signature'] ?? ''));
+                $this->deleteSignatureFile($existingSignature);
+
+                $firstRow['signature'] = null;
+                $firstRow['action_sig_x'] = null;
+                $firstRow['action_sig_y'] = null;
+                $firstRow['action_sig_scale'] = null;
+
+                $logs[0] = $firstRow;
+                $serviceRequest->update([
+                    'action_logs' => $logs,
+                ]);
+
+                return response()->json([
+                    'ok' => true,
+                    'message' => 'Deleted successfully.',
+                ]);
+            }
+
+            $existingSignature = trim((string) ($firstRow['signature'] ?? ''));
+            $firstRow['signature'] = $this->storeAuxiliarySignature($signatureData, null, $existingSignature);
+
+            if (blank($firstRow['date'])) {
+                $baseDate = $serviceRequest->kmits_date ?? $serviceRequest->request_date;
+                $firstRow['date'] = $baseDate instanceof \DateTimeInterface
+                    ? $baseDate->format('Y-m-d')
+                    : null;
+            }
+            if (blank($firstRow['time'])) {
+                $firstRow['time'] = trim((string) ($serviceRequest->time_received ?? now()->format('H:i')));
+            }
+            
+            $firstRow['action_sig_x'] = $xRatio;
+            $firstRow['action_sig_y'] = $yRatio;
+            $firstRow['action_sig_scale'] = $scale;
+
+            $logs[0] = $firstRow;
+            $serviceRequest->update([
+                'action_logs' => $logs,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Saved successfully.',
+            ]);
+        }
+
+        if (! $this->hasNotedBySignatureColumn()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Supervisor signature column is not available.',
+            ], 422);
+        }
+
+        $existingNotedSignature = trim((string) ($serviceRequest->noted_by_signature ?? ''));
+
+        if ($clearRequested) {
+            $this->deleteSignatureFile($existingNotedSignature);
+
+            $firstRow['noted_sig_x'] = null;
+            $firstRow['noted_sig_y'] = null;
+            $firstRow['noted_sig_scale'] = null;
+            $logs[0] = $firstRow;
+
+            $serviceRequest->update([
+                'noted_by_signature' => null,
+                'action_logs' => $logs,
+            ]);
+
+            return response()->json([
+                'ok' => true,
+                'message' => 'Deleted successfully.',
+            ]);
+        }
+
+        $firstRow['noted_sig_x'] = $xRatio;
+        $firstRow['noted_sig_y'] = $yRatio;
+        $firstRow['noted_sig_scale'] = $scale;
+        $logs[0] = $firstRow;
+        
+        $serviceRequest->update([
+            'noted_by_signature' => $this->storeAuxiliarySignature($signatureData, null, $existingNotedSignature),
+            'action_logs' => $logs,
+        ]);
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Saved successfully.',
         ]);
     }
 
@@ -1474,7 +1611,6 @@ class ServiceRequestController extends Controller
             return false;
         }
 
-        unset($tokenMap[$tokenHash]);
         $request->session()->put($sessionKey, $tokenMap);
 
         return true;
@@ -1533,17 +1669,17 @@ class ServiceRequestController extends Controller
             'contact_suffix_name' => ['nullable', 'string', 'max:100'],
             'office' => ['required', 'string', 'max:255'],
             'address' => ['required', 'string', 'max:255'],
-            'landline' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]*$/'],
-            'fax_no' => ['nullable', 'string', 'max:50', 'regex:/^[0-9]*$/'],
-            'mobile_no' => ['required', 'string', 'max:50', 'regex:/^[0-9]+$/'],
+            'landline' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+() \-]*$/'],
+            'fax_no' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+() \-]*$/'],
+            'mobile_no' => ['required', 'string', 'max:50', 'regex:/^[0-9+() \-]+$/'],
             'email_address' => ['nullable', 'string', 'max:255'],
-            'description_request' => ['required', 'string'],
+            'description_request' => ['required', 'string', 'max:5000'],
             'description_photos' => ['nullable', 'array', 'max:3'],
             'description_photos.*' => ['nullable', 'image', 'max:5120'],
             'approved_by_name' => ['nullable', 'string', 'max:255'],
             'approved_by_signature' => ['nullable', 'string', 'max:255'],
             'approved_by_signature_mode' => ['nullable', 'in:draw,upload'],
-            'approved_by_signature_drawn' => ['nullable', 'string'],
+            'approved_by_signature_drawn' => ['nullable', 'string', 'max:8000000'],
             'approved_by_signature_upload' => ['nullable', 'image', 'max:5120'],
             'approved_by_position' => ['nullable', 'string', 'max:255'],
             'approved_date' => ['required', 'date'],
@@ -1562,9 +1698,9 @@ class ServiceRequestController extends Controller
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
             'action_log_action_officer.*' => ['nullable', 'string', 'max:255'],
             'action_log_signature_drawn' => ['nullable', 'array', 'max:5'],
-            'action_log_signature_drawn.*' => ['nullable', 'string'],
+            'action_log_signature_drawn.*' => ['nullable', 'string', 'max:8000000'],
             'noted_by_name' => ['nullable', 'string', 'max:255'],
-            'noted_by_signature_drawn' => ['nullable', 'string'],
+            'noted_by_signature_drawn' => ['nullable', 'string', 'max:8000000'],
             'noted_by_position' => ['nullable', 'string', 'max:255'],
             'noted_by_date_signed' => ['nullable', 'date'],
         ]);
@@ -1632,13 +1768,21 @@ class ServiceRequestController extends Controller
 
     private function storeDescriptionPhotos(Request $request, ?array $existingPhotos = null): ?array
     {
-        if (! $request->hasFile('description_photos')) {
+        $uploadedPhotos = $request->file('description_photos');
+
+        if ($uploadedPhotos instanceof \Illuminate\Http\UploadedFile) {
+            $uploadedPhotos = [$uploadedPhotos];
+        } elseif (! is_array($uploadedPhotos)) {
+            $uploadedPhotos = [];
+        }
+
+        if ($uploadedPhotos === []) {
             return $existingPhotos !== [] ? $existingPhotos : null;
         }
 
         $stored = [];
-        foreach ((array) $request->file('description_photos') as $photo) {
-            if ($photo === null) {
+        foreach ($uploadedPhotos as $photo) {
+            if (! $photo instanceof \Illuminate\Http\UploadedFile) {
                 continue;
             }
 
@@ -1646,34 +1790,18 @@ class ServiceRequestController extends Controller
             $rawMime = (string) ($photo->getMimeType() ?: 'image/png');
 
             if ($rawBinary === '') {
-                $stored[] = $photo->store('service-request-photos', 'public');
-
                 continue;
             }
 
             [$binary, $mime] = EncryptedSignature::optimizePhotoBinary($rawBinary, $rawMime);
 
-            $extension = $this->photoExtensionFromMime($mime, (string) $photo->getClientOriginalExtension());
-            $path = 'service-request-photos/' . Str::uuid()->toString() . '.' . $extension;
-            Storage::disk('public')->put($path, $binary);
-
-            $stored[] = $path;
+            $dataUri = $this->buildImageDataUri($binary, $mime);
+            if ($dataUri !== '') {
+                $stored[] = $dataUri;
+            }
         }
 
         return $stored !== [] ? $stored : ($existingPhotos !== [] ? $existingPhotos : null);
-    }
-
-    private function photoExtensionFromMime(string $mimeType, string $fallbackExtension = ''): string
-    {
-        $normalizedMime = strtolower(trim($mimeType));
-
-        return match (true) {
-            str_contains($normalizedMime, 'jpeg'), str_contains($normalizedMime, 'jpg') => 'jpg',
-            str_contains($normalizedMime, 'webp') => 'webp',
-            str_contains($normalizedMime, 'gif') => 'gif',
-            str_contains($normalizedMime, 'png') => 'png',
-            default => ($fallbackExtension !== '' ? strtolower($fallbackExtension) : 'png'),
-        };
     }
 
     private function buildDescriptionPhotoMetadata(?array $photoPaths): ?array
@@ -1691,6 +1819,22 @@ class ServiceRequestController extends Controller
         $metadata = [];
 
         foreach ($paths as $path) {
+            $decodedDataUri = $this->decodeImageDataUri($path);
+            if (is_array($decodedDataUri)) {
+                $binary = (string) ($decodedDataUri['binary'] ?? '');
+                $mime = trim((string) ($decodedDataUri['mime'] ?? 'image/png'));
+
+                $metadata[] = [
+                    'source' => 'database',
+                    'exists' => $binary !== '',
+                    'mime_type' => $mime !== '' ? $mime : 'image/png',
+                    'size_bytes' => strlen($binary),
+                    'sha256' => $binary !== '' ? hash('sha256', $binary) : null,
+                ];
+
+                continue;
+            }
+
             if (! $disk->exists($path)) {
                 $metadata[] = [
                     'path' => $path,
@@ -1728,24 +1872,36 @@ class ServiceRequestController extends Controller
         if ($mode === 'upload' && $uploaded !== null) {
             $binary = (string) file_get_contents((string) $uploaded->getRealPath());
             $mime = (string) ($uploaded->getMimeType() ?: 'image/png');
-            $newPath = EncryptedSignature::storeBinary($binary, $mime);
-            $this->deleteSignatureFile($existingSignaturePath);
+            if ($binary !== '') {
+                [$optimizedBinary, $optimizedMime] = EncryptedSignature::optimizeImageBinary($binary, $mime, 1000, 82, 8);
+                $newDataUri = $this->buildImageDataUri($optimizedBinary, $optimizedMime);
 
-            return $newPath;
+                if ($newDataUri !== '') {
+                    $this->deleteSignatureFile($existingSignaturePath);
+
+                    return $newDataUri;
+                }
+            }
         }
 
         if ($mode === 'draw') {
             $drawn = trim((string) $request->input('approved_by_signature_drawn'));
 
-            if ($drawn !== '' && preg_match('/^data:image\/(png|jpeg);base64,/', $drawn, $matches) === 1) {
-                $binary = base64_decode(substr($drawn, strpos($drawn, ',') + 1), true);
+            $decoded = $this->decodeImageDataUri($drawn);
+            if (is_array($decoded)) {
+                [$optimizedBinary, $optimizedMime] = EncryptedSignature::optimizeImageBinary(
+                    (string) ($decoded['binary'] ?? ''),
+                    (string) ($decoded['mime'] ?? 'image/png'),
+                    1000,
+                    82,
+                    8
+                );
 
-                if ($binary !== false) {
-                    $mime = $matches[1] === 'jpeg' ? 'image/jpeg' : 'image/png';
-                    $path = EncryptedSignature::storeBinary($binary, $mime);
+                $newDataUri = $this->buildImageDataUri($optimizedBinary, $optimizedMime);
+                if ($newDataUri !== '') {
                     $this->deleteSignatureFile($existingSignaturePath);
 
-                    return $path;
+                    return $newDataUri;
                 }
             }
         }
@@ -1758,6 +1914,20 @@ class ServiceRequestController extends Controller
         $path = trim((string) $signaturePath);
         if ($path === '') {
             return null;
+        }
+
+        $decodedDataUri = $this->decodeImageDataUri($path);
+        if (is_array($decodedDataUri)) {
+            $binary = (string) ($decodedDataUri['binary'] ?? '');
+            $mime = trim((string) ($decodedDataUri['mime'] ?? 'image/png'));
+
+            return [
+                'source' => 'database',
+                'exists' => $binary !== '',
+                'mime_type' => $mime !== '' ? $mime : 'image/png',
+                'size_bytes' => strlen($binary),
+                'sha256' => $binary !== '' ? hash('sha256', $binary) : null,
+            ];
         }
 
         $decoded = EncryptedSignature::readBinaryFromPath($path);
@@ -1845,9 +2015,12 @@ class ServiceRequestController extends Controller
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
             'action_log_action_officer.*' => ['nullable', 'string', 'max:255'],
             'action_log_signature_drawn' => ['nullable', 'array', 'max:5'],
-            'action_log_signature_drawn.*' => ['nullable', 'string'],
+            'action_log_signature_drawn.*' => ['nullable', 'string', 'max:8000000'],
+            'action_log_signature_upload' => ['nullable', 'array', 'max:5'],
+            'action_log_signature_upload.*' => ['nullable', 'image', 'max:5120'],
             'noted_by_name' => ['nullable', 'string', 'max:255'],
-            'noted_by_signature_drawn' => ['nullable', 'string'],
+            'noted_by_signature_drawn' => ['nullable', 'string', 'max:8000000'],
+            'noted_by_signature_upload' => ['nullable', 'image', 'max:5120'],
             'noted_by_position' => ['nullable', 'string', 'max:255'],
             'noted_by_date_signed' => ['nullable', 'date'],
         ]);
@@ -1861,9 +2034,13 @@ class ServiceRequestController extends Controller
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
         $signatureRows = $validated['action_log_signature_drawn'] ?? [];
+        $signatureUploads = $request->file('action_log_signature_upload', []);
 
         $actionLogs = [];
         for ($i = 0; $i < 5; $i++) {
+            $existingActionSignature = trim((string) ($signatureRows[$i] ?? ''));
+            $actionSignatureUpload = is_array($signatureUploads) ? ($signatureUploads[$i] ?? null) : null;
+
             $row = [
                 'date' => $dateRows[$i] ?? null,
                 'time' => $timeRows[$i] ?? null,
@@ -1871,7 +2048,11 @@ class ServiceRequestController extends Controller
                 'action_time' => $actionTimeRows[$i] ?? null,
                 'action_taken' => $actionRows[$i] ?? null,
                 'action_officer' => $officerRows[$i] ?? null,
-                'signature' => $signatureRows[$i] ?? null,
+                'signature' => $this->storeAuxiliarySignature(
+                    $existingActionSignature,
+                    $actionSignatureUpload,
+                    $existingActionSignature
+                ),
             ];
 
             if (
@@ -1890,8 +2071,12 @@ class ServiceRequestController extends Controller
         $validated['action_logs'] = $actionLogs !== [] ? $actionLogs : null;
 
         if ($this->hasNotedBySignatureColumn()) {
-            $notedBySignature = trim((string) ($validated['noted_by_signature_drawn'] ?? ''));
-            $validated['noted_by_signature'] = $notedBySignature !== '' ? $notedBySignature : null;
+            $existingNotedBySignature = trim((string) ($validated['noted_by_signature_drawn'] ?? ''));
+            $validated['noted_by_signature'] = $this->storeAuxiliarySignature(
+                $existingNotedBySignature,
+                $request->file('noted_by_signature_upload'),
+                $existingNotedBySignature
+            );
         }
 
         unset(
@@ -1902,10 +2087,111 @@ class ServiceRequestController extends Controller
             $validated['action_log_action_taken'],
             $validated['action_log_action_officer'],
             $validated['action_log_signature_drawn'],
+            $validated['action_log_signature_upload'],
             $validated['noted_by_signature_drawn']
         );
 
+        unset($validated['noted_by_signature_upload']);
+
         return $validated;
+    }
+
+    private function storeAuxiliarySignature(
+        ?string $providedSignature,
+        mixed $uploadedSignature,
+        ?string $existingSignature = null
+    ): ?string {
+        $existingSignaturePath = trim((string) $existingSignature);
+
+        if ($uploadedSignature !== null) {
+            $binary = (string) file_get_contents((string) $uploadedSignature->getRealPath());
+            $mime = (string) ($uploadedSignature->getMimeType() ?: 'image/png');
+
+            if ($binary !== '') {
+                [$optimizedBinary, $optimizedMime] = EncryptedSignature::optimizeImageBinary($binary, $mime, 1000, 82, 8);
+                $newDataUri = $this->buildImageDataUri($optimizedBinary, $optimizedMime);
+
+                if ($newDataUri === '') {
+                    return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+                }
+
+                if ($existingSignaturePath !== '' && $existingSignaturePath !== $newDataUri) {
+                    $this->deleteSignatureFile($existingSignaturePath);
+                }
+
+                return $newDataUri;
+            }
+        }
+
+        $signatureValue = trim((string) $providedSignature);
+        if ($signatureValue === '') {
+            return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+        }
+
+        $decodedDataUri = $this->decodeImageDataUri($signatureValue);
+        if (is_array($decodedDataUri)) {
+            [$optimizedBinary, $optimizedMime] = EncryptedSignature::optimizeImageBinary(
+                (string) ($decodedDataUri['binary'] ?? ''),
+                (string) ($decodedDataUri['mime'] ?? 'image/png'),
+                1000,
+                82,
+                8
+            );
+
+            $newDataUri = $this->buildImageDataUri($optimizedBinary, $optimizedMime);
+            if ($newDataUri === '') {
+                return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+            }
+
+            if ($existingSignaturePath !== '' && $existingSignaturePath !== $newDataUri) {
+                $this->deleteSignatureFile($existingSignaturePath);
+            }
+
+            return $newDataUri;
+        }
+
+        if (str_starts_with($signatureValue, 'service-request-signatures/')) {
+            return $signatureValue;
+        }
+
+        return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+    }
+
+    private function buildImageDataUri(string $binary, string $mimeType): string
+    {
+        $imageBinary = (string) $binary;
+        if ($imageBinary === '') {
+            return '';
+        }
+
+        $mime = strtolower(trim($mimeType));
+        if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+            $mime = 'image/png';
+        }
+
+        return 'data:' . $mime . ';base64,' . base64_encode($imageBinary);
+    }
+
+    private function decodeImageDataUri(?string $value): ?array
+    {
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+
+        if (preg_match('/^data:(image\/[a-zA-Z0-9.+-]+);base64,(.+)$/s', $raw, $matches) !== 1) {
+            return null;
+        }
+
+        $binary = base64_decode((string) $matches[2], true);
+        if ($binary === false || $binary === '') {
+            return null;
+        }
+
+        return [
+            'mime' => strtolower(trim((string) $matches[1])) ?: 'image/png',
+            'binary' => $binary,
+        ];
     }
 
     private function scopeForUser(Builder $query): Builder
@@ -2022,16 +2308,27 @@ class ServiceRequestController extends Controller
 
     private function approvedDepartmentOptions(bool $excludeAdmin = false, ?string $excludeDepartment = null): array
     {
-        $options = User::query()
+        $managedDepartmentCodes = DepartmentCode::query()
+            ->pluck('code')
+            ->map(fn (string $department): string => strtoupper(trim($department)))
+            ->filter(fn (string $department): bool => $department !== '')
+            ->unique()
+            ->values()
+            ->all();
+
+        $approvedUserDepartments = User::query()
             ->where('department_status', 'approved')
             ->whereNotNull('department')
             ->pluck('department')
-            ->map(fn (string $department): string => trim($department))
+            ->map(fn (string $department): string => strtoupper(trim($department)))
             ->filter(fn (string $department): bool => $department !== '')
             ->unique()
             ->sort()
             ->values()
             ->all();
+
+        $options = array_values(array_unique(array_merge($managedDepartmentCodes, $approvedUserDepartments)));
+        sort($options);
 
         if ($excludeAdmin) {
             $options = array_values(array_filter(
@@ -2048,7 +2345,7 @@ class ServiceRequestController extends Controller
         }
 
         if ($options === []) {
-            return ['ADMIN'];
+            return $excludeAdmin ? [] : ['ADMIN'];
         }
 
         return $options;

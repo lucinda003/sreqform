@@ -633,7 +633,7 @@
                                 <label class="srf-label" for="application_system_name">
                                     <span class="srf-number-badge">3</span> Application System Name <span class="srf-required">*</span>
                                 </label>
-                                <input id="application_system_name" type="text" name="application_system_name" value="{{ old('application_system_name') }}" class="srf-input" required>
+                                <input id="application_system_name" type="text" name="application_system_name" value="{{ old('application_system_name') }}" class="srf-input" required maxlength="255">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="expected_completion_date">
@@ -657,19 +657,19 @@
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_last_name">Last Name <span class="srf-required">*</span></label>
-                                <input id="contact_last_name" name="contact_last_name" value="{{ old('contact_last_name') }}" class="srf-input" autocomplete="family-name" required>
+                                <input id="contact_last_name" name="contact_last_name" value="{{ old('contact_last_name') }}" class="srf-input" autocomplete="family-name" required maxlength="100">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_first_name">First Name <span class="srf-required">*</span></label>
-                                <input id="contact_first_name" name="contact_first_name" value="{{ old('contact_first_name') }}" class="srf-input" autocomplete="given-name" required>
+                                <input id="contact_first_name" name="contact_first_name" value="{{ old('contact_first_name') }}" class="srf-input" autocomplete="given-name" required maxlength="100">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_middle_name">Middle Name</label>
-                                <input id="contact_middle_name" name="contact_middle_name" value="{{ old('contact_middle_name') }}" class="srf-input" autocomplete="additional-name">
+                                <input id="contact_middle_name" name="contact_middle_name" value="{{ old('contact_middle_name') }}" class="srf-input" autocomplete="additional-name" maxlength="100">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_suffix_name">Suffix</label>
-                                <input id="contact_suffix_name" name="contact_suffix_name" value="{{ old('contact_suffix_name') }}" class="srf-input" autocomplete="honorific-suffix">
+                                <input id="contact_suffix_name" name="contact_suffix_name" value="{{ old('contact_suffix_name') }}" class="srf-input" autocomplete="honorific-suffix" maxlength="100">
                             </div>
                         </div>
                     </div>
@@ -701,18 +701,18 @@
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
                                 <label class="srf-label" for="landline"><span class="srf-number-badge">7</span> Landline</label>
-                                <input id="landline" name="landline" value="{{ old('landline') }}" inputmode="numeric"
-                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input" autocomplete="tel">
+                                <input id="landline" name="landline" value="{{ old('landline') }}" inputmode="tel"
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" autocomplete="tel" maxlength="20">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="fax_no"><span class="srf-number-badge">8</span> Fax No</label>
-                                <input id="fax_no" name="fax_no" value="{{ old('fax_no') }}" inputmode="numeric"
-                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input">
+                                <input id="fax_no" name="fax_no" value="{{ old('fax_no') }}" inputmode="tel"
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" maxlength="20">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile No <span class="srf-required">*</span></label>
-                                <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="numeric"
-                                    oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="srf-input" autocomplete="tel-national" required>
+                                <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="tel"
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" autocomplete="tel-national" required maxlength="20">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span> Email Address</label>
@@ -733,8 +733,8 @@
                                 Please clearly write down the details of the request.
                             </div>
                             <div class="srf-desc-body">
-                                <textarea name="description_request" class="srf-textarea" maxlength="2000" required>{{ old('description_request') }}</textarea>
-                                <p class="mt-1 text-[11px] text-slate-500" data-description-char-count>0/2000 characters</p>
+                                <textarea name="description_request" class="srf-textarea" maxlength="5000" required>{{ old('description_request') }}</textarea>
+                                <p class="mt-1 text-[11px] text-slate-500" data-description-char-count>0/5000 characters</p>
                                 <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
 
                                 <div class="srf-upload-wrap">
@@ -834,6 +834,15 @@
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('input[type="file"]').forEach(function(input) {
+                input.addEventListener('change', function() {
+                    if (this.files && this.files[0] && this.files[0].size > 5 * 1024 * 1024) {
+                        alert('File size must be 5MB or less.');
+                        this.value = '';
+                    }
+                });
+            });
+
             const createForm = document.querySelector('form[action="{{ route('service-requests.store') }}"]');
             const requestCategorySelect = document.getElementById('request_category');
             const requestCategoryOther = document.getElementById('request_category_other');
@@ -1058,7 +1067,7 @@
             const initAdaptiveDescriptionFont = function () {
                 const descriptionTextarea = document.querySelector('textarea[name="description_request"]');
                 const counter = document.querySelector('[data-description-char-count]');
-                const maxChars = 2000;
+                const maxChars = 5000;
                 if (!descriptionTextarea) return;
 
                 descriptionTextarea.setAttribute('maxlength', String(maxChars));

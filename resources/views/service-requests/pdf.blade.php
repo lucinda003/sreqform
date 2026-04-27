@@ -133,7 +133,10 @@
             <td>
                 <span class="label">Signature</span>
                 @php
-                    $approvedSignatureDataUri = \App\Support\EncryptedSignature::dataUriFromPath((string) ($serviceRequest->approved_by_signature ?? ''));
+                    $approvedSignatureRaw = trim((string) ($serviceRequest->approved_by_signature ?? ''));
+                    $approvedSignatureDataUri = str_starts_with($approvedSignatureRaw, 'data:image/')
+                        ? $approvedSignatureRaw
+                        : \App\Support\EncryptedSignature::dataUriFromPath($approvedSignatureRaw);
                 @endphp
                 @if ($approvedSignatureDataUri !== '')
                     <div class="value"><img src="{{ $approvedSignatureDataUri }}" alt="Signature" style="max-height:48px; max-width:180px;"></div>
@@ -197,8 +200,14 @@
         <tr>
             <td>
                 <span class="label">Supervisor Signature</span>
-                @if (filled($serviceRequest->noted_by_signature))
-                    <div class="value"><img src="{{ $serviceRequest->noted_by_signature }}" alt="Supervisor Signature" style="max-height:48px; max-width:180px;"></div>
+                @php
+                    $notedSignatureRaw = trim((string) ($serviceRequest->noted_by_signature ?? ''));
+                    $notedSignatureSrc = str_starts_with($notedSignatureRaw, 'data:image/')
+                        ? $notedSignatureRaw
+                        : \App\Support\EncryptedSignature::dataUriFromPath($notedSignatureRaw);
+                @endphp
+                @if ($notedSignatureSrc !== '')
+                    <div class="value"><img src="{{ $notedSignatureSrc }}" alt="Supervisor Signature" style="max-height:48px; max-width:180px;"></div>
                 @else
                     <div class="value">__________________________</div>
                 @endif
