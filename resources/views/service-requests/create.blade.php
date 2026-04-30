@@ -273,6 +273,112 @@
             background: #fff;
             box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
         }
+        .srf-system-picker {
+            position: relative;
+        }
+        .srf-system-picker-box {
+            display: flex;
+            min-height: 39px;
+            width: 100%;
+            align-items: center;
+            gap: 6px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 6px;
+            background: #f8fafc;
+            padding: 4px 8px;
+            box-sizing: border-box;
+            transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+        }
+        .srf-system-picker-box:hover {
+            border-color: #94a3b8;
+            background: #fff;
+        }
+        .srf-system-picker-box:focus-within {
+            border-color: #0f766e;
+            background: #fff;
+            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
+        }
+        .srf-system-picker-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px;
+        }
+        .srf-system-picker-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            max-width: 100%;
+            border: 1px solid #cbd5e1;
+            border-radius: 4px;
+            background: #fff;
+            padding: 3px 7px;
+            color: #000;
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1.2;
+        }
+        .srf-system-picker-remove {
+            border: 0;
+            background: transparent;
+            color: #475569;
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: 700;
+            line-height: 1;
+            padding: 0 1px;
+        }
+        .srf-system-picker-remove:hover {
+            color: #dc2626;
+        }
+        .srf-system-picker-input {
+            flex: 1;
+            min-width: 160px;
+            border: 0;
+            outline: none;
+            background: transparent;
+            color: #000;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            padding: 3px 2px;
+        }
+        .srf-system-picker-input::placeholder {
+            color: #64748b;
+            font-weight: 500;
+        }
+        .srf-system-picker-results {
+            position: absolute;
+            left: 0;
+            right: 0;
+            z-index: 30;
+            margin-top: 4px;
+            max-height: 240px;
+            overflow-y: auto;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 6px;
+            background: #fff;
+            box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
+        }
+        .srf-system-picker-option {
+            display: block;
+            width: 100%;
+            border: 0;
+            background: transparent;
+            padding: 8px 10px;
+            text-align: left;
+            color: #000;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+        }
+        .srf-system-picker-option:hover {
+            background: #f1f5f9;
+        }
+        .srf-system-picker-empty {
+            padding: 8px 10px;
+            color: #64748b;
+            font-size: 14px;
+        }
         .srf-textarea {
             resize: vertical;
             min-height: 160px;
@@ -633,7 +739,32 @@
                                 <label class="srf-label" for="application_system_name">
                                     <span class="srf-number-badge">3</span> Application System Name <span class="srf-required">*</span>
                                 </label>
-                                <input id="application_system_name" type="text" name="application_system_name" value="{{ old('application_system_name') }}" class="srf-input" required maxlength="255">
+                                @php
+                                    $applicationSystemOptions = collect($applicationSystemOptions ?? []);
+                                    $oldApplicationSystemName = (string) old('application_system_name', '');
+                                @endphp
+                                <div class="srf-system-picker" data-application-system-picker>
+                                    <input
+                                        id="application_system_name"
+                                        type="hidden"
+                                        name="application_system_name"
+                                        value="{{ $oldApplicationSystemName }}"
+                                    >
+                                    <div class="srf-system-picker-box">
+                                        <div id="application_system_name_chips" class="srf-system-picker-chips"></div>
+                                        <input
+                                            id="application_system_name_search"
+                                            type="text"
+                                            class="srf-system-picker-input"
+                                            autocomplete="off"
+                                            placeholder="Application / System Name"
+                                        >
+                                    </div>
+                                    <div
+                                        id="application_system_name_results"
+                                        class="srf-system-picker-results hidden"
+                                    ></div>
+                                </div>
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="expected_completion_date">
@@ -669,7 +800,16 @@
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_suffix_name">Suffix</label>
-                                <input id="contact_suffix_name" name="contact_suffix_name" value="{{ old('contact_suffix_name') }}" class="srf-input" autocomplete="honorific-suffix" maxlength="100">
+                                <select id="contact_suffix_name" name="contact_suffix_name" class="srf-input">
+                                    <option value="">Select</option>
+                                    <option value="II" {{ old('contact_suffix_name') === 'II' ? 'selected' : '' }}>II</option>
+                                    <option value="III" {{ old('contact_suffix_name') === 'III' ? 'selected' : '' }}>III</option>
+                                    <option value="IV" {{ old('contact_suffix_name') === 'IV' ? 'selected' : '' }}>IV</option>
+                                    <option value="Jr." {{ old('contact_suffix_name') === 'Jr.' ? 'selected' : '' }}>Jr.</option>
+                                    <option value="N/A" {{ old('contact_suffix_name') === 'N/A' ? 'selected' : '' }}>N/A</option>
+                                    <option value="Sr." {{ old('contact_suffix_name') === 'Sr.' ? 'selected' : '' }}>Sr.</option>
+                                    <option value="V" {{ old('contact_suffix_name') === 'V' ? 'selected' : '' }}>V</option>
+                                </select>
                             </div>
                         </div>
                     </div>
@@ -685,10 +825,32 @@
                                 <label class="srf-label" for="office">
                                     <span class="srf-number-badge">5</span> Office <span class="srf-required">*</span>
                                 </label>
-                                <input id="office" list="hospital-office-options" name="office"
-                                    value="{{ old('office') }}" autocomplete="off"
-                                    class="srf-input" required>
-                                <p class="srf-hint">Type or pick from the regional hospital list.</p>
+                                @php
+                                    $officeOptions = collect($officeOptions ?? []);
+                                    $oldOffice = (string) old('office', '');
+                                @endphp
+                                <div class="srf-system-picker" data-office-picker>
+                                    <input
+                                        id="office"
+                                        type="hidden"
+                                        name="office"
+                                        value="{{ $oldOffice }}"
+                                    >
+                                    <div class="srf-system-picker-box">
+                                        <div id="office_chips" class="srf-system-picker-chips"></div>
+                                        <input
+                                            id="office_search"
+                                            type="text"
+                                            class="srf-system-picker-input"
+                                            autocomplete="off"
+                                            placeholder="Office"
+                                        >
+                                    </div>
+                                    <div
+                                        id="office_results"
+                                        class="srf-system-picker-results hidden"
+                                    ></div>
+                                </div>
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="address">
@@ -769,11 +931,6 @@
                                                         @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
                                                     Draw Signature
                                                 </label>
-                                                <label>
-                                                    <input type="radio" name="approved_by_signature_mode" value="upload"
-                                                        @checked(old('approved_by_signature_mode') === 'upload')>
-                                                    Upload Signature
-                                                </label>
                                             </div>
                                             <div id="create-signature-draw-wrap">
                                                 <canvas id="create-signature-canvas" class="srf-sig-canvas"
@@ -782,11 +939,6 @@
                                                     id="create-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
                                                 <button type="button" id="create-signature-clear" class="srf-sig-clear">Clear</button>
                                             </div>
-                                            <div id="create-signature-upload-wrap" class="hidden srf-sig-upload-area">
-                                                <input type="file" name="approved_by_signature_upload" accept="image/*"
-                                                    id="create-signature-upload" class="srf-file-input">
-                                            </div>
-                                            <x-input-error :messages="$errors->get('approved_by_signature_upload')" class="mt-1" />
                                             <x-input-error :messages="$errors->get('approved_by_signature_drawn')" class="mt-1" />
                                         </div>
 
@@ -826,12 +978,6 @@
         </section>
     </div>
 
-    <datalist id="hospital-office-options">
-        @foreach (array_keys($hospitalOfficeMap) as $hospitalOfficeOption)
-            <option value="{{ $hospitalOfficeOption }}"></option>
-        @endforeach
-    </datalist>
-
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             document.querySelectorAll('input[type="file"]').forEach(function(input) {
@@ -847,6 +993,248 @@
             const requestCategorySelect = document.getElementById('request_category');
             const requestCategoryOther = document.getElementById('request_category_other');
             const draftStorageKey = 'service-request-create-draft-v1';
+            const applicationSystemOptions = @json($applicationSystemOptions->values());
+            const officeOptions = @json($officeOptions->values());
+
+            const escapeHtml = function (value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+
+            const initChipSearchPicker = function (config) {
+                const hiddenInput = document.getElementById(config.hiddenId);
+                const searchInput = document.getElementById(config.searchId);
+                const chipsContainer = document.getElementById(config.chipsId);
+                const results = document.getElementById(config.resultsId);
+                const options = Array.isArray(config.options) ? config.options : [];
+                const maxSelections = Number(config.maxSelections || 0);
+
+                if (!hiddenInput || !searchInput || !chipsContainer || !results) return null;
+
+                let selected = [];
+
+                const normalize = function (value) {
+                    return String(value || '').trim();
+                };
+
+                const selectedKey = function (value) {
+                    return normalize(value).toLowerCase();
+                };
+
+                const syncHiddenInput = function () {
+                    hiddenInput.value = selected.join(', ');
+                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    searchInput.setCustomValidity('');
+                };
+
+                const renderChips = function () {
+                    chipsContainer.innerHTML = selected.map(function (value, index) {
+                        return '<span class="srf-system-picker-chip">' +
+                            escapeHtml(value) +
+                            '<button type="button" class="srf-system-picker-remove" data-chip-picker-remove="' + index + '" aria-label="Remove ' + escapeHtml(value) + '">x</button>' +
+                            '</span>';
+                    }).join('');
+
+                    searchInput.placeholder = selected.length > 0 ? '' : config.placeholder;
+                    searchInput.classList.toggle('hidden', maxSelections > 0 && selected.length >= maxSelections);
+                };
+
+                const addSelection = function (value) {
+                    const normalized = normalize(value);
+                    if (normalized === '') return;
+
+                    if (maxSelections > 0 && selected.length >= maxSelections) {
+                        selected = [];
+                    }
+
+                    const exists = selected.some(function (item) {
+                        return selectedKey(item) === selectedKey(normalized);
+                    });
+
+                    if (!exists) {
+                        selected.push(normalized);
+                    }
+
+                    searchInput.value = '';
+                    results.classList.add('hidden');
+                    syncHiddenInput();
+                    renderChips();
+                    if (!(maxSelections > 0 && selected.length >= maxSelections)) {
+                        searchInput.focus();
+                    }
+                };
+
+                const removeSelection = function (index) {
+                    selected.splice(index, 1);
+                    syncHiddenInput();
+                    renderChips();
+                    renderResults();
+                    searchInput.focus();
+                };
+
+                const setFromHiddenInput = function () {
+                    selected = hiddenInput.value
+                        .split(',')
+                        .map(normalize)
+                        .filter(function (value, index, items) {
+                            return value !== '' && items.findIndex(function (item) {
+                                return selectedKey(item) === selectedKey(value);
+                            }) === index;
+                        });
+
+                    syncHiddenInput();
+                    renderChips();
+                };
+
+                const optionMatches = function (option, query) {
+                    return selectedKey(option).includes(selectedKey(query));
+                };
+
+                const renderResults = function () {
+                    const query = normalize(searchInput.value);
+                    const selectedKeys = selected.map(selectedKey);
+                    const matches = options
+                        .filter(function (option) {
+                            return selectedKeys.indexOf(selectedKey(option)) === -1;
+                        })
+                        .filter(function (option) {
+                            return query === '' || optionMatches(option, query);
+                        })
+                        .slice(0, 20);
+
+                    const rows = matches.map(function (option) {
+                        return '<button type="button" class="srf-system-picker-option" data-chip-picker-option="' + escapeHtml(option) + '">' +
+                            escapeHtml(option) +
+                            '</button>';
+                    });
+
+                    const exactMatch = options.some(function (option) {
+                        return selectedKey(option) === selectedKey(query);
+                    });
+                    const alreadySelected = selectedKeys.indexOf(selectedKey(query)) !== -1;
+
+                    if (query !== '' && !exactMatch && !alreadySelected) {
+                        rows.unshift('<button type="button" class="srf-system-picker-option" data-chip-picker-option="' + escapeHtml(query) + '">Add "' + escapeHtml(query) + '"</button>');
+                    }
+
+                    results.innerHTML = rows.length > 0
+                        ? rows.join('')
+                        : '<div class="srf-system-picker-empty">No matching records.</div>';
+                    results.classList.remove('hidden');
+                };
+
+                searchInput.addEventListener('input', renderResults);
+                searchInput.addEventListener('focus', renderResults);
+                searchInput.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter') return;
+
+                    event.preventDefault();
+                    const firstOption = results.querySelector('[data-chip-picker-option]');
+                    addSelection(firstOption ? firstOption.getAttribute('data-chip-picker-option') : searchInput.value);
+                });
+
+                results.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+
+                results.addEventListener('click', function (event) {
+                    const option = event.target.closest('[data-chip-picker-option]');
+                    if (!option) return;
+
+                    addSelection(option.getAttribute('data-chip-picker-option'));
+                });
+
+                chipsContainer.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('[data-chip-picker-remove]');
+                    if (!removeButton) return;
+
+                    removeSelection(Number(removeButton.getAttribute('data-chip-picker-remove')));
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (event.target.closest(config.rootSelector)) return;
+                    results.classList.add('hidden');
+                });
+
+                if (createForm) {
+                    createForm.addEventListener('submit', function (event) {
+                        if (selected.length === 0 && normalize(searchInput.value) !== '') {
+                            addSelection(searchInput.value);
+                        }
+
+                        if (selected.length > 0) return;
+
+                        event.preventDefault();
+                        searchInput.setCustomValidity(config.requiredMessage);
+                        searchInput.reportValidity();
+                    });
+                }
+
+                setFromHiddenInput();
+
+                return {
+                    setFromHiddenInput: setFromHiddenInput,
+                };
+            };
+
+            const initLockedSearchInput = function (inputId, clearButtonId) {
+                const input = document.getElementById(inputId);
+                const clearButton = document.getElementById(clearButtonId);
+
+                if (!input || !clearButton) return;
+
+                const lockIfFilled = function () {
+                    if (input.value.trim() === '') return;
+
+                    input.readOnly = true;
+                    input.removeAttribute('list');
+                    clearButton.classList.remove('hidden');
+                };
+
+                const unlockAndClear = function () {
+                    input.value = '';
+                    input.readOnly = false;
+                    input.setAttribute('list', input.dataset.optionsList || '');
+                    clearButton.classList.add('hidden');
+                    input.focus();
+                    input.dispatchEvent(new Event('input', { bubbles: true }));
+                };
+
+                input.dataset.optionsList = input.getAttribute('list') || '';
+                input.addEventListener('change', lockIfFilled);
+                input.addEventListener('blur', lockIfFilled);
+                clearButton.addEventListener('click', unlockAndClear);
+
+                lockIfFilled();
+                return lockIfFilled;
+            };
+
+            const applicationSystemPicker = initChipSearchPicker({
+                hiddenId: 'application_system_name',
+                searchId: 'application_system_name_search',
+                chipsId: 'application_system_name_chips',
+                resultsId: 'application_system_name_results',
+                rootSelector: '[data-application-system-picker]',
+                options: applicationSystemOptions,
+                placeholder: 'Application / System Name',
+                requiredMessage: 'Please select or type at least one application system.',
+            });
+            const officePicker = initChipSearchPicker({
+                hiddenId: 'office',
+                searchId: 'office_search',
+                chipsId: 'office_chips',
+                resultsId: 'office_results',
+                rootSelector: '[data-office-picker]',
+                options: officeOptions,
+                placeholder: 'Office',
+                requiredMessage: 'Please select or type an office.',
+                maxSelections: 1,
+            });
 
             const saveDraftToStorage = function () {
                 if (!createForm) return;
@@ -957,6 +1345,8 @@
 
                 if (navigationType === 'reload') {
                     restoreDraftFromStorage();
+                    if (applicationSystemPicker) applicationSystemPicker.setFromHiddenInput();
+                    if (officePicker) officePicker.setFromHiddenInput();
                 } else {
                     clearDraftStorage();
                 }
@@ -973,6 +1363,10 @@
                 createForm.addEventListener('change', queueDraftSave);
                 createForm.addEventListener('submit', clearDraftStorage);
                 createForm.addEventListener('submit', function (event) {
+                    if (event.defaultPrevented) {
+                        return;
+                    }
+
                     if (formSubmitting) {
                         event.preventDefault();
                         return;
@@ -1031,29 +1425,7 @@
 
             const officeInput = document.getElementById('office');
             const addressInput = document.getElementById('address');
-            const optionsList = document.getElementById('hospital-office-options');
             const officeAddressMap = @json($hospitalOfficeMap);
-
-            if (!officeInput || !optionsList) return;
-
-            const staticOptions = Object.keys(officeAddressMap);
-
-            const setOptions = function (items) {
-                optionsList.innerHTML = '';
-                items.forEach(function (item) {
-                    const option = document.createElement('option');
-                    option.value = item;
-                    optionsList.appendChild(option);
-                });
-            };
-
-            officeInput.addEventListener('input', function () {
-                const termLower = officeInput.value.trim().toLowerCase();
-                if (termLower === '') { setOptions(staticOptions.slice(0, 50)); return; }
-                const starts = staticOptions.filter(i => i.toLowerCase().startsWith(termLower));
-                const contains = staticOptions.filter(i => i.toLowerCase().includes(termLower));
-                setOptions((starts.length > 0 ? starts : contains).slice(0, 50));
-            });
 
             const syncAddress = function () {
                 if (!addressInput) return;
@@ -1061,8 +1433,10 @@
                 if (mapped) addressInput.value = mapped;
             };
 
-            officeInput.addEventListener('change', syncAddress);
-            officeInput.addEventListener('blur', syncAddress);
+            if (officeInput) {
+                officeInput.addEventListener('change', syncAddress);
+                officeInput.addEventListener('blur', syncAddress);
+            }
 
             const initAdaptiveDescriptionFont = function () {
                 const descriptionTextarea = document.querySelector('textarea[name="description_request"]');
@@ -1164,16 +1538,13 @@
             initDescriptionPhotoSelection();
 
             const initSignatureInput = function () {
-                const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');
                 const drawWrap = document.getElementById('create-signature-draw-wrap');
-                const uploadWrap = document.getElementById('create-signature-upload-wrap');
                 const canvas = document.getElementById('create-signature-canvas');
                 const hiddenDrawn = document.getElementById('create-signature-drawn');
                 const clearBtn = document.getElementById('create-signature-clear');
-                const uploadInput = document.getElementById('create-signature-upload');
                 const approvedDateInput = document.getElementById('create-approved-date');
 
-                if (!drawWrap || !uploadWrap || !canvas || !hiddenDrawn) return;
+                if (!drawWrap || !canvas || !hiddenDrawn) return;
 
                 const fillSignedDateIfEmpty = function () {
                     if (!approvedDateInput || approvedDateInput.value !== '') {
@@ -1336,30 +1707,10 @@
                     });
                 }
 
-                if (uploadInput) {
-                    uploadInput.addEventListener('change', function () {
-                        if (uploadInput.files && uploadInput.files.length > 0) {
-                            fillSignedDateIfEmpty();
-                        }
-                    });
-                }
-
-                const syncMode = function () {
-                    const mode = document.querySelector('input[name="approved_by_signature_mode"]:checked')?.value || 'draw';
-                    drawWrap.classList.toggle('hidden', mode !== 'draw');
-                    uploadWrap.classList.toggle('hidden', mode !== 'upload');
-                };
-
-                modeInputs.forEach(i => i.addEventListener('change', syncMode));
-                syncMode();
-
                 const form = canvas.closest('form');
                 if (form) {
                     form.addEventListener('submit', function () {
-                        const mode = document.querySelector('input[name="approved_by_signature_mode"]:checked')?.value || 'draw';
-                        if (mode === 'draw') {
-                            syncHiddenSignature();
-                        }
+                        syncHiddenSignature();
                     });
                 }
             };

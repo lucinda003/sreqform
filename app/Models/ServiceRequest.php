@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 #[Fillable([
@@ -34,12 +35,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'pending_at',
     'checking_at',
     'approved_at',
-    'rejected_at',
     'completed_at',
     'approved_by_name',
     'approved_by_signature',
     'approved_signature_metadata',
     'approved_by_position',
+    'approved_by_user_id',
     'approved_date',
     'kmits_date',
     'time_received',
@@ -50,6 +51,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'noted_by_position',
     'noted_by_date_signed',
     'user_id',
+    'assigned_to_user_id',
+    'assigned_by_user_id',
+    'received_by_user_id',
+    'received_at',
 ])]
 class ServiceRequest extends Model
 {
@@ -70,13 +75,33 @@ class ServiceRequest extends Model
             'pending_at' => 'datetime',
             'checking_at' => 'datetime',
             'approved_at' => 'datetime',
-            'rejected_at' => 'datetime',
             'completed_at' => 'datetime',
+            'received_at' => 'datetime',
         ];
     }
 
     public function chatMessages(): HasMany
     {
         return $this->hasMany(ServiceRequestMessage::class);
+    }
+
+    public function requester(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
+
+    public function assignedUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_to_user_id');
+    }
+
+    public function assignedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'assigned_by_user_id');
+    }
+
+    public function receivedByUser(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by_user_id');
     }
 }

@@ -6,12 +6,30 @@ use App\Models\ServiceRequest;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
 {
     public function index(Request $request): View|RedirectResponse
+    {
+        $data = $this->prepareDashboardData($request);
+        
+        return view('dashboard', $data);
+    }
+
+    public function indexAjax(Request $request): JsonResponse
+    {
+        $data = $this->prepareDashboardData($request);
+        
+        // Return rendered HTML instead of JSON for easier AJAX insertion
+        $html = view('dashboard-content', $data)->render();
+        
+        return response()->json(['html' => $html]);
+    }
+
+    private function prepareDashboardData(Request $request): array
     {
         $range = $request->query('range', 'all');
         if (! in_array($range, ['all', 'today', 'week'], true)) {
@@ -59,7 +77,6 @@ class DashboardController extends Controller
         $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
         $checkingRequests = (clone $baseQuery)->where('status', 'checking')->count();
         $approvedRequests = (clone $baseQuery)->where('status', 'approved')->count();
-        $rejectedRequests = (clone $baseQuery)->where('status', 'rejected')->count();
         $requestMessages = (clone $chatBaseQuery)->count();
 
         $recentRequests = (clone $baseQuery)
@@ -73,7 +90,7 @@ class DashboardController extends Controller
             ->take(8)
             ->get();
 
-        return view('dashboard', [
+        return [
             'totalRequests' => $totalRequests,
             'todayRequests' => $todayRequests,
             'thisWeekRequests' => $thisWeekRequests,
@@ -81,12 +98,11 @@ class DashboardController extends Controller
             'pendingRequests' => $pendingRequests,
             'checkingRequests' => $checkingRequests,
             'approvedRequests' => $approvedRequests,
-            'rejectedRequests' => $rejectedRequests,
             'requestMessages' => $requestMessages,
             'recentRequests' => $recentRequests,
             'recentChatRequests' => $recentChatRequests,
             'range' => $range,
-        ]);
+        ];
     }
 
     private function scopeForDashboard(Builder $query): Builder
@@ -105,17 +121,35 @@ class DashboardController extends Controller
             return $query->whereRaw('1 = 0');
         }
 
-        return $query->where(function (Builder $builder) use ($user): void {
-            $builder->where('user_id', (int) $user->id);
+        $userId = (int) $user->id;
+        $department = trim((string) ($user->department ?? ''));
 
-            $department = trim((string) ($user->department ?? ''));
-            if ($department !== '') {
-                $builder->orWhere(function (Builder $legacyBuilder) use ($department): void {
-                    $legacyBuilder
-                        ->whereNull('user_id')
-                        ->where('department_code', $department);
+        return $query->where(function (Builder $builder) use ($userId, $department): void {
+            $builder
+                ->where(function (Builder $approvedBuilder) use ($userId): void {
+                    $approvedBuilder
+                        ->where('status', 'approved')
+                        ->where(function (Builder $ownerBuilder) use ($userId): void {
+                            $ownerBuilder
+                                ->where('approved_by_user_id', $userId)
+                                ->orWhere(function (Builder $legacyBuilder) use ($userId): void {
+                                    $legacyBuilder
+                                        ->whereNull('approved_by_user_id')
+                                        ->where('user_id', $userId);
+                                });
+                        });
+                })
+                ->orWhere(function (Builder $nonFinalBuilder) use ($userId, $department): void {
+                    $nonFinalBuilder
+                        ->where('status', '!=', 'approved')
+                        ->where(function (Builder $accessBuilder) use ($userId, $department): void {
+                            $accessBuilder->where('user_id', $userId);
+
+                            if ($department !== '') {
+                                $accessBuilder->orWhere('department_code', $department);
+                            }
+                        });
                 });
-            }
         });
     }
 }

@@ -165,7 +165,6 @@
 
     .trk-step-icon.done    { background: #d1fae5; color: #059669; }
     .trk-step-icon.active  { background: #fef9c3; color: #d97706; }
-    .trk-step-icon.rejected { background: #fee2e2; color: #dc2626; }
     .trk-step-icon.pending { background: #f1f5f9; color: #94a3b8; }
 
     .trk-step-label {
@@ -181,7 +180,6 @@
     }
 
     .trk-step-label.pending { color: #94a3b8; }
-    .trk-step-label.rejected { color: #dc2626; }
 
     .trk-nodes-row {
         display: flex;
@@ -206,10 +204,6 @@
         background: #059669;
     }
 
-    .trk-nodes-row .trk-step.rejected:not(:last-child)::after {
-        background: #dc2626;
-    }
-
     .trk-node {
         width: 22px;
         height: 22px;
@@ -222,7 +216,6 @@
     }
     .trk-node.done    { background: #059669; border-color: #059669; }
     .trk-node.active  { background: #fff; border-color: #0f766e; border-width: 3px; box-shadow: 0 0 0 3px rgba(15,118,110,0.2); }
-    .trk-node.rejected { background: #dc2626; border-color: #dc2626; }
     .trk-node.pending { background: #fff; border-color: #cbd5e1; }
 
     .trk-step-date {
@@ -824,18 +817,17 @@
                     $statusRaw = strtolower((string) $serviceRequest->status);
                     $isCheckingStage = in_array($statusRaw, ['reviewing', 'checking'], true);
                     $isApprovedStage = $statusRaw === 'approved';
-                    $isRejectedStage = $statusRaw === 'rejected';
-                    $isBeyondPendingStage = in_array($statusRaw, ['approved', 'rejected', 'completed', 'closed'], true);
-                    $chatLocked = in_array($statusRaw, ['approved', 'rejected', 'completed', 'closed'], true);
+                    $isBeyondPendingStage = in_array($statusRaw, ['approved', 'completed', 'closed'], true);
+                    $chatLocked = in_array($statusRaw, ['approved', 'completed', 'closed'], true);
 
                     $steps = [
                         ['key' => 'submitted',  'label' => 'Request Submitted',   'icon' => '✓'],
                         ['key' => 'pending',    'label' => $isBeyondPendingStage ? 'Done' : ($isCheckingStage ? 'Checking' : 'Pending'), 'icon' => '⏱'],
-                        ['key' => 'approved',   'label' => $isRejectedStage ? 'Rejected' : 'Approved', 'icon' => $isRejectedStage ? '✕' : '✓'],
-                        ['key' => 'completed',  'label' => $isRejectedStage ? 'Closed' : ($isApprovedStage ? 'Completed' : 'Completed/Closed'), 'icon' => $isRejectedStage ? '✕' : '✓'],
+                        ['key' => 'approved',   'label' => 'Approved', 'icon' => '✓'],
+                        ['key' => 'completed',  'label' => $isApprovedStage ? 'Completed' : 'Completed/Closed', 'icon' => '✓'],
                     ];
 
-                    $stepOrder = ['submitted' => 0, 'pending' => 1, 'reviewing' => 1, 'checking' => 1, 'approved' => 2, 'rejected' => 2, 'completed' => 3, 'closed' => 3];
+                    $stepOrder = ['submitted' => 0, 'pending' => 1, 'reviewing' => 1, 'checking' => 1, 'approved' => 2, 'completed' => 3, 'closed' => 3];
                     $currentStep = $stepOrder[$statusRaw] ?? 0;
 
                     $statusLabel = match($statusRaw) {
@@ -851,12 +843,8 @@
                         1 => $isCheckingStage
                             ? ($serviceRequest->checking_at ?? $serviceRequest->pending_at)
                             : $serviceRequest->pending_at,
-                        2 => $isRejectedStage
-                            ? $serviceRequest->rejected_at
-                            : $serviceRequest->approved_at,
-                        3 => $isRejectedStage
-                            ? ($serviceRequest->rejected_at ?? $serviceRequest->completed_at)
-                            : ($serviceRequest->completed_at ?? ($isApprovedStage ? $serviceRequest->approved_at : null)),
+                        2 => $serviceRequest->approved_at,
+                        3 => $serviceRequest->completed_at ?? ($isApprovedStage ? $serviceRequest->approved_at : null),
                     ];
                 @endphp
 
@@ -870,8 +858,6 @@
                             @php
                                 if ($isCheckingStage) {
                                     $state = $i <= 1 ? 'done' : 'pending';
-                                } elseif ($isRejectedStage) {
-                                    $state = $i <= 1 ? 'done' : 'rejected';
                                 } elseif ($isApprovedStage) {
                                     $state = 'done';
                                 } else {
@@ -880,7 +866,7 @@
                             @endphp
                             <div class="trk-step">
                                 <div class="trk-step-icon {{ $state }}">{{ $step['icon'] }}</div>
-                                <div class="trk-step-label {{ in_array($state, ['pending', 'rejected'], true) ? $state : '' }}">{{ $step['label'] }}</div>
+                                <div class="trk-step-label {{ $state === 'pending' ? $state : '' }}">{{ $step['label'] }}</div>
                             </div>
                         @endforeach
                     </div>
@@ -891,8 +877,6 @@
                             @php
                                 if ($isCheckingStage) {
                                     $state = $i <= 1 ? 'done' : 'pending';
-                                } elseif ($isRejectedStage) {
-                                    $state = $i <= 1 ? 'done' : 'rejected';
                                 } elseif ($isApprovedStage) {
                                     $state = 'done';
                                 } else {
@@ -911,8 +895,6 @@
                             @php
                                 if ($isCheckingStage) {
                                     $state = $i <= 1 ? 'done' : 'pending';
-                                } elseif ($isRejectedStage) {
-                                    $state = $i <= 1 ? 'done' : 'rejected';
                                 } elseif ($isApprovedStage) {
                                     $state = 'done';
                                 } else {

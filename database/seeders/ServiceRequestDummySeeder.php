@@ -34,7 +34,7 @@ class ServiceRequestDummySeeder extends Seeder
             'Planning Unit',
             'ICT Unit',
         ];
-        $statusPool = ['pending', 'checking', 'approved', 'rejected'];
+        $statusPool = ['pending', 'checking', 'approved'];
         $actionPool = [
             'Ticket reviewed and queued for processing.',
             'Issue replicated and triaged by KMITS.',
@@ -57,21 +57,15 @@ class ServiceRequestDummySeeder extends Seeder
 
             $checkingAt = null;
             $approvedAt = null;
-            $rejectedAt = null;
             $completedAt = null;
 
-            if (in_array($status, ['checking', 'approved', 'rejected'], true)) {
+            if (in_array($status, ['checking', 'approved'], true)) {
                 $checkingAt = $pendingAt->copy()->addHours($faker->numberBetween(1, 36));
             }
 
             if ($status === 'approved') {
                 $approvedAt = ($checkingAt ?? $pendingAt)->copy()->addHours($faker->numberBetween(2, 48));
                 $completedAt = $approvedAt->copy();
-            }
-
-            if ($status === 'rejected') {
-                $rejectedAt = ($checkingAt ?? $pendingAt)->copy()->addHours($faker->numberBetween(1, 24));
-                $completedAt = $rejectedAt->copy();
             }
 
             $sequence++;
@@ -134,7 +128,6 @@ class ServiceRequestDummySeeder extends Seeder
                 'pending_at' => $pendingAt,
                 'checking_at' => $checkingAt,
                 'approved_at' => $approvedAt,
-                'rejected_at' => $rejectedAt,
                 'completed_at' => $completedAt,
                 'approved_by_name' => $faker->name(),
                 'approved_by_signature' => '',

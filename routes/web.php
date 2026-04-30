@@ -27,6 +27,10 @@ Route::get('/dashboard', [DashboardController::class, 'index'])
     ->middleware(['auth', 'verified'])
     ->name('dashboard');
 
+Route::get('/api/dashboard', [DashboardController::class, 'indexAjax'])
+    ->middleware(['auth', 'verified'])
+    ->name('dashboard.ajax');
+
 Route::get('/admin', function () {
     return redirect()->route('admin.dashboard');
 })->middleware(['auth', 'verified']);
@@ -76,16 +80,27 @@ Route::get('/service-requests/{serviceRequest}/signature/approved', [ServiceRequ
 
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::get('/api/profile', [ProfileController::class, 'editAjax'])->name('profile.ajax');
+    Route::post('/profile/signature/send-code', [ProfileController::class, 'sendSignatureCode'])
+        ->middleware('throttle:profile-signature-send-code')
+        ->name('profile.signature.send-code');
+    Route::post('/profile/signature/verify', [ProfileController::class, 'verifySignatureCode'])
+        ->middleware('throttle:profile-signature-verify-code')
+        ->name('profile.signature.verify');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     Route::get('/service-requests', [ServiceRequestController::class, 'index'])->name('service-requests.index');
+    Route::get('/api/service-requests', [ServiceRequestController::class, 'indexAjax'])->name('service-requests.ajax');
     Route::get('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'show'])->name('service-requests.show');
     Route::get('/service-requests/{serviceRequest}/edit', [ServiceRequestController::class, 'edit'])->name('service-requests.edit');
     Route::put('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'update'])->name('service-requests.update');
     Route::patch('/service-requests/{serviceRequest}/status', [ServiceRequestController::class, 'updateStatus'])->name('service-requests.update-status');
+    Route::patch('/service-requests/{serviceRequest}/receive', [ServiceRequestController::class, 'receive'])->name('service-requests.receive');
+    Route::patch('/service-requests/{serviceRequest}/assign', [ServiceRequestController::class, 'assign'])->name('service-requests.assign');
     Route::get('/admin/chat-notifications', [ServiceRequestController::class, 'adminChatNotifications'])->name('service-requests.notifications');
     Route::get('/admin/chat-requests', [ServiceRequestController::class, 'chatRequests'])->name('service-requests.chat-requests');
+    Route::get('/api/admin/chat-requests', [ServiceRequestController::class, 'chatRequestsAjax'])->name('service-requests.chat-requests.ajax');
     Route::post('/service-requests/{serviceRequest}/chat-request-decision', [ServiceRequestController::class, 'decideChatRequest'])->name('service-requests.chat-request.decision');
     Route::post('/service-requests/{serviceRequest}/chat-toggle', [ServiceRequestController::class, 'toggleAdminChat'])->name('service-requests.chat-toggle');
     Route::post('/service-requests/{serviceRequest}/messages', [ServiceRequestController::class, 'postAdminMessage'])->name('service-requests.messages.store');
@@ -95,10 +110,22 @@ Route::middleware('auth')->group(function () {
     Route::get('/service-requests/{serviceRequest}/pdf', [ServiceRequestController::class, 'downloadPdf'])->name('service-requests.pdf');
 
     Route::get('/admin/users', [AdminUserController::class, 'index'])->name('admin.users.index');
+    Route::get('/api/admin/users', [AdminUserController::class, 'indexAjax'])->name('admin.users.ajax');
     Route::post('/admin/department-codes', [AdminUserController::class, 'storeDepartmentCode'])->name('admin.department-codes.store');
     Route::post('/admin/users', [AdminUserController::class, 'store'])->name('admin.users.store');
     Route::put('/admin/users/{user}', [AdminUserController::class, 'update'])->name('admin.users.update');
     Route::delete('/admin/users/{user}', [AdminUserController::class, 'destroy'])->name('admin.users.destroy');
+
+    Route::get('/admin/management', [\App\Http\Controllers\Admin\ManagementController::class, 'index'])->name('admin.management.index');
+    Route::get('/admin/offices', [\App\Http\Controllers\Admin\OfficeController::class, 'index'])->name('admin.offices.index');
+    Route::post('/admin/offices', [\App\Http\Controllers\Admin\OfficeController::class, 'store'])->name('admin.offices.store');
+    Route::put('/admin/offices/{office}', [\App\Http\Controllers\Admin\OfficeController::class, 'update'])->name('admin.offices.update');
+    Route::delete('/admin/offices/{office}', [\App\Http\Controllers\Admin\OfficeController::class, 'destroy'])->name('admin.offices.destroy');
+
+    Route::get('/admin/application-systems', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'index'])->name('admin.application-systems.index');
+    Route::post('/admin/application-systems', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'store'])->name('admin.application-systems.store');
+    Route::put('/admin/application-systems/{system}', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'update'])->name('admin.application-systems.update');
+    Route::delete('/admin/application-systems/{system}', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'destroy'])->name('admin.application-systems.destroy');
 });
 
 require __DIR__.'/auth.php';

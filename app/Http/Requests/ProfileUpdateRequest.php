@@ -27,6 +27,8 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
             'department' => ['nullable', 'string', 'max:30'],
+            'profile_signature_drawn' => ['nullable', 'string', 'max:8000000'],
+            'profile_signature_clear' => ['nullable', 'boolean'],
         ];
     }
 }

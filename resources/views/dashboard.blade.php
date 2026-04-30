@@ -22,10 +22,11 @@
 
                     <div class="inline-flex rounded-xl border border-slate-200 bg-slate-50 p-1">
                         @foreach ($rangeLabels as $key => $label)
-                            <a
-                                href="{{ route('dashboard', ['range' => $key]) }}"
-                                class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ $range === $key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
-                            >
+                    <a
+                        href="{{ route('dashboard', ['range' => $key]) }}"
+                        data-dashboard-ajax-link
+                        class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ $range === $key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
+                    >
                                 {{ $label }}
                             </a>
                         @endforeach
@@ -63,10 +64,6 @@
                     <a href="{{ route('service-requests.index', ['status' => 'approved']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Approved</p>
                         <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($approvedRequests) }}</p>
-                    </a>
-                    <a href="{{ route('service-requests.index', ['status' => 'rejected']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-rose-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Rejected</p>
-                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($rejectedRequests) }}</p>
                     </a>
                 </div>
             </div>
@@ -125,18 +122,15 @@
                 <div class="space-y-4">
                     <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                         @php
-                            $resolvedRequests = $approvedRequests + $rejectedRequests;
+                            $resolvedRequests = $approvedRequests;
                             $pendingRatePrecise = $totalRequests > 0 ? (($pendingRequests / $totalRequests) * 100) : 0;
                             $approvalRatePrecise = $totalRequests > 0 ? (($approvedRequests / $totalRequests) * 100) : 0;
-                            $rejectionRatePrecise = $totalRequests > 0 ? (($rejectedRequests / $totalRequests) * 100) : 0;
 
                             $pendingRate = (int) round($pendingRatePrecise);
                             $approvalRate = (int) round($approvalRatePrecise);
-                            $rejectionRate = (int) round($rejectionRatePrecise);
 
                             $pendingBarWidth = $pendingRequests > 0 ? min(max($pendingRatePrecise, 4), 100) : 0;
                             $approvalBarWidth = $approvedRequests > 0 ? min(max($approvalRatePrecise, 4), 100) : 0;
-                            $rejectionBarWidth = $rejectedRequests > 0 ? min(max($rejectionRatePrecise, 4), 100) : 0;
                         @endphp
                         <h3 class="text-base font-semibold text-slate-900">Status Snapshot</h3>
                         <div class="mt-3 space-y-3 text-sm text-slate-700">
@@ -156,15 +150,6 @@
                                 </div>
                                 <div class="mt-1 h-2 rounded-full bg-slate-100">
                                     <div class="h-2 rounded-full" style="width: {{ number_format($approvalBarWidth, 2, '.', '') }}%; background-color: #10b981;"></div>
-                                </div>
-                            </div>
-                            <div>
-                                <div class="flex items-center justify-between">
-                                    <span>Rejected</span>
-                                    <span class="font-semibold">{{ number_format($rejectedRequests) }} ({{ $rejectionRate }}%)</span>
-                                </div>
-                                <div class="mt-1 h-2 rounded-full bg-slate-100">
-                                    <div class="h-2 rounded-full" style="width: {{ number_format($rejectionBarWidth, 2, '.', '') }}%; background-color: #f43f5e;"></div>
                                 </div>
                             </div>
                                 <div class="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-xs text-slate-600">

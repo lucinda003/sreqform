@@ -134,6 +134,11 @@
             border-color: #0ea5e9;
         }
 
+        .floating-signature.locked-sig {
+            cursor: default;
+            pointer-events: none;
+        }
+
         .floating-signature.dragging {
             cursor: grabbing;
         }
@@ -440,7 +445,6 @@
         .status-badge.status-approved  { background: #dcfce7; color: #166534; border-color: #16a34a; }
         .status-badge.status-checking  { background: #e0f2fe; color: #075985; border-color: #38bdf8; }
         .status-badge.status-pending   { background: #fef9c3; color: #854d0e; border-color: #eab308; }
-        .status-badge.status-rejected  { background: #fee2e2; color: #991b1b; border-color: #ef4444; }
 
         .datetime-wrap {
             width: 100%;
@@ -623,6 +627,15 @@
         @if (! request()->boolean('embedded'))
             <div class="controls">
                 <button class="btn secondary" type="button" id="reset-signature-positions">Reset Signatures</button>
+                <select id="signature-target-select" class="btn secondary" style="color:#111827; background:#fff; padding:6px 10px;">
+                    <option value="action_0">KMITS Row 1</option>
+                    <option value="action_1">KMITS Row 2</option>
+                    <option value="action_2">KMITS Row 3</option>
+                    <option value="action_3">KMITS Row 4</option>
+                    <option value="action_4">KMITS Row 5</option>
+                    <option value="noted">Supervisor</option>
+                </select>
+                <button class="btn secondary hidden" type="button" id="use-profile-signature">Use My Saved Signature</button>
                 <button class="btn secondary" type="button" id="open-floating-signature">Add Signature</button>
                 <button class="btn secondary" type="button" id="ctrl-shrink">Signature −</button>
                 <button class="btn secondary" type="button" id="ctrl-grow">Signature +</button>
@@ -872,7 +885,7 @@
                     <input type="number" id="stroke-thickness-label" min="0.5" max="12" step="0.5" value="2.4"
                         style="width:52px; text-align:center; font-size:12px; font-weight:700; color:#0f172a;
                                border:1px solid #cbd5e1; border-radius:5px; padding:4px 4px;
-                               outline:none; -moz-appearance:textfield;"
+                               outline:none; -moz-appearance:textfield; cursor:text;"
                         title="I-type ang kapal (0.5 - 12)">
                     <button type="button" class="signature-pad-btn" id="stroke-thicker" title="Kapalan">+</button>
                 </div>
@@ -891,24 +904,37 @@
     <script>
         @php
             $logs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
-            $firstRowSig = trim((string) data_get($logs, '0.signature', ''));
-            $actionSigUrl = $firstRowSig !== '' && str_starts_with($firstRowSig, 'service-request-signatures/')
-                ? \App\Support\EncryptedSignature::dataUriFromPath($firstRowSig)
-                : $firstRowSig;
+            $actionSignatures = [];
+            for ($i = 0; $i < 5; $i++) {
+                $rowSig = trim((string) data_get($logs, $i . '.signature', ''));
+                $actionSignatures[] = [
+                    'src' => $rowSig !== '' && str_starts_with($rowSig, 'service-request-signatures/')
+                        ? \App\Support\EncryptedSignature::dataUriFromPath($rowSig)
+                        : $rowSig,
+                    'userId' => (int) data_get($logs, $i . '.signature_user_id', 0),
+                    'coords' => [
+                        'xRatio' => data_get($logs, $i . '.action_sig_x', 0.72),
+                        'yRatio' => data_get($logs, $i . '.action_sig_y', 0.58 + ($i * 0.045)),
+                        'scale' => data_get($logs, $i . '.action_sig_scale', 0.62),
+                    ],
+                ];
+            }
             
             $notedSigRaw = trim((string) ($serviceRequest->noted_by_signature ?? ''));
             $notedSigUrl = $notedSigRaw !== '' && str_starts_with($notedSigRaw, 'service-request-signatures/')
                 ? \App\Support\EncryptedSignature::dataUriFromPath($notedSigRaw)
                 : $notedSigRaw;
+            $profileSignatureRaw = trim((string) (auth()->user()?->profile_signature ?? ''));
+            $profileSignature = $profileSignatureRaw !== '' && str_starts_with($profileSignatureRaw, 'service-request-signatures/')
+                ? \App\Support\EncryptedSignature::dataUriFromPath($profileSignatureRaw)
+                : $profileSignatureRaw;
         @endphp
         window.__persistedSignatures = {
-            action: @json($actionSigUrl),
-            actionCoords: {
-                xRatio: @json(data_get($logs, '0.action_sig_x', 0.24)),
-                yRatio: @json(data_get($logs, '0.action_sig_y', 0.55)),
-                scale: @json(data_get($logs, '0.action_sig_scale', 1))
-            },
+            currentUserId: @json((int) (auth()->id() ?? 0)),
+            profileSignature: @json($profileSignature),
+            actions: @json($actionSignatures),
             noted: @json($notedSigUrl),
+            notedUserId: @json((int) data_get($logs, '0.noted_sig_user_id', 0)),
             notedCoords: {
                 xRatio: @json(data_get($logs, '0.noted_sig_x', 0.65)),
                 yRatio: @json(data_get($logs, '0.noted_sig_y', 0.72)),
@@ -927,6 +953,8 @@
             const legacySizeStorageKey     = 'print-floating-signature-size:'     + referenceCode;
 
             const resetButton      = document.getElementById('reset-signature-positions');
+            const targetSelect     = document.getElementById('signature-target-select');
+            const useProfileButton = document.getElementById('use-profile-signature');
             const openButton       = document.getElementById('open-floating-signature');
             const saveAllButton    = document.getElementById('save-floating-signatures');
             const saveStatus       = document.getElementById('save-signature-status');
@@ -961,6 +989,8 @@
             const scaleStep           = 0.12;
 
             const signatureNodes = new Map();
+            const actionSlots = ['action_0', 'action_1', 'action_2', 'action_3', 'action_4'];
+            const allSlots = [...actionSlots, 'noted'];
             let signatures       = [];
             let activeSignatureId = null;
             const pendingClearSlots = new Set();
@@ -1051,7 +1081,46 @@
 
             const normalizeSlot = slot => {
                 const value = sanitizeValue(slot).toLowerCase();
-                return value === 'noted' ? 'noted' : (value === 'action' ? 'action' : '');
+                if (value === 'action') return 'action_0';
+                if (value === 'noted') return 'noted';
+                return /^action_[0-4]$/.test(value) ? value : '';
+            };
+
+            const selectedTargetSlot = () => {
+                const selected = normalizeSlot(targetSelect ? targetSelect.value : '');
+                return selected !== '' ? selected : nextActionSlot();
+            };
+
+            const nextActionSlot = () => {
+                const occupied = new Set(signatures.map(sig => normalizeSlot(sig.slot)).filter(Boolean));
+                return actionSlots.find(slot => !occupied.has(slot)) || 'noted';
+            };
+
+            const profileSignatureSource = () => {
+                const profileSignature = sanitizeValue(window.__persistedSignatures?.profileSignature);
+                return profileSignature !== '' && !profileSignature.includes('blank') ? profileSignature : '';
+            };
+
+            const updateProfileSignatureButton = () => {
+                if (!useProfileButton) return;
+                const hasProfileSignature = profileSignatureSource() !== '';
+                useProfileButton.classList.toggle('hidden', !hasProfileSignature || isReadonlyMode);
+                useProfileButton.disabled = !hasProfileSignature || isReadonlyMode;
+            };
+
+            const createSignatureFromSource = (source, slot) => {
+                const normalizedSlot = normalizeSlot(slot) || nextActionSlot();
+                const actionIndex = actionSlots.indexOf(normalizedSlot);
+
+                return {
+                    id: generateSignatureId(),
+                    src: source,
+                    slot: normalizedSlot,
+                    xRatio: normalizedSlot === 'noted' ? 0.65 : 0.72,
+                    yRatio: normalizedSlot === 'noted' ? 0.72 : clamp(0.58 + (Math.max(actionIndex, 0) * 0.045), 0, 1),
+                    scale: normalizedSlot === 'noted' ? 0.9 : 0.62,
+                    locked: false,
+                };
             };
 
             const requestSaveSlot = async (target, signature) => {
@@ -1122,8 +1191,8 @@
             };
 
             const removeSignaturesBySlot = slot => {
-                const normalizedSlot = slot === 'noted' ? 'noted' : 'action';
-                signatures = signatures.filter(s => sanitizeValue(s.slot) !== normalizedSlot);
+                const normalizedSlot = normalizeSlot(slot);
+                signatures = signatures.filter(s => normalizeSlot(s.slot) !== normalizedSlot);
                 if (!findSignatureById(activeSignatureId)) {
                     activeSignatureId = signatures.length > 0 ? signatures[signatures.length - 1].id : null;
                 }
@@ -1157,22 +1226,23 @@
                 setSavingState(true);
 
                 try {
-                    const excludedIds = new Set();
-                    const actionSignature = findSignatureForSlot('action', excludedIds);
-                    if (actionSignature) {
-                        actionSignature.slot = 'action';
-                        excludedIds.add(actionSignature.id);
-                        pendingClearSlots.delete('action');
-                    }
+                    const editableSignaturesForSave = signatures.filter(sig => sig.locked !== true);
+                    const unslotted = editableSignaturesForSave.filter(sig => normalizeSlot(sig.slot) === '');
+                    unslotted.forEach(sig => {
+                        sig.slot = nextActionSlot();
+                    });
 
-                    const notedSignature = findSignatureForSlot('noted', excludedIds);
-                    if (notedSignature) {
-                        notedSignature.slot = 'noted';
-                        excludedIds.add(notedSignature.id);
-                        pendingClearSlots.delete('noted');
-                    }
+                    const signaturesBySlot = new Map();
+                    editableSignaturesForSave.forEach(sig => {
+                        const slot = normalizeSlot(sig.slot);
+                        if (slot !== '' && !signaturesBySlot.has(slot)) {
+                            sig.slot = slot;
+                            signaturesBySlot.set(slot, sig);
+                            pendingClearSlots.delete(slot);
+                        }
+                    });
 
-                    if (!actionSignature && !notedSignature && pendingClearSlots.size === 0) {
+                    if (signaturesBySlot.size === 0 && pendingClearSlots.size === 0) {
                         setSaveStatus('Nothing to save.');
                         return {
                             ok: true,
@@ -1182,57 +1252,32 @@
 
                     const messages = [];
 
-                    if (actionSignature) {
-                        const saveActionResult = await requestSaveSlot('action', actionSignature);
-                        if (!saveActionResult.ok) {
-                            setSaveStatus(saveActionResult.message, true);
-                            return saveActionResult;
-                        }
+                    for (const slot of allSlots) {
+                        const signature = signaturesBySlot.get(slot);
+                        if (signature) {
+                            const saveResult = await requestSaveSlot(slot, signature);
+                            if (!saveResult.ok) {
+                                setSaveStatus(saveResult.message, true);
+                                return saveResult;
+                            }
 
-                        messages.push(saveActionResult.message);
-                        pendingClearSlots.delete('action');
-                    } else if (pendingClearSlots.has('action')) {
-                        const clearActionResult = await requestClearSlot('action');
-                        if (!clearActionResult.ok) {
-                            setSaveStatus(clearActionResult.message, true);
-                            return clearActionResult;
-                        }
+                            messages.push(saveResult.message);
+                            pendingClearSlots.delete(slot);
+                        } else if (pendingClearSlots.has(slot)) {
+                            const clearResult = await requestClearSlot(slot);
+                            if (!clearResult.ok) {
+                                setSaveStatus(clearResult.message, true);
+                                return clearResult;
+                            }
 
-                        messages.push(clearActionResult.message);
-                        pendingClearSlots.delete('action');
+                            messages.push(clearResult.message);
+                            pendingClearSlots.delete(slot);
+                        }
                     }
 
-                    if (notedSignature) {
-                        const saveNotedResult = await requestSaveSlot('noted', notedSignature);
-                        if (!saveNotedResult.ok) {
-                            setSaveStatus(saveNotedResult.message, true);
-                            return saveNotedResult;
-                        }
-
-                        messages.push(saveNotedResult.message);
-                        pendingClearSlots.delete('noted');
-                    } else if (pendingClearSlots.has('noted')) {
-                        const clearNotedResult = await requestClearSlot('noted');
-                        if (!clearNotedResult.ok) {
-                            setSaveStatus(clearNotedResult.message, true);
-                            return clearNotedResult;
-                        }
-
-                        messages.push(clearNotedResult.message);
-                        pendingClearSlots.delete('noted');
-                    }
-
-                    signatures = signatures.filter(sig => {
-                        const slot = normalizeSlot(sig.slot);
-                        if (slot === 'action' && actionSignature) {
-                            return sig.id === actionSignature.id;
-                        }
-                        if (slot === 'noted' && notedSignature) {
-                            return sig.id === notedSignature.id;
-                        }
-
-                        return slot === '';
-                    });
+                    signatures = signatures
+                        .filter(sig => sig.locked === true)
+                        .concat(Array.from(signaturesBySlot.values()));
 
                     rebuildSignatureNodes();
                     persistSignatures();
@@ -1265,9 +1310,13 @@
             const deleteActiveSignature = async () => {
                 const active = findSignatureById(activeSignatureId);
                 if (!active) return;
+                if (active.locked === true) {
+                    setSaveStatus('Saved signatures cannot be deleted here.', true);
+                    return;
+                }
 
-                const slot = sanitizeValue(active.slot).toLowerCase();
-                if (slot === 'action' || slot === 'noted') {
+                const slot = normalizeSlot(active.slot);
+                if (slot !== '') {
                     pendingClearSlots.add(slot);
                     removeSignaturesBySlot(slot);
                     setSaveStatus('Deleted successfully. Click Save Signatures to apply.', false, 'delete');
@@ -1320,8 +1369,8 @@
                 const rect  = canvas.getBoundingClientRect();
                 canvas.width  = Math.max(1, Math.floor(rect.width  * ratio));
                 canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-                ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-                ctx.lineWidth   = strokeWidth;
+                ctx.setTransform(1, 0, 0, 1, 0, 0);
+                ctx.lineWidth   = strokeWidth * ratio;
                 ctx.lineCap     = 'round';
                 ctx.strokeStyle = '#0f172a';
             };
@@ -1333,7 +1382,7 @@
                 const src = sanitizeValue(dataUrl);
                 if (src === '') return;
                 const image  = new Image();
-                image.onload = () => { clearPadCanvas(); ctx.drawImage(image, 0, 0, canvas.clientWidth, canvas.clientHeight); };
+                image.onload = () => { clearPadCanvas(); ctx.drawImage(image, 0, 0, canvas.width, canvas.height); };
                 image.src    = src;
             };
 
@@ -1368,7 +1417,12 @@
             const getPadPoint = e => {
                 const rect   = canvas.getBoundingClientRect();
                 const source = e.touches ? e.touches[0] : e;
-                return { x: source.clientX - rect.left, y: source.clientY - rect.top };
+                const scaleX = rect.width > 0 ? canvas.width / rect.width : 1;
+                const scaleY = rect.height > 0 ? canvas.height / rect.height : 1;
+                return {
+                    x: (source.clientX - rect.left) * scaleX,
+                    y: (source.clientY - rect.top) * scaleY,
+                };
             };
 
             const startPadDraw = e => {
@@ -1423,10 +1477,15 @@
 
             const attachNodeEvents = node => {
                 if (isReadonlyMode) return;
+                const initialId = sanitizeValue(node.getAttribute('data-signature-id'));
+                const initialSig = findSignatureById(initialId);
+                if (initialSig && initialSig.locked === true) return;
                 // Double-click → redraw
                 node.addEventListener('dblclick', () => {
                     const id = sanitizeValue(node.getAttribute('data-signature-id'));
                     if (!id) return;
+                    const sig = findSignatureById(id);
+                    if (sig && sig.locked === true) return;
                     hideToolbar();
                     setActiveSignature(id);
                     openPadModal('edit', id);
@@ -1437,6 +1496,7 @@
                     const id = sanitizeValue(node.getAttribute('data-signature-id'));
                     const sig = findSignatureById(id);
                     if (!sig) return;
+                    if (sig.locked === true) return;
                     setActiveSignature(id);
                     hideToolbar();
                     activeNode      = node;
@@ -1481,6 +1541,11 @@
                         const sig = findSignatureById(id);
                         const nd  = signatureNodes.get(id);
                         if (sig && nd) showToolbarForNode(nd, sig);
+                    } else {
+                        // AUTO-SAVE: Save signature position after dragging
+                        setSaveStatus('Auto-saving position...', false);
+                        setSavingState(true);
+                        saveAllSignatures();
                     }
                     pointerMoved = false;
                 };
@@ -1499,8 +1564,9 @@
                     node.alt         = 'Floating Signature';
                     node.draggable   = false;
                     node.className   = 'floating-signature';
+                    if (sig.locked === true) node.classList.add('locked-sig');
                     node.setAttribute('data-signature-id', sig.id);
-                    node.title       = 'Click to resize · Drag to move · Double-click to redraw';
+                    node.title       = sig.locked === true ? 'Saved signature' : 'Click to resize · Drag to move · Double-click to redraw';
                     applyNodeLayout(sig, node);
                     attachNodeEvents(node);
                     floatingLayer.appendChild(node);
@@ -1529,10 +1595,18 @@
             const resizeActive = delta => {
                 const sig = findSignatureById(activeSignatureId);
                 if (!sig) return;
+                if (sig.locked === true) {
+                    setSaveStatus('Saved signatures cannot be changed here.', true);
+                    return;
+                }
                 sig.scale = clamp(sig.scale + delta, minSignatureScale, maxSignatureScale);
                 const node = signatureNodes.get(sig.id);
                 if (node) { applyNodeLayout(sig, node); showToolbarForNode(node, sig); }
                 persistSignatures();
+                // AUTO-SAVE: Save signature scale after resizing
+                setSaveStatus('Auto-saving size...', false);
+                setSavingState(true);
+                saveAllSignatures();
             };
 
             btnShrink.addEventListener('click', e => { e.stopPropagation(); resizeActive(-scaleStep); });
@@ -1575,19 +1649,28 @@
 
             // Load persisted signatures from backend
             if (typeof window.__persistedSignatures === 'object' && window.__persistedSignatures) {
-                if (window.__persistedSignatures.action !== '' && window.__persistedSignatures.action && !window.__persistedSignatures.action.includes('blank')) {
-                    const actionSig = {
-                        id: generateSignatureId(),
-                        src: window.__persistedSignatures.action,
-                        slot: 'action',
-                        xRatio: parseFloat(window.__persistedSignatures.actionCoords?.xRatio ?? 0.24),
-                        yRatio: parseFloat(window.__persistedSignatures.actionCoords?.yRatio ?? 0.55),
-                        scale: parseFloat(window.__persistedSignatures.actionCoords?.scale ?? 1),
-                    };
+                const currentUserId = parseInt(window.__persistedSignatures.currentUserId ?? 0, 10) || 0;
+                const persistedActions = Array.isArray(window.__persistedSignatures.actions)
+                    ? window.__persistedSignatures.actions
+                    : [];
+                persistedActions.forEach((entry, index) => {
+                    const src = sanitizeValue(entry && entry.src);
+                    if (src === '' || src.includes('blank')) return;
+                    const ownerUserId = parseInt(entry.userId ?? 0, 10) || 0;
 
-                    signatures.push(actionSig);
-                }
+                    signatures.push({
+                        id: generateSignatureId(),
+                        src,
+                        slot: 'action_' + index,
+                        xRatio: parseFloat(entry.coords?.xRatio ?? 0.72),
+                        yRatio: parseFloat(entry.coords?.yRatio ?? (0.58 + (index * 0.045))),
+                        scale: parseFloat(entry.coords?.scale ?? 0.62),
+                        locked: ownerUserId === 0 || ownerUserId !== currentUserId,
+                    });
+                });
+
                 if (window.__persistedSignatures.noted !== '' && window.__persistedSignatures.noted && !window.__persistedSignatures.noted.includes('blank')) {
+                    const notedOwnerUserId = parseInt(window.__persistedSignatures.notedUserId ?? 0, 10) || 0;
                     const notedSig = {
                         id: generateSignatureId(),
                         src: window.__persistedSignatures.noted,
@@ -1595,13 +1678,25 @@
                         xRatio: parseFloat(window.__persistedSignatures.notedCoords?.xRatio ?? 0.65),
                         yRatio: parseFloat(window.__persistedSignatures.notedCoords?.yRatio ?? 0.72),
                         scale: parseFloat(window.__persistedSignatures.notedCoords?.scale ?? 0.9),
+                        locked: notedOwnerUserId === 0 || notedOwnerUserId !== currentUserId,
                     };
 
                     signatures.push(notedSig);
                 }
+
+                updateProfileSignatureButton();
             }
 
-            if (signatures.length > 0) activeSignatureId = signatures[signatures.length - 1].id;
+            if (targetSelect) {
+                targetSelect.value = nextActionSlot();
+            }
+
+            const editableSignatures = signatures.filter(sig => sig.locked !== true);
+            if (editableSignatures.length > 0) {
+                activeSignatureId = editableSignatures[editableSignatures.length - 1].id;
+            } else if (signatures.length > 0) {
+                activeSignatureId = null;
+            }
             rebuildSignatureNodes();
 
             // ── Pad canvas events ────────────────────────────────────────────
@@ -1615,7 +1710,43 @@
 
             // ── Toolbar + pad wiring ─────────────────────────────────────────
 
+            const useSavedProfileSignature = async () => {
+                const source = profileSignatureSource();
+                if (source === '') {
+                    const result = {
+                        ok: false,
+                        message: 'No saved profile signature found.',
+                    };
+                    setSaveStatus(result.message, true);
+                    updateProfileSignatureButton();
+                    return result;
+                }
+
+                const slot = selectedTargetSlot();
+                removeSignaturesBySlot(slot);
+
+                const created = createSignatureFromSource(source, slot);
+                signatures.push(created);
+                setActiveSignature(created.id);
+                rebuildSignatureNodes();
+                persistSignatures();
+
+                if (targetSelect) {
+                    targetSelect.value = nextActionSlot();
+                }
+
+                setSaveStatus('Auto-saving saved signature...', false);
+                setSavingState(true);
+
+                return await saveAllSignatures();
+            };
+
             if (openButton) openButton.addEventListener('click', () => openPadModal('add', ''));
+            if (useProfileButton) {
+                useProfileButton.addEventListener('click', async () => {
+                    await useSavedProfileSignature();
+                });
+            }
 
             modalClearButton.addEventListener('click', clearPadCanvas);
 
@@ -1645,21 +1776,35 @@
                 ctx.lineWidth = strokeWidth;
                 updateStrokeLabel();
             });
-            modalApplyButton.addEventListener('click', () => {
+            modalApplyButton.addEventListener('click', async () => {
                 const sigData = getCenteredPadSignature();
                 if (sigData === '') { closePadModal(); return; }
                 if (padMode === 'edit' && padTargetId !== '') {
                     const t = findSignatureById(padTargetId);
                     if (t) { t.src = sigData; setActiveSignature(t.id); }
                 } else {
-                    const offset  = Math.min(signatures.length * 0.02, 0.2);
-                    const created = { id: generateSignatureId(), src: sigData, xRatio: clamp(0.24 + offset, 0, 1), yRatio: clamp(0.78 + offset, 0, 1), scale: 1 };
+                    const slot = selectedTargetSlot();
+                    const actionIndex = actionSlots.indexOf(slot);
+                    const created = {
+                        id: generateSignatureId(),
+                        src: sigData,
+                        slot,
+                        xRatio: slot === 'noted' ? 0.65 : 0.72,
+                        yRatio: slot === 'noted' ? 0.72 : clamp(0.58 + (Math.max(actionIndex, 0) * 0.045), 0, 1),
+                        scale: slot === 'noted' ? 0.9 : 0.62,
+                    };
                     signatures.push(created);
                     setActiveSignature(created.id);
                 }
                 rebuildSignatureNodes();
                 persistSignatures();
                 closePadModal();
+                
+                // AUTO-SAVE: Save signature immediately after applying
+                setSaveStatus('Auto-saving signature...', false);
+                setSavingState(true);
+                const result = await saveAllSignatures();
+                // No need to close modal - it's already closed above
             });
             modalRemoveButton.addEventListener('click', () => {
                 if (padMode === 'edit' && padTargetId !== '') removeSignatureById(padTargetId);
@@ -1696,6 +1841,23 @@
                     resizeActive(delta);
                 }
 
+                if (payload.type === 'use-profile-signature') {
+                    useSavedProfileSignature().then(result => {
+                        try {
+                            if (window.parent && window.parent !== window) {
+                                window.parent.postMessage({
+                                    type: 'save-all-print-signatures-result',
+                                    ok: result && result.ok === true,
+                                    message: String((result && result.message) || ''),
+                                }, '*');
+                            }
+                        } catch (error) {
+                            // Ignore cross-window response failures.
+                        }
+                    });
+                    return;
+                }
+
                 if (payload.type === 'save-all-print-signatures' || payload.type === 'save-print-signature') {
                     saveAllSignatures().then(result => {
                         try {
@@ -1728,10 +1890,10 @@
 
             if (resetButton) {
                 resetButton.addEventListener('click', () => {
-                    const hasActionSignature = signatures.some(sig => normalizeSlot(sig.slot) === 'action');
-                    const hasNotedSignature = signatures.some(sig => normalizeSlot(sig.slot) === 'noted');
-                    if (hasActionSignature) pendingClearSlots.add('action');
-                    if (hasNotedSignature) pendingClearSlots.add('noted');
+                    signatures.forEach(sig => {
+                        const slot = normalizeSlot(sig.slot);
+                        if (slot !== '') pendingClearSlots.add(slot);
+                    });
 
                     signatures = []; activeSignatureId = null;
                     hideToolbar();

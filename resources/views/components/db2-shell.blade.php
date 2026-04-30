@@ -6,7 +6,9 @@
 @php
     $isAdmin = strtoupper((string) Auth::user()?->department) === 'ADMIN';
     $isArchiveView = request()->routeIs('service-requests.index') && request()->query('status') === 'archived';
-    $isServiceRequestView = request()->routeIs('service-requests.index') && ! $isArchiveView;
+    $isReceiveView = request()->routeIs('service-requests.index') && request()->query('received') === 'me';
+    $isAssignedView = request()->routeIs('service-requests.index') && request()->query('assigned') === 'me';
+    $isServiceRequestView = request()->routeIs('service-requests.index') && ! $isArchiveView && ! $isReceiveView && ! $isAssignedView;
 @endphp
 
 <style>
@@ -440,13 +442,21 @@
             </svg>
         </button>
         <nav class="db2-nav">
-            <a href="{{ route('dashboard') }}" class="db2-nav-item {{ request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') ? 'active' : '' }}">
+            <a href="{{ route('dashboard') }}" class="db2-nav-item {{ request()->routeIs('dashboard') || request()->routeIs('admin.dashboard') ? 'active' : '' }}" data-dashboard-nav-link>
                 <svg viewBox="0 0 20 20" fill="currentColor"><path d="M2 10.5a1 1 0 011-1h3a1 1 0 011 1v6a1 1 0 01-1 1H3a1 1 0 01-1-1v-6zM9 3.5a1 1 0 011-1h3a1 1 0 011 1v13a1 1 0 01-1 1h-3a1 1 0 01-1-1v-13zM16 7.5a1 1 0 011-1h1a1 1 0 011 1v9a1 1 0 01-1 1h-1a1 1 0 01-1-1v-9z"/></svg>
                 <span class="db2-nav-label">Dashboard</span>
             </a>
             <a href="{{ route('service-requests.index') }}" class="db2-nav-item {{ $isServiceRequestView ? 'active' : '' }}">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 5H7a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h0a2 2 0 002-2M9 5a2 2 0 012-2h0a2 2 0 012 2"/></svg>
                 <span class="db2-nav-label">Service Request</span>
+            </a>
+            <a href="{{ route('service-requests.index', ['received' => 'me']) }}" class="db2-nav-item {{ $isReceiveView ? 'active' : '' }}">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h12v12H4z"/><path d="M7 10l3 3 4-6"/></svg>
+                <span class="db2-nav-label">Receive</span>
+            </a>
+            <a href="{{ route('service-requests.index', ['assigned' => 'me']) }}" class="db2-nav-item {{ $isAssignedView ? 'active' : '' }}">
+                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/><path d="M7 8h6M7 12h4"/></svg>
+                <span class="db2-nav-label">Assigned</span>
             </a>
             <a href="{{ route('service-requests.index', ['status' => 'archived']) }}" class="db2-nav-item {{ $isArchiveView ? 'active' : '' }}">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h12v3H4zM4 7h12v9a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 11h4"/></svg>
@@ -464,6 +474,10 @@
                 <a href="{{ route('admin.users.index') }}" class="db2-nav-item {{ request()->routeIs('admin.users.*') ? 'active' : '' }}">
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="3"/><path d="M1 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M13 7a3 3 0 010 6M19 17c0-2.2-1.3-4.1-3-5"/></svg>
                     <span class="db2-nav-label">Accounts</span>
+                </a>
+                <a href="{{ route('admin.management.index') }}" class="db2-nav-item {{ request()->routeIs('admin.management.*', 'admin.offices.*', 'admin.application-systems.*') ? 'active' : '' }}">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="4" width="7" height="12" rx="1"/><rect x="11" y="4" width="7" height="12" rx="1"/></svg>
+                    <span class="db2-nav-label">Management</span>
                 </a>
             @endif
         </nav>
@@ -652,11 +666,12 @@
             notifEmpty.classList.add('hidden');
 
             notifList.innerHTML = filteredNotifications.map(function (item) {
-                const message = escapeHtml(item.message || 'New chat request');
+                const titleText = item.title || 'Notification';
+                const message = escapeHtml(item.message || 'New notification');
                 const requestedAt = escapeHtml(item.requested_at_label || '');
                 const editUrl = escapeHtml(item.edit_url || '#');
                 const isNew = isFreshNotification(item);
-                const title = isNew ? 'New Chat Request' : 'Chat Request';
+                const title = escapeHtml(isNew ? 'New ' + titleText : titleText);
                 const newBadge = isNew ? '<span class="db2-notif-item-new">NEW</span>' : '';
 
                 return '<a href="' + editUrl + '" class="db2-notif-item">' +
@@ -784,5 +799,511 @@
         pollNotifications();
         window.setInterval(pollNotifications, 4000);
         window.setInterval(renderNotificationHistory, 15000);
+    })();
+
+    const runInjectedScripts = function (container) {
+        container.querySelectorAll('script').forEach(function (script) {
+            const nextScript = document.createElement('script');
+            Array.from(script.attributes).forEach(function (attribute) {
+                nextScript.setAttribute(attribute.name, attribute.value);
+            });
+            nextScript.textContent = script.textContent;
+            script.replaceWith(nextScript);
+        });
+    };
+
+    const loadDashboardContent = async function (targetUrl) {
+        const requestedUrl = new URL(targetUrl || "{{ route('dashboard') }}", window.location.origin);
+        const dashboardAjaxUrl = new URL("/api/dashboard", window.location.origin);
+        dashboardAjaxUrl.search = requestedUrl.search;
+
+        const response = await fetch(dashboardAjaxUrl.toString(), {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Dashboard AJAX request failed.');
+        }
+
+        const data = await response.json();
+        const html = data.html || '';
+        const contentArea = document.querySelector('.db2-content');
+
+        if (!contentArea || html === '') {
+            throw new Error('Dashboard content missing.');
+        }
+
+        contentArea.innerHTML = html;
+        runInjectedScripts(contentArea);
+
+        window.history.pushState({ dashboard: true }, 'Dashboard', requestedUrl.pathname + requestedUrl.search);
+        document.title = 'Dashboard | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+
+        document.querySelectorAll('.db2-nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        const dashboardNavLink = Array.from(document.querySelectorAll('.db2-nav-item')).find(function (link) {
+            try {
+                const linkUrl = new URL(link.href, window.location.origin);
+                return linkUrl.pathname === new URL("{{ route('dashboard') }}", window.location.origin).pathname;
+            } catch (error) {
+                return false;
+            }
+        });
+        if (dashboardNavLink) {
+            dashboardNavLink.classList.add('active');
+        }
+
+        contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    const handleDashboardNavigation = async function (event, dashboardLink) {
+        if (!dashboardLink) return;
+
+        let linkUrl;
+        try {
+            linkUrl = new URL(dashboardLink.href, window.location.origin);
+        } catch (error) {
+            return;
+        }
+
+        const dashboardPath = "/dashboard";
+        const adminDashboardPath = "/admin/dashboard";
+
+        if (linkUrl.pathname !== dashboardPath && linkUrl.pathname !== adminDashboardPath) {
+            return;
+        }
+
+        event.preventDefault();
+
+        try {
+            await loadDashboardContent(dashboardLink.href);
+        } catch (error) {
+            window.location.assign(dashboardLink.href);
+        }
+    };
+
+    document.querySelectorAll('[data-dashboard-nav-link]').forEach(function (dashboardLink) {
+        dashboardLink.addEventListener('click', function (event) {
+            event.stopPropagation();
+            handleDashboardNavigation(event, dashboardLink);
+        });
+    });
+
+    // AJAX Dashboard Navigation
+    document.addEventListener('click', async function (event) {
+        if (event.defaultPrevented) return;
+
+        const dashboardLink = event.target.closest('[data-dashboard-nav-link], a[href="{{ route('dashboard') }}"], a[href="{{ route('admin.dashboard') }}"]');
+        if (!dashboardLink) return;
+
+        await handleDashboardNavigation(event, dashboardLink);
+    });
+
+    document.addEventListener('click', async function (event) {
+        const dashboardRangeLink = event.target.closest('[data-dashboard-ajax-link]');
+        if (!dashboardRangeLink) return;
+
+        event.preventDefault();
+
+        try {
+            await loadDashboardContent(dashboardRangeLink.href);
+        } catch (error) {
+            window.location.assign(dashboardRangeLink.href);
+        }
+    });
+
+    const serviceRequestsIndexPath = new URL("{{ route('service-requests.index') }}", window.location.origin).pathname;
+    const serviceRequestsAjaxPath = new URL("{{ route('service-requests.ajax') }}", window.location.origin).pathname;
+
+    const serviceRequestPageMeta = function (targetUrl) {
+        const requestedUrl = new URL(targetUrl || "{{ route('service-requests.index') }}", window.location.origin);
+        const status = requestedUrl.searchParams.get('status') || '';
+        const received = requestedUrl.searchParams.get('received') || '';
+        const assigned = requestedUrl.searchParams.get('assigned') || '';
+
+        if (status === 'archived' || status === 'approved') {
+            return {
+                state: { archive: true },
+                title: 'Archive',
+                navHref: "{{ route('service-requests.index', ['status' => 'archived']) }}",
+            };
+        }
+
+        if (received === 'me') {
+            return {
+                state: { receive: true },
+                title: 'Receive',
+                navHref: "{{ route('service-requests.index', ['received' => 'me']) }}",
+            };
+        }
+
+        if (assigned === 'me') {
+            return {
+                state: { assigned: true },
+                title: 'Assigned',
+                navHref: "{{ route('service-requests.index', ['assigned' => 'me']) }}",
+            };
+        }
+
+        return {
+            state: { serviceRequests: true },
+            title: 'Service Requests',
+            navHref: "{{ route('service-requests.index') }}",
+        };
+    };
+
+    const setActiveServiceRequestNav = function (navHref) {
+        document.querySelectorAll('.db2-nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+
+        const targetNavPath = new URL(navHref, window.location.origin).pathname;
+        const targetNavSearch = new URL(navHref, window.location.origin).search;
+        const navLink = Array.from(document.querySelectorAll('.db2-nav-item')).find(function (link) {
+            try {
+                const linkUrl = new URL(link.href, window.location.origin);
+                return linkUrl.pathname === targetNavPath && linkUrl.search === targetNavSearch;
+            } catch (error) {
+                return false;
+            }
+        });
+
+        if (navLink) {
+            navLink.classList.add('active');
+        }
+    };
+
+    const loadServiceRequestsContent = async function (targetUrl) {
+        const requestedUrl = new URL(targetUrl || "{{ route('service-requests.index') }}", window.location.origin);
+        const ajaxUrl = new URL(serviceRequestsAjaxPath, window.location.origin);
+        ajaxUrl.search = requestedUrl.search;
+
+        const response = await fetch(ajaxUrl.toString(), {
+            headers: {
+                'Accept': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error('Service requests AJAX request failed.');
+        }
+
+        const data = await response.json();
+        const html = data.html || '';
+        const contentArea = document.querySelector('.db2-content');
+
+        if (!contentArea || html === '') {
+            throw new Error('Service requests content missing.');
+        }
+
+        const meta = serviceRequestPageMeta(requestedUrl.toString());
+
+        contentArea.innerHTML = html;
+        runInjectedScripts(contentArea);
+
+        window.history.pushState(meta.state, meta.title, requestedUrl.pathname + requestedUrl.search);
+        document.title = meta.title + ' | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+
+        setActiveServiceRequestNav(meta.navHref);
+        contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    };
+
+    // AJAX Service Request Navigation
+    (function () {
+        const serviceRequestLink = document.querySelector('a[href="{{ route('service-requests.index') }}"]');
+        if (!serviceRequestLink) return;
+
+        serviceRequestLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+            
+            try {
+                await loadServiceRequestsContent(this.href);
+            } catch (error) {
+                // Fallback to normal navigation if AJAX fails
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Receive Navigation
+    (function () {
+        const receiveLink = document.querySelector('a[href="{{ route('service-requests.index', ['received' => 'me']) }}"]');
+        if (!receiveLink) return;
+
+        receiveLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+
+            try {
+                await loadServiceRequestsContent(this.href);
+            } catch (error) {
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Assigned Navigation
+    (function () {
+        const assignedLink = document.querySelector('a[href="{{ route('service-requests.index', ['assigned' => 'me']) }}"]');
+        if (!assignedLink) return;
+
+        assignedLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+
+            try {
+                await loadServiceRequestsContent(this.href);
+            } catch (error) {
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Archive Navigation
+    (function () {
+        const archiveLink = document.querySelector('a[href="{{ route('service-requests.index', ['status' => 'archived']) }}"]');
+        if (!archiveLink) return;
+
+        archiveLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+            
+            try {
+                await loadServiceRequestsContent(this.href);
+            } catch (error) {
+                // Fallback to normal navigation if AJAX fails
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    document.addEventListener('click', async function (event) {
+        if (event.defaultPrevented) return;
+
+        const serviceRequestContentLink = event.target.closest('.db2-content a[data-srf-section-link]');
+        if (!serviceRequestContentLink) return;
+
+        let linkUrl;
+        try {
+            linkUrl = new URL(serviceRequestContentLink.href, window.location.origin);
+        } catch (error) {
+            return;
+        }
+
+        if (linkUrl.origin !== window.location.origin || linkUrl.pathname !== serviceRequestsIndexPath) {
+            return;
+        }
+
+        event.preventDefault();
+
+        try {
+            await loadServiceRequestsContent(serviceRequestContentLink.href);
+        } catch (error) {
+            window.location.assign(serviceRequestContentLink.href);
+        }
+    });
+
+    // AJAX Chat Requests Navigation
+    (function () {
+        const chatRequestsLink = document.querySelector('a[href="{{ route('service-requests.chat-requests') }}"]');
+        if (!chatRequestsLink) return;
+
+        chatRequestsLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+            
+            try {
+                const response = await fetch("{{ route('service-requests.chat-requests.ajax') }}", {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    window.location.href = this.href;
+                    return;
+                }
+
+                const data = await response.json();
+                const html = data.html || '';
+                
+                // Update page content with new chat requests data
+                const contentArea = document.querySelector('.db2-content');
+                if (contentArea && html) {
+                    contentArea.innerHTML = html;
+                    
+                    // Update URL without reloading
+                    window.history.pushState({ chatRequests: true }, 'Chat Requests', "{{ route('service-requests.chat-requests') }}");
+                    
+                    // Update page title
+                    document.title = 'Chat Requests | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+                    
+                    // Update active nav item highlight
+                    document.querySelectorAll('.db2-nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    chatRequestsLink.classList.add('active');
+                    
+                    // Scroll to top of content area
+                    contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                // Fallback to normal navigation if AJAX fails
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Profile Navigation
+    (function () {
+        const profileLink = document.querySelector('a[href="{{ route('profile.edit') }}"]');
+        if (!profileLink) return;
+
+        profileLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+            
+            try {
+                const response = await fetch("{{ route('profile.ajax') }}", {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    window.location.href = this.href;
+                    return;
+                }
+
+                const data = await response.json();
+                const html = data.html || '';
+                
+                // Update page content with new profile data
+                const contentArea = document.querySelector('.db2-content');
+                if (contentArea && html) {
+                    contentArea.innerHTML = html;
+                    runInjectedScripts(contentArea);
+                    
+                    // Update URL without reloading
+                    window.history.pushState({ profile: true }, 'Profile', "{{ route('profile.edit') }}");
+                    
+                    // Update page title
+                    document.title = 'Profile | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+                    
+                    // Update active nav item highlight
+                    document.querySelectorAll('.db2-nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    profileLink.classList.add('active');
+                    
+                    // Scroll to top of content area
+                    contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                // Fallback to normal navigation if AJAX fails
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Accounts Navigation
+    (function () {
+        const accountsLink = document.querySelector('a[href="{{ route('admin.users.index') }}"]');
+        if (!accountsLink) return;
+
+        accountsLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+            
+            try {
+                const response = await fetch("{{ route('admin.users.ajax') }}", {
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    window.location.href = this.href;
+                    return;
+                }
+
+                const data = await response.json();
+                const html = data.html || '';
+                
+                // Update page content with new accounts data
+                const contentArea = document.querySelector('.db2-content');
+                if (contentArea && html) {
+                    contentArea.innerHTML = html;
+                    runInjectedScripts(contentArea);
+                    
+                    // Update URL without reloading
+                    window.history.pushState({ accounts: true }, 'Accounts', "{{ route('admin.users.index') }}");
+                    
+                    // Update page title
+                    document.title = 'Accounts | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+                    
+                    // Update active nav item highlight
+                    document.querySelectorAll('.db2-nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    accountsLink.classList.add('active');
+                    
+                    // Scroll to top of content area
+                    contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                // Fallback to normal navigation if AJAX fails
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Management Navigation
+    (function () {
+        const managementLink = document.querySelector('a[href="{{ route('admin.management.index') }}"]');
+        if (!managementLink) return;
+
+        managementLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+
+            try {
+                const response = await fetch(this.href, {
+                    headers: {
+                        'Accept': 'text/html',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                });
+
+                if (!response.ok) {
+                    window.location.href = this.href;
+                    return;
+                }
+
+                const html = await response.text();
+                const parsed = new DOMParser().parseFromString(html, 'text/html');
+                const nextContent = parsed.querySelector('.db2-content');
+                const contentArea = document.querySelector('.db2-content');
+
+                if (contentArea && nextContent) {
+                    contentArea.innerHTML = nextContent.innerHTML;
+                    runInjectedScripts(contentArea);
+
+                    window.history.pushState({ management: true }, 'Management', "{{ route('admin.management.index') }}");
+                    document.title = 'Management | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+
+                    document.querySelectorAll('.db2-nav-item').forEach(item => {
+                        item.classList.remove('active');
+                    });
+                    managementLink.classList.add('active');
+
+                    contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            } catch (error) {
+                window.location.href = this.href;
+            }
+        });
     })();
 </script>

@@ -55,5 +55,23 @@ class AppServiceProvider extends ServiceProvider
                 Limit::perMinutes(15, 450)->by('track-public-window:' . $referenceCode . '|' . $request->ip()),
             ];
         });
+
+        RateLimiter::for('profile-signature-send-code', function (Request $request): array {
+            $userId = (int) ($request->user()?->id ?? 0);
+
+            return [
+                Limit::perMinute(4)->by('profile-signature-send-minute:' . $userId . '|' . $request->ip()),
+                Limit::perMinutes(15, 12)->by('profile-signature-send-window:' . $userId . '|' . $request->ip()),
+            ];
+        });
+
+        RateLimiter::for('profile-signature-verify-code', function (Request $request): array {
+            $userId = (int) ($request->user()?->id ?? 0);
+
+            return [
+                Limit::perMinute(10)->by('profile-signature-verify-minute:' . $userId . '|' . $request->ip()),
+                Limit::perMinutes(15, 50)->by('profile-signature-verify-window:' . $userId . '|' . $request->ip()),
+            ];
+        });
     }
 }

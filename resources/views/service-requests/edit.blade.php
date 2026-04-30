@@ -225,14 +225,7 @@
             box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.18);
         }
 
-        .srf-timeline-node.rejected {
-            border-color: #dc2626;
-            background: #dc2626;
-        }
 
-        .srf-timeline-node.rejected.current {
-            box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.2);
-        }
 
         .srf-timeline-link {
             height: 2px;
@@ -1022,11 +1015,6 @@
             color: #166534;
         }
 
-        .srf-status-modal-icon.rejected {
-            background: #fee2e2;
-            color: #b91c1c;
-        }
-
         .srf-status-modal-title {
             margin: 0;
             font-size: 16px;
@@ -1286,12 +1274,11 @@
                 <p class="text-sm font-semibold text-slate-700">Status :</p>
                 @php
                     $currentStatusValue = strtolower((string) $serviceRequest->status);
-                    $showDecisionButtons = in_array($currentStatusValue, ['pending', 'checking', 'rejected'], true);
+                    $showDecisionButtons = ! ($isReadOnly ?? false) && in_array($currentStatusValue, ['pending', 'checking'], true);
                     $statusClasses = match ($serviceRequest->status) {
                         'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
                         'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
                         'completed', 'closed' => 'border-teal-300 bg-teal-100 text-teal-800',
-                        'rejected' => 'border-rose-300 bg-rose-100 text-rose-800',
                         default => 'border-amber-300 bg-amber-100 text-amber-800',
                     };
                 @endphp
@@ -1299,7 +1286,7 @@
                     {{ $serviceRequest->status }}
                 </span>
 
-                @if ($canModerateChat)
+                @if ($canModerateChat && ! ($isReadOnly ?? false))
                     <div class="ms-auto flex flex-wrap items-center gap-2">
                         <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
                         <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2" data-status-action-form>
@@ -1307,8 +1294,7 @@
                             @method('PATCH')
                             <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
                             @if ($showDecisionButtons)
-                                <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
-                                <button type="submit" name="status" value="rejected" data-status-target="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                                <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Action Taken</button>
                             @endif
                         </form>
                     </div>
@@ -1320,7 +1306,7 @@
                 if (in_array($resolvedStatus, ['completed', 'closed'], true)) {
                     $resolvedStatus = filled($serviceRequest->approved_at)
                         ? 'approved'
-                        : (filled($serviceRequest->rejected_at) ? 'rejected' : 'checking');
+                        : 'checking';
                 }
 
                 $timelineSteps = [
@@ -1336,38 +1322,17 @@
                     ],
                 ];
 
-                if ($resolvedStatus === 'approved') {
-                    $timelineSteps[] = [
-                        'key' => 'approved',
-                        'label' => 'Approved',
-                        'at' => $serviceRequest->approved_at,
-                    ];
-                } elseif ($resolvedStatus === 'rejected') {
-                    $timelineSteps[] = [
-                        'key' => 'rejected',
-                        'label' => 'Rejected',
-                        'at' => $serviceRequest->rejected_at,
-                    ];
-                } else {
-                    $timelineSteps[] = [
-                        'key' => 'approved',
-                        'label' => 'Approved',
-                        'at' => $serviceRequest->approved_at,
-                    ];
-
-                    $timelineSteps[] = [
-                        'key' => 'rejected',
-                        'label' => 'Rejected',
-                        'at' => $serviceRequest->rejected_at,
-                    ];
-                }
+                $timelineSteps[] = [
+                    'key' => 'approved',
+                    'label' => 'Action Taken',
+                    'at' => $serviceRequest->approved_at,
+                ];
 
                 $isStepReached = static function (string $stepKey) use ($serviceRequest, $resolvedStatus): bool {
                     return match ($stepKey) {
                         'pending' => true,
-                        'checking' => filled($serviceRequest->checking_at) || in_array($resolvedStatus, ['checking', 'approved', 'rejected'], true),
+                        'checking' => filled($serviceRequest->checking_at) || in_array($resolvedStatus, ['checking', 'approved'], true),
                         'approved' => filled($serviceRequest->approved_at) || $resolvedStatus === 'approved',
-                        'rejected' => filled($serviceRequest->rejected_at) || $resolvedStatus === 'rejected',
                         default => false,
                     };
                 };
@@ -1385,16 +1350,13 @@
 
                             $nextStep = $timelineSteps[$index + 1] ?? null;
                             $linkActive = $nextStep ? $isStepReached($nextStep['key']) : false;
-                            $linkDanger = $nextStep
-                                && $nextStep['key'] === 'rejected'
-                                && $isStepReached('rejected');
                         @endphp
 
                         <div class="srf-timeline-step">
                             <div class="srf-timeline-node-row">
-                                <span class="srf-timeline-node {{ $stepReached ? 'reached' : '' }} {{ $step['key'] === 'rejected' && $stepReached ? 'rejected' : '' }} {{ $stepCurrent ? 'current' : '' }}"></span>
+                                <span class="srf-timeline-node {{ $stepReached ? 'reached' : '' }} {{ $stepCurrent ? 'current' : '' }}"></span>
                                 @if ($nextStep)
-                                    <span class="srf-timeline-link {{ $linkActive ? 'active' : '' }} {{ $linkDanger ? 'danger' : '' }}"></span>
+                                    <span class="srf-timeline-link {{ $linkActive ? 'active' : '' }}"></span>
                                 @endif
                             </div>
                             <p class="srf-timeline-label">{{ $step['label'] }}</p>
@@ -1406,11 +1368,11 @@
         </div>
 
         <div class="overflow-x-auto bg-white">
-            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0">
+            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0" data-service-request-id="{{ $serviceRequest->id }}">
                 @csrf
                 @method('PUT')
 
-                <fieldset @if ($isReadOnlyForm) disabled @endif>
+                <fieldset @if ($isReadOnlyForm || ($isReadOnly ?? false)) disabled @endif>
 
                 <div class="px-4 pb-3">
                     <p class="srf-section-label">Request Information</p>
@@ -1663,6 +1625,7 @@
                     @endphp
 
                     <div class="px-4 pb-3">
+                        <fieldset @if ($isReadOnly ?? false) disabled @endif>
                         <div class="rounded-xl border border-slate-300 bg-slate-50 p-3">
                             <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For knowledge management and information technology service only</h3>
 
@@ -1684,15 +1647,18 @@
                                             @php
                                                 $rowSignature = (string) ($logSignatures[$i] ?? '');
                                             @endphp
-                                            <tr>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_action_date[]" value="{{ $logActionDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500"></td>
+                                            <tr data-action-log-row>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="0"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="1"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_action_date[]" value="{{ $logActionDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="2"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="3"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="4"></td>
+                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="5"></td>
                                                 <td class="border border-slate-300 px-2 py-1">
                                                     <input type="hidden" name="action_log_signature_drawn[]" value="{{ $rowSignature }}">
+                                                    <input type="hidden" name="action_log_signature_x[]" value="{{ $existingLogs[$i]['action_sig_x'] ?? '' }}">
+                                                    <input type="hidden" name="action_log_signature_y[]" value="{{ $existingLogs[$i]['action_sig_y'] ?? '' }}">
+                                                    <input type="hidden" name="action_log_signature_scale[]" value="{{ $existingLogs[$i]['action_sig_scale'] ?? '' }}">
                                                     <span class="text-[11px] text-slate-500">Manage signature in print preview.</span>
                                                 </td>
                                             </tr>
@@ -1741,6 +1707,7 @@
                             <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
                         </div>
+                        </fieldset>
                     </div>
                 @else
                     <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
@@ -1753,14 +1720,16 @@
                         </svg>
                         Back
                     </a>
-                    <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
+                    @if (! ($isReadOnly ?? false))
+                        <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
+                    @endif
                 </div>
             </form>
         </div>
     </div>
     </section>
 
-    @if ($canPersonnelChat)
+    @if ($canPersonnelChat && ! ($isReadOnly ?? false))
         <section style="max-width: 1300px; margin: -0.7rem auto 1.8rem; padding: 0 1rem;">
             <div class="srf-card">
                 <div class="srf-form-header">
@@ -1883,6 +1852,9 @@
 
             <div class="srf-print-preview-actions">
                 <a id="print-preview-open-full" href="#" target="_blank" rel="noopener" class="srf-print-preview-btn">Open Full View</a>
+                @if (filled(auth()->user()?->profile_signature))
+                    <button type="button" id="print-preview-profile-signature" class="srf-print-preview-btn">Use My Saved Signature</button>
+                @endif
                 <button type="button" id="print-preview-signature" class="srf-print-preview-btn">Add Signature</button>
                 <button type="button" id="print-preview-signature-smaller" class="srf-print-preview-btn">Signature -</button>
                 <button type="button" id="print-preview-signature-larger" class="srf-print-preview-btn">Signature +</button>
@@ -1954,7 +1926,7 @@
         </div>
     </div>
 
-    @if ($canModerateChat)
+    @if ($canModerateChat && ! ($isReadOnly ?? false))
         <div class="srf-sticky-bar" id="srf-sticky-bar">
             <span class="srf-sticky-ref">{{ $serviceRequest->reference_code }}</span>
             <span class="srf-sticky-status {{ $statusClasses }}">{{ $serviceRequest->status }}</span>
@@ -1965,8 +1937,7 @@
                     @method('PATCH')
                     <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
                     @if ($showDecisionButtons)
-                        <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Approve</button>
-                        <button type="submit" name="status" value="rejected" data-status-target="rejected" class="rounded-xl border border-rose-300 bg-rose-50 px-3 py-1.5 text-xs font-semibold uppercase text-rose-800 transition hover:bg-rose-100">Reject</button>
+                        <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Action Taken</button>
                     @endif
                 </form>
             </div>
@@ -2782,7 +2753,7 @@
                 }
             };
 
-            const initStatusActionConfirm = function () {
+             const initStatusActionConfirm = function () {
                 const statusForm = document.querySelector('[data-status-action-form]');
                 if (!statusForm) {
                     return;
@@ -2899,7 +2870,7 @@
                         openModal(config, button);
                     });
                 });
-            };
+             };
 
             const initFloatingPrintPreview = function () {
                 const printButton = document.getElementById('admin-print-button');
@@ -2908,6 +2879,7 @@
                 const closeButton = document.getElementById('print-preview-close');
                 const printTrigger = document.getElementById('print-preview-trigger');
                 const openFullLink = document.getElementById('print-preview-open-full');
+                const profileSignatureTrigger = document.getElementById('print-preview-profile-signature');
                 const signatureTrigger = document.getElementById('print-preview-signature');
                 const signatureSmallerTrigger = document.getElementById('print-preview-signature-smaller');
                 const signatureLargerTrigger = document.getElementById('print-preview-signature-larger');
@@ -2945,6 +2917,7 @@
 
                 const setSaveButtonsDisabled = function (disabled) {
                     saveSignaturesTrigger.disabled = disabled;
+                    if (profileSignatureTrigger) profileSignatureTrigger.disabled = disabled;
                 };
 
                 const queueSignatureSave = function () {
@@ -3004,6 +2977,52 @@
                     setSaveStatus(message, !ok, isDeleteMessage ? 'delete' : 'success');
                 });
 
+                const refreshActionLogHiddenInputs = function () {
+                    const requestId = document.querySelector('[data-service-request-id]')?.getAttribute('data-service-request-id') || '';
+                    if (requestId === '') {
+                        return;
+                    }
+
+                    // NOTE: Must NOT send 'Accept: application/json' here — the edit route
+                    // returns JSON when that header is present (expectsJson()), but we need
+                    // the full HTML so DOMParser can find the hidden signature inputs.
+                    fetch('{{ route("service-requests.edit", ["serviceRequest" => ":id"]) }}'.replace(':id', requestId), {
+                        headers: {
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    })
+                        .then(function (response) {
+                            if (!response.ok) throw new Error('fetch failed');
+                            return response.text();
+                        })
+                        .then(function (html) {
+                            const parser = new DOMParser();
+                            const doc = parser.parseFromString(html, 'text/html');
+
+                            // Helper: sync hidden inputs from fetched page.
+                            // Always overwrites – even with empty string – so a deletion
+                            // in print-preview propagates to the form on the next save.
+                            const syncInputs = function (currentSelector, newSelector) {
+                                const currentInputs = document.querySelectorAll(currentSelector);
+                                const newInputs    = doc.querySelectorAll(newSelector);
+                                currentInputs.forEach(function (input, index) {
+                                    // Use the fetched value if the element exists; if not, clear it
+                                    // so a deleted signature doesn't linger in the hidden field.
+                                    input.value = newInputs[index] ? newInputs[index].value : '';
+                                });
+                            };
+
+                            syncInputs('input[name="action_log_signature_drawn[]"]',  'input[name="action_log_signature_drawn[]"]');
+                            syncInputs('input[name="action_log_signature_x[]"]',       'input[name="action_log_signature_x[]"]');
+                            syncInputs('input[name="action_log_signature_y[]"]',       'input[name="action_log_signature_y[]"]');
+                            syncInputs('input[name="action_log_signature_scale[]"]',   'input[name="action_log_signature_scale[]"]');
+                        })
+                        .catch(function () {
+                            // Silently fail — positions will still be read correctly
+                            // from the DB by the controller on next save.
+                        });
+                };
+
                 const closeModal = function () {
                     modal.classList.remove('open');
                     modal.setAttribute('aria-hidden', 'true');
@@ -3015,6 +3034,7 @@
                         pendingSaveTimeoutId = null;
                     }
                     setSaveStatus('', false);
+                    refreshActionLogHiddenInputs();
                 };
 
                 const openModal = function (previewUrl, fullUrl) {
@@ -3089,6 +3109,23 @@
                         // Ignore messaging failures.
                     }
                 });
+
+                if (profileSignatureTrigger) {
+                    profileSignatureTrigger.addEventListener('click', function () {
+                        pendingSaveRequest = true;
+                        setSaveButtonsDisabled(true);
+                        setSaveStatus('Adding saved signature...', false);
+
+                        try {
+                            frame.contentWindow.focus();
+                            frame.contentWindow.postMessage({ type: 'use-profile-signature' }, '*');
+                        } catch (error) {
+                            pendingSaveRequest = false;
+                            setSaveButtonsDisabled(false);
+                            setSaveStatus('Unable to reach print preview. Reopen and try again.', true);
+                        }
+                    });
+                }
 
                 signatureSmallerTrigger.addEventListener('click', function () {
                     try {
@@ -3437,10 +3474,8 @@
             initFloatingPrintPreview();
             initChatEnterSubmit();
             initStatusActionConfirm();
-            initActionLogSignaturePad();
             initUploadedPhotoPreview();
 
-            // Sticky action bar + scroll-to-top
             var stickyBar = document.getElementById('srf-sticky-bar');
             var scrollTopBtn = document.getElementById('srf-scroll-top');
             var statusBlock = document.querySelector('.srf-status-block');
@@ -3486,6 +3521,64 @@
                     }
                 }, { passive: true });
             }
+        });
+
+        // Cascading validation for action logs
+        document.addEventListener('DOMContentLoaded', function () {
+            const setupActionLogValidation = function () {
+                const actionLogRows = document.querySelectorAll('[data-action-log-row]');
+
+                const rows = Array.from(actionLogRows).map(function (row) {
+                    return Array.from(row.querySelectorAll('[data-action-log-step]'))
+                        .sort(function (a, b) {
+                            return Number(a.dataset.actionLogStep || 0) - Number(b.dataset.actionLogStep || 0);
+                        });
+                });
+
+                const isCompleteRow = function (stepInputs) {
+                    return stepInputs.length > 0 && stepInputs.every(function (input) {
+                        return input.value.trim() !== '';
+                    });
+                };
+
+                const updateDisabledState = function () {
+                    rows.forEach(function (stepInputs, rowIndex) {
+                        const previousRowComplete = rowIndex === 0 || isCompleteRow(rows[rowIndex - 1]);
+
+                        stepInputs.forEach(function (input, index) {
+                            if (!previousRowComplete) {
+                                input.disabled = true;
+                                input.value = '';
+                                return;
+                            }
+
+                            if (index === 0) {
+                                input.disabled = false;
+                                return;
+                            }
+
+                            const previousInput = stepInputs[index - 1];
+                            const previousHasValue = previousInput.value.trim() !== '';
+                            input.disabled = !previousHasValue;
+
+                            if (!previousHasValue) {
+                                input.value = '';
+                            }
+                        });
+                    });
+                };
+
+                rows.forEach(function (stepInputs) {
+                    stepInputs.forEach(function (input) {
+                        input.addEventListener('input', updateDisabledState);
+                        input.addEventListener('change', updateDisabledState);
+                    });
+                });
+
+                updateDisabledState();
+            };
+
+            setupActionLogValidation();
         });
 
     </script>

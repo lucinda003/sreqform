@@ -105,7 +105,7 @@
                                             <button 
                                                 type="button" 
                                                 class="rounded-lg px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 hover:text-sky-800 transition border border-transparent hover:border-sky-200"
-                                                onclick="openEditDialog({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ addslashes($user->email) }}', '{{ addslashes($user->department) }}', '{{ $user->department_status }}')"
+                                                onclick="openEditDialog({{ $user->id }}, '{{ addslashes($user->name) }}', '{{ addslashes($user->email) }}', '{{ addslashes($user->department) }}', '{{ $user->department_status }}', '{{ addslashes($user->role ?? '') }}')"
                                             >
                                                 Edit
                                             </button>
@@ -160,7 +160,7 @@
 
                     <div class="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-5">
                         <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('create-department-dialog').close()">Cancel</button>
-                        <button type="submit" class="rounded-lg bg-emerald-700 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-emerald-800 transition">Save Code</button>
+                        <button type="submit" class="rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 transition">Save Code</button>
                     </div>
                 </form>
             </div>
@@ -203,6 +203,41 @@
                             @endforeach
                         </select>
                         <p class="mt-1.5 text-[11px] text-slate-500 leading-tight">Use the Add Department Code button to manage dropdown options. New accounts are set to pending and become approved after first password setup.</p>
+                    </div>
+
+                    <div class="sm:col-span-2">
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="role">User Role</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="role" name="role" required>
+                            <option value="" disabled @selected((string) old('role', '') === '')>Select role</option>
+                            <option value="super admin" @selected((string) old('role') === 'super admin')>Super Admin</option>
+                            <option value="admin" @selected((string) old('role') === 'admin')>Admin</option>
+                            <option value="supervisor" @selected((string) old('role') === 'supervisor')>Supervisor</option>
+                            <option value="technical support" @selected((string) old('role') === 'technical support')>Technical Support</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="office_id">Office</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="office_id" name="office_id">
+                            <option value="" @selected((string) old('office_id', '') === '')>Select office</option>
+                            @foreach ($offices ?? [] as $office)
+                                <option value="{{ $office->id }}" @selected((string) old('office_id') === (string) $office->id)>
+                                    {{ $office->name }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="application_system_id">Application/System</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="application_system_id" name="application_system_id">
+                            <option value="" @selected((string) old('application_system_id', '') === '')>Select system</option>
+                            @foreach ($systems ?? [] as $system)
+                                <option value="{{ $system->id }}" @selected((string) old('application_system_id') === (string) $system->id)>
+                                    {{ $system->name }}
+                                </option>
+                            @endforeach
+                        </select>
                     </div>
 
                     <div class="sm:col-span-2 mt-4 flex justify-end gap-3 border-t border-slate-100 pt-5">
@@ -250,6 +285,17 @@
                     </div>
 
                     <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="edit_role">User Role</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_role" name="role" required>
+                            <option value="">No Role</option>
+                            <option value="super admin">Super Admin</option>
+                            <option value="admin">Admin</option>
+                            <option value="supervisor">Supervisor</option>
+                            <option value="technical support">Technical Support</option>
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_department_code">Department Code</label>
                         <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm uppercase" id="edit_department_code" name="department_code" type="text" maxlength="30" required>
                         <p class="mt-1.5 text-[11px] text-slate-500 leading-tight">Use "ADMIN" for the single global admin.</p>
@@ -263,6 +309,26 @@
                         </select>
                     </div>
 
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="edit_office_id">Office</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_office_id" name="office_id">
+                            <option value="">Select office</option>
+                            @foreach ($offices ?? [] as $office)
+                                <option value="{{ $office->id }}">{{ $office->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="edit_application_system_id">Application/System</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_application_system_id" name="application_system_id">
+                            <option value="">Select system</option>
+                            @foreach ($systems ?? [] as $system)
+                                <option value="{{ $system->id }}">{{ $system->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
                     <div class="sm:col-span-2 mt-4 flex justify-end gap-3 border-t border-slate-100 pt-5">
                         <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('edit-account-dialog').close()">Cancel</button>
                         <button type="submit" class="rounded-lg bg-sky-700 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-sky-800 transition">Update Account</button>
@@ -272,11 +338,12 @@
         </dialog>
 
         <script>
-            function openEditDialog(id, name, email, department, status) {
+            function openEditDialog(id, name, email, department, status, role) {
                 document.getElementById('edit_name').value = name;
                 document.getElementById('edit_email').value = email;
                 document.getElementById('edit_department_code').value = department;
                 document.getElementById('edit_department_status').value = status;
+                document.getElementById('edit_role').value = role;
                 document.getElementById('edit_password').value = '';
                 
                 document.getElementById('edit-user-caption').textContent = 'User ID: ' + id;

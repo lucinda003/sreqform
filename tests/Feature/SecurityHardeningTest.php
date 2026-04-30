@@ -159,6 +159,150 @@ class SecurityHardeningTest extends TestCase
         $this->assertStringContainsString("font-src 'self' data: https://fonts.gstatic.com", $csp);
     }
 
+    public function test_approved_assigned_request_moves_out_of_assigned_tab_and_into_archive(): void
+    {
+        $user = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $approvedRequest = $this->createServiceRequest($user, [
+            'reference_code' => 'SRF-ARCHIVE-APPROVED',
+            'assigned_to_user_id' => $user->id,
+            'approved_by_user_id' => $user->id,
+            'status' => 'approved',
+        ]);
+
+        $activeAssignedRequest = $this->createServiceRequest($user, [
+            'reference_code' => 'SRF-ASSIGNED-ACTIVE',
+            'assigned_to_user_id' => $user->id,
+            'assigned_by_user_id' => $user->id,
+            'status' => 'checking',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('service-requests.index', ['assigned' => 'me']))
+            ->assertOk()
+            ->assertSee($activeAssignedRequest->reference_code)
+            ->assertDontSee($approvedRequest->reference_code);
+
+        $this
+            ->actingAs($user)
+            ->get(route('service-requests.index', ['status' => 'archived']))
+            ->assertOk()
+            ->assertSee($approvedRequest->reference_code);
+    }
+
+    public function test_assigned_tab_shows_assigner_name_and_role(): void
+    {
+        $assignee = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $assigner = User::factory()->create([
+            'name' => 'Assigning Supervisor',
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $this->createServiceRequest($assignee, [
+            'reference_code' => 'SRF-ASSIGNED-BY',
+            'assigned_to_user_id' => $assignee->id,
+            'assigned_by_user_id' => $assigner->id,
+            'status' => 'checking',
+        ]);
+
+        $this
+            ->actingAs($assignee)
+            ->get(route('service-requests.index', ['assigned' => 'me']))
+            ->assertOk()
+            ->assertSee('Assigned By')
+            ->assertSee('Assigning Supervisor')
+            ->assertSee('supervisor');
+    }
+
+    public function test_cross_department_assigned_request_is_visible_to_assignee(): void
+    {
+        $owner = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $assignee = User::factory()->create([
+            'department' => 'HR',
+            'department_status' => 'approved',
+        ]);
+        $assigner = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($owner, [
+            'reference_code' => 'SRF-CROSS-DEPT-ASSIGNED',
+            'department_code' => 'KMITS',
+            'assigned_to_user_id' => $assignee->id,
+            'assigned_by_user_id' => $assigner->id,
+            'status' => 'checking',
+        ]);
+
+        $this
+            ->actingAs($assignee)
+            ->get(route('service-requests.index', ['assigned' => 'me']))
+            ->assertOk()
+            ->assertSee($serviceRequest->reference_code);
+
+        $this
+            ->actingAs($assignee)
+            ->get(route('service-requests.edit', $serviceRequest))
+            ->assertOk();
+    }
+
+    public function test_active_request_can_be_received_and_moves_to_receive_tab(): void
+    {
+        $user = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($user, [
+            'reference_code' => 'SRF-RECEIVE-ME',
+            'received_by_user_id' => null,
+            'assigned_to_user_id' => null,
+            'status' => 'pending',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->get(route('service-requests.index'))
+            ->assertOk()
+            ->assertSee($serviceRequest->reference_code)
+            ->assertSee('Receive')
+            ->assertDontSee('class="auth-link">Open</a>', false);
+
+        $this
+            ->actingAs($user)
+            ->patch(route('service-requests.receive', $serviceRequest))
+            ->assertRedirect(route('service-requests.index', ['received' => 'me']));
+
+        $serviceRequest->refresh();
+        $this->assertSame($user->id, (int) $serviceRequest->received_by_user_id);
+        $this->assertSame($user->id, (int) $serviceRequest->assigned_to_user_id);
+
+        $this
+            ->actingAs($user)
+            ->get(route('service-requests.index'))
+            ->assertOk()
+            ->assertDontSee($serviceRequest->reference_code);
+
+        $this
+            ->actingAs($user)
+            ->get(route('service-requests.index', ['received' => 'me']))
+            ->assertOk()
+            ->assertSee($serviceRequest->reference_code)
+            ->assertSee('Open');
+    }
+
     private function createServiceRequest(User $owner, array $overrides = []): ServiceRequest
     {
         return ServiceRequest::query()->create(array_merge([

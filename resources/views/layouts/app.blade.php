@@ -17,7 +17,10 @@
                 || request()->routeIs('admin.dashboard')
                 || request()->routeIs('service-requests.*')
                 || request()->routeIs('profile.*')
-                || request()->routeIs('admin.users.*');
+                || request()->routeIs('admin.users.*')
+                || request()->routeIs('admin.management.*')
+                || request()->routeIs('admin.offices.*')
+                || request()->routeIs('admin.application-systems.*');
         @endphp
         <div class="app-shell min-h-screen">
             @unless ($usesCustomDashboardLayout)
