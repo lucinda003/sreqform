@@ -29,6 +29,8 @@
                         <a
                             href="{{ route('service-requests.chat-requests', $tabParams) }}"
                             class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ $chatStatus === $key ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
+                            data-srf-chat-tab
+                            data-chat-status="{{ $key }}"
                         >
                             {{ $label }}
                         </a>
@@ -36,7 +38,7 @@
                 </div>
 
                 <form method="GET" action="{{ route('service-requests.chat-requests') }}" class="mt-3 flex flex-wrap items-center gap-2" data-srf-chat-auto-search-form>
-                    <input type="hidden" name="chat_status" value="{{ $chatStatus }}">
+                    <input type="hidden" name="chat_status" value="{{ $chatStatus }}" data-srf-chat-status-input>
                     <input
                         type="text"
                         name="q"
@@ -52,6 +54,7 @@
                         <a
                             href="{{ route('service-requests.chat-requests', ['chat_status' => $chatStatus]) }}"
                             class="rounded-lg border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100"
+                            data-srf-chat-clear-link
                         >
                             Clear
                         </a>
@@ -168,7 +171,9 @@
             (function () {
                 const form = document.querySelector('[data-srf-chat-auto-search-form]');
                 const input = form ? form.querySelector('[data-srf-chat-auto-search-input]') : null;
+                const statusInput = form ? form.querySelector('[data-srf-chat-status-input]') : null;
                 const listingContent = document.querySelector('[data-srf-chat-listing-content]');
+                const tabLinks = document.querySelectorAll('[data-srf-chat-tab]');
 
                 if (!form || !input || !listingContent) {
                     return;
@@ -176,6 +181,32 @@
 
                 let debounceTimer = null;
                 let activeRequest = null;
+                const activeTabClasses = ['bg-slate-900', 'text-white', 'shadow-sm'];
+                const inactiveTabClasses = ['text-slate-700', 'hover:bg-slate-100'];
+
+                const updateActiveTabFromUrl = function (url) {
+                    const parsed = new URL(url, window.location.origin);
+                    const status = (parsed.searchParams.get('chat_status') || 'pending').toLowerCase();
+
+                    tabLinks.forEach(function (link) {
+                        const linkStatus = String(link.getAttribute('data-chat-status') || '').toLowerCase();
+                        const isActive = linkStatus === status;
+
+                        link.classList.remove(...activeTabClasses, ...inactiveTabClasses);
+                        link.classList.add(...(isActive ? activeTabClasses : inactiveTabClasses));
+                    });
+
+                    if (statusInput) {
+                        statusInput.value = status;
+                    }
+
+                    const clearLink = document.querySelector('[data-srf-chat-clear-link]');
+                    if (clearLink) {
+                        const clearUrl = new URL(clearLink.getAttribute('href') || '', window.location.origin);
+                        clearUrl.searchParams.set('chat_status', status);
+                        clearLink.setAttribute('href', clearUrl.toString());
+                    }
+                };
 
                 const bindPaginationLinks = function () {
                     listingContent.querySelectorAll('[data-srf-chat-page-link]').forEach(function (link) {
@@ -237,11 +268,26 @@
                         listingContent.innerHTML = nextListing.innerHTML;
                         bindPaginationLinks();
                         window.history.replaceState({}, '', url);
+                        updateActiveTabFromUrl(url);
                     } catch (error) {
                         if (error && error.name === 'AbortError') {
                             return;
                         }
                     }
+                };
+
+                const bindTabLinks = function () {
+                    tabLinks.forEach(function (link) {
+                        link.addEventListener('click', function (event) {
+                            const href = link.getAttribute('href') || '';
+                            if (href === '' || href === '#') {
+                                return;
+                            }
+
+                            event.preventDefault();
+                            fetchAndRender(href);
+                        });
+                    });
                 };
 
                 const runSearch = function () {
@@ -258,7 +304,9 @@
                     debounceTimer = window.setTimeout(runSearch, 300);
                 });
 
+                bindTabLinks();
                 bindPaginationLinks();
+                updateActiveTabFromUrl(window.location.href);
             })();
         </script>
     </x-db2-shell>

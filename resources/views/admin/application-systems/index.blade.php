@@ -30,11 +30,64 @@
             </div>
         @endif
 
+        <form id="bulk-delete-form" method="POST" action="{{ route('admin.application-systems.bulk-destroy') }}" onsubmit="return confirmBulkDelete();">
+            @csrf
+            @method('DELETE')
+        </form>
+
+        <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <form method="GET" action="{{ route('admin.application-systems.index') }}" class="flex flex-wrap items-center gap-2">
+                <label class="sr-only" for="system-search">Search systems</label>
+                <input
+                    id="system-search"
+                    name="search"
+                    type="text"
+                    value="{{ $search ?? '' }}"
+                    placeholder="Search systems..."
+                    class="auth-input h-9 w-64 rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                >
+                <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Search</button>
+                @if (! empty($search))
+                    <a href="{{ route('admin.application-systems.index') }}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50">Clear</a>
+                @endif
+            </form>
+
+            <div class="flex flex-wrap items-center gap-2">
+                <button
+                    type="button"
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    onclick="selectAllSystems()"
+                >
+                    Select All
+                </button>
+                <button
+                    type="button"
+                    class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                    onclick="unselectAllSystems()"
+                >
+                    Unselect All
+                </button>
+                <button
+                    type="submit"
+                    form="bulk-delete-form"
+                    id="bulk-delete-button"
+                    class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                    disabled
+                >
+                    Delete Selected
+                </button>
+                <span class="text-xs font-medium text-slate-500" id="selected-count">0 selected</span>
+            </div>
+        </div>
+
         <!-- Systems Table -->
         <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
             <table class="min-w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
                     <tr>
+                        <th scope="col" class="px-4 py-4 font-semibold">
+                            <span class="sr-only">Select</span>
+                        </th>
                         <th scope="col" class="px-6 py-4 font-semibold">System Name</th>
                         <th scope="col" class="px-6 py-4 font-semibold">Status</th>
                         <th scope="col" class="px-6 py-4 font-semibold text-right">Actions</th>
@@ -43,6 +96,16 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($systems as $system)
                         <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-4 py-4">
+                                <input
+                                    type="checkbox"
+                                    name="ids[]"
+                                    value="{{ $system->id }}"
+                                    form="bulk-delete-form"
+                                    data-system-checkbox
+                                    class="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-slate-500"
+                                >
+                            </td>
                             <td class="px-6 py-4 font-medium text-slate-900">{{ $system->name }}</td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $system->is_active ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-slate-200 bg-slate-50 text-slate-600' }}">
@@ -71,7 +134,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-6 py-8 text-center text-sm text-slate-500">No systems found. Create one to get started.</td>
+                            <td colspan="4" class="px-6 py-8 text-center text-sm text-slate-500">No systems found. Create one to get started.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -156,6 +219,55 @@
                 
                 document.getElementById('edit-system-dialog').showModal();
             }
+
+            function getSystemCheckboxes() {
+                return Array.from(document.querySelectorAll('[data-system-checkbox]'));
+            }
+
+            function updateBulkDeleteState() {
+                const checkboxes = getSystemCheckboxes();
+                const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+                const countLabel = document.getElementById('selected-count');
+                const deleteButton = document.getElementById('bulk-delete-button');
+
+                if (countLabel) {
+                    countLabel.textContent = selectedCount + ' selected';
+                }
+
+                if (deleteButton) {
+                    deleteButton.disabled = selectedCount === 0;
+                }
+            }
+
+            function selectAllSystems() {
+                getSystemCheckboxes().forEach((checkbox) => {
+                    checkbox.checked = true;
+                });
+                updateBulkDeleteState();
+            }
+
+            function unselectAllSystems() {
+                getSystemCheckboxes().forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                updateBulkDeleteState();
+            }
+
+            function confirmBulkDelete() {
+                const selectedCount = getSystemCheckboxes().filter((checkbox) => checkbox.checked).length;
+                if (selectedCount === 0) {
+                    return false;
+                }
+
+                return confirm('Delete ' + selectedCount + ' selected system' + (selectedCount === 1 ? '' : 's') + '?');
+            }
+
+            document.addEventListener('DOMContentLoaded', () => {
+                getSystemCheckboxes().forEach((checkbox) => {
+                    checkbox.addEventListener('change', updateBulkDeleteState);
+                });
+                updateBulkDeleteState();
+            });
         </script>
     </x-db2-shell>
 </x-app-layout>

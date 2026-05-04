@@ -39,35 +39,13 @@
         @endif
 
         <div class="grid gap-6">
-            <!-- Sidebar Stats -->
-            <div class="space-y-4 w-full">
-                <div class="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
-                    <p class="text-xs font-semibold uppercase tracking-[0.12em] text-slate-500">Overview</p>
-                    
-                    <div class="mt-4 flex flex-row gap-3 text-left overflow-x-auto w-full">
-                        <div class="flex-1 min-w-[140px] rounded-xl bg-slate-50 px-3 py-3">
-                            <p class="text-2xl font-bold text-slate-800">{{ $users->count() }}</p>
-                            <p class="text-[11px] font-semibold uppercase text-slate-500">Total Accounts</p>
-                        </div>
-                        <div class="flex-1 min-w-[140px] rounded-xl bg-emerald-50 px-3 py-3">
-                            <p class="text-2xl font-bold text-emerald-700">{{ $users->where('department_status', 'approved')->count() }}</p>
-                            <p class="text-[11px] font-semibold uppercase text-emerald-700">Approved</p>
-                        </div>
-                        <div class="flex-1 min-w-[140px] rounded-xl bg-amber-50 px-3 py-3">
-                            <p class="text-2xl font-bold text-amber-700">{{ $users->where('department_status', 'pending')->count() }}</p>
-                            <p class="text-[11px] font-semibold uppercase text-amber-700">Pending</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
             <!-- Users Table -->
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden flex flex-col min-w-0">
                 <div class="overflow-x-auto min-w-0 flex-1">
                     <table class="min-w-full text-left text-sm text-slate-600 whitespace-nowrap">
                         <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
                             <tr>
-                                <th scope="col" class="px-6 py-4 font-semibold">User</th>
+                                <th scope="col" class="px-6 py-4 font-semibold">User - ({{ $users->count() }})</th>
                                 <th scope="col" class="px-6 py-4 font-semibold">Department Code</th>
                                 <th scope="col" class="px-6 py-4 font-semibold">Status</th>
                                 <th scope="col" class="px-6 py-4 font-semibold text-right">Action</th>

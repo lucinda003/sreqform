@@ -1,4 +1,8 @@
 @php View::share('pageTitle', 'Management'); @endphp
+@php
+    $requestedTab = old('return_tab', $activeTab ?? 'offices');
+    $resolvedTab = in_array($requestedTab, ['offices', 'systems'], true) ? $requestedTab : 'offices';
+@endphp
 <x-app-layout>
     <x-slot name="header" style="display:none;"></x-slot>
 
@@ -55,11 +59,66 @@
                 </div>
             @endif
 
+            <form id="bulk-delete-offices-form" method="POST" action="{{ route('admin.offices.bulk-destroy') }}" onsubmit="return confirmBulkDelete('office');">
+                @csrf
+                @method('DELETE')
+                <input type="hidden" name="return_to" value="management">
+                <input type="hidden" name="return_tab" value="offices">
+            </form>
+
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <form id="office-search-form" method="GET" action="{{ route('admin.management.index') }}" class="flex flex-wrap items-center gap-2" data-office-search-form>
+                    <input type="hidden" name="tab" value="offices">
+                    <label class="sr-only" for="office-search">Search offices</label>
+                    <input
+                        id="office-search"
+                        name="office_search"
+                        type="text"
+                        value=""
+                        placeholder="Search offices..."
+                        class="auth-input h-9 w-64 rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                        data-office-search-input
+                    >
+                    <button type="button" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700" onclick="filterTable('office')">Search</button>
+                    <button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" onclick="clearSearch('office')" data-office-clear-button>Clear</button>
+                </form>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        onclick="selectAll('office')"
+                    >
+                        Select All
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        onclick="unselectAll('office')"
+                    >
+                        Unselect All
+                    </button>
+                    <button
+                        type="submit"
+                        form="bulk-delete-offices-form"
+                        id="office-bulk-delete-button"
+                        class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled
+                    >
+                        Delete Selected
+                    </button>
+                    <span class="text-xs font-medium text-slate-500" id="office-selected-count">0 selected</span>
+                </div>
+            </div>
+
             <!-- Offices Table -->
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <table class="min-w-full text-left text-sm text-slate-600">
                     <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="px-4 py-4 font-semibold">
+                                <span class="sr-only">Select</span>
+                            </th>
                             <th scope="col" class="px-6 py-4 font-semibold">Office Name</th>
                             <th scope="col" class="px-6 py-4 font-semibold">Status</th>
                             <th scope="col" class="px-6 py-4 font-semibold text-right">Actions</th>
@@ -67,7 +126,17 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($offices as $office)
-                            <tr class="hover:bg-slate-50 transition-colors">
+                            <tr class="hover:bg-slate-50 transition-colors" data-office-row data-office-name="{{ $office->name }}">
+                                <td class="px-4 py-4">
+                                    <input
+                                        type="checkbox"
+                                        name="ids[]"
+                                        value="{{ $office->id }}"
+                                        form="bulk-delete-offices-form"
+                                        data-office-checkbox
+                                        class="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-slate-500"
+                                    >
+                                </td>
                                 <td class="px-6 py-4 font-medium text-slate-900">{{ $office->name }}</td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $office->is_active ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-slate-200 bg-slate-50 text-slate-600' }}">
@@ -87,6 +156,8 @@
                                         <form method="POST" action="{{ route('admin.offices.destroy', $office) }}" onsubmit="return confirm('Are you sure you want to delete this office?');" class="inline">
                                             @csrf
                                             @method('DELETE')
+                                            <input type="hidden" name="return_to" value="management">
+                                            <input type="hidden" name="return_tab" value="offices">
                                             <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition border border-transparent hover:border-rose-200">
                                                 Delete
                                             </button>
@@ -96,7 +167,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="px-6 py-8 text-center text-sm text-slate-500">No offices found. Create one to get started.</td>
+                                <td colspan="4" class="px-6 py-8 text-center text-sm text-slate-500">No offices found. Create one to get started.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -117,11 +188,66 @@
                 </button>
             </div>
 
+            <form id="bulk-delete-systems-form" method="POST" action="{{ route('admin.application-systems.bulk-destroy') }}" onsubmit="return confirmBulkDelete('system');">
+                @csrf
+                @method('DELETE')
+                <input type="hidden" name="return_to" value="management">
+                <input type="hidden" name="return_tab" value="systems">
+            </form>
+
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <form id="system-search-form" method="GET" action="{{ route('admin.management.index') }}" class="flex flex-wrap items-center gap-2" data-system-search-form>
+                    <input type="hidden" name="tab" value="systems">
+                    <label class="sr-only" for="system-search">Search systems</label>
+                    <input
+                        id="system-search"
+                        name="system_search"
+                        type="text"
+                        value=""
+                        placeholder="Search systems..."
+                        class="auth-input h-9 w-64 rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                        data-system-search-input
+                    >
+                    <button type="button" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700" onclick="filterTable('system')">Search</button>
+                    <button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" onclick="clearSearch('system')" data-system-clear-button>Clear</button>
+                </form>
+
+                <div class="flex flex-wrap items-center gap-2">
+                    <button
+                        type="button"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        onclick="selectAll('system')"
+                    >
+                        Select All
+                    </button>
+                    <button
+                        type="button"
+                        class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50"
+                        onclick="unselectAll('system')"
+                    >
+                        Unselect All
+                    </button>
+                    <button
+                        type="submit"
+                        form="bulk-delete-systems-form"
+                        id="system-bulk-delete-button"
+                        class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-1.5 text-xs font-semibold text-rose-700 transition hover:bg-rose-100 disabled:cursor-not-allowed disabled:opacity-60"
+                        disabled
+                    >
+                        Delete Selected
+                    </button>
+                    <span class="text-xs font-medium text-slate-500" id="system-selected-count">0 selected</span>
+                </div>
+            </div>
+
             <!-- Systems Table -->
             <div class="rounded-2xl border border-slate-200 bg-white shadow-sm overflow-hidden">
                 <table class="min-w-full text-left text-sm text-slate-600">
                     <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
                         <tr>
+                            <th scope="col" class="px-4 py-4 font-semibold">
+                                <span class="sr-only">Select</span>
+                            </th>
                             <th scope="col" class="px-6 py-4 font-semibold">System Name</th>
                             <th scope="col" class="px-6 py-4 font-semibold">Status</th>
                             <th scope="col" class="px-6 py-4 font-semibold text-right">Actions</th>
@@ -129,7 +255,17 @@
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($systems as $system)
-                            <tr class="hover:bg-slate-50 transition-colors">
+                            <tr class="hover:bg-slate-50 transition-colors" data-system-row data-system-name="{{ $system->name }}">
+                                <td class="px-4 py-4">
+                                    <input
+                                        type="checkbox"
+                                        name="ids[]"
+                                        value="{{ $system->id }}"
+                                        form="bulk-delete-systems-form"
+                                        data-system-checkbox
+                                        class="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-slate-500"
+                                    >
+                                </td>
                                 <td class="px-6 py-4 font-medium text-slate-900">{{ $system->name }}</td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $system->is_active ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-slate-200 bg-slate-50 text-slate-600' }}">
@@ -149,6 +285,8 @@
                                         <form method="POST" action="{{ route('admin.application-systems.destroy', $system) }}" onsubmit="return confirm('Are you sure you want to delete this system?');" class="inline">
                                             @csrf
                                             @method('DELETE')
+                                            <input type="hidden" name="return_to" value="management">
+                                            <input type="hidden" name="return_tab" value="systems">
                                             <button type="submit" class="rounded-lg px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 transition border border-transparent hover:border-rose-200">
                                                 Delete
                                             </button>
@@ -158,7 +296,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="3" class="px-6 py-8 text-center text-sm text-slate-500">No systems found. Create one to get started.</td>
+                                <td colspan="4" class="px-6 py-8 text-center text-sm text-slate-500">No systems found. Create one to get started.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -182,6 +320,8 @@
 
                 <form method="POST" action="{{ route('admin.offices.store') }}" class="mt-6 space-y-4">
                     @csrf
+                    <input type="hidden" name="return_to" value="management">
+                    <input type="hidden" name="return_tab" value="offices">
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="office_name">Office Name</label>
@@ -213,6 +353,8 @@
                 <form id="edit-office-form" method="POST" action="" class="mt-6 space-y-4">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="return_to" value="management">
+                    <input type="hidden" name="return_tab" value="offices">
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_office_name">Office Name</label>
@@ -250,6 +392,8 @@
 
                 <form method="POST" action="{{ route('admin.application-systems.store') }}" class="mt-6 space-y-4">
                     @csrf
+                    <input type="hidden" name="return_to" value="management">
+                    <input type="hidden" name="return_tab" value="systems">
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="system_name">System Name</label>
@@ -281,6 +425,8 @@
                 <form id="edit-system-form" method="POST" action="" class="mt-6 space-y-4">
                     @csrf
                     @method('PUT')
+                    <input type="hidden" name="return_to" value="management">
+                    <input type="hidden" name="return_tab" value="systems">
 
                     <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_system_name">System Name</label>
@@ -315,10 +461,146 @@
                 document.getElementById(tab + '-section').style.display = 'block';
                 document.getElementById(tab + '-tab').classList.remove('text-slate-600');
                 document.getElementById(tab + '-tab').classList.add('border-b-2', 'border-slate-900', 'text-slate-900');
+
+                updateTabQuery(tab);
             }
 
-            // Initialize - show first tab
-            switchTab('offices');
+            function updateTabQuery(tab) {
+                const url = new URL(window.location.href);
+                url.searchParams.set('tab', tab);
+                window.history.replaceState({}, '', url.toString());
+            }
+
+            function clearSearchParams() {
+                const url = new URL(window.location.href);
+                const hasOfficeSearch = url.searchParams.has('office_search');
+                const hasSystemSearch = url.searchParams.has('system_search');
+
+                if (!hasOfficeSearch && !hasSystemSearch) {
+                    return;
+                }
+
+                url.searchParams.delete('office_search');
+                url.searchParams.delete('system_search');
+                window.history.replaceState({}, '', url.toString());
+            }
+
+            function getBulkCheckboxes(prefix) {
+                return Array.from(document.querySelectorAll('[data-' + prefix + '-checkbox]'));
+            }
+
+            function updateBulkState(prefix) {
+                const checkboxes = getBulkCheckboxes(prefix);
+                const selectedCount = checkboxes.filter((checkbox) => checkbox.checked).length;
+                const countLabel = document.getElementById(prefix + '-selected-count');
+                const deleteButton = document.getElementById(prefix + '-bulk-delete-button');
+
+                if (countLabel) {
+                    countLabel.textContent = selectedCount + ' selected';
+                }
+
+                if (deleteButton) {
+                    deleteButton.disabled = selectedCount === 0;
+                }
+            }
+
+            function selectAll(prefix) {
+                getBulkCheckboxes(prefix).forEach((checkbox) => {
+                    const row = checkbox.closest('tr');
+                    if (row && row.style.display === 'none') {
+                        return;
+                    }
+
+                    checkbox.checked = true;
+                });
+                updateBulkState(prefix);
+            }
+
+            function unselectAll(prefix) {
+                getBulkCheckboxes(prefix).forEach((checkbox) => {
+                    checkbox.checked = false;
+                });
+                updateBulkState(prefix);
+            }
+
+            function confirmBulkDelete(prefix) {
+                const selectedCount = getBulkCheckboxes(prefix).filter((checkbox) => checkbox.checked).length;
+                if (selectedCount === 0) {
+                    return false;
+                }
+
+                const label = prefix === 'office' ? 'office' : 'system';
+                return confirm('Delete ' + selectedCount + ' selected ' + label + (selectedCount === 1 ? '' : 's') + '?');
+            }
+
+            function normalizeSearch(value) {
+                return String(value || '').trim().toLowerCase();
+            }
+
+            function filterTable(prefix) {
+                const input = document.querySelector('[data-' + prefix + '-search-input]');
+                const query = normalizeSearch(input ? input.value : '');
+                const rows = Array.from(document.querySelectorAll('[data-' + prefix + '-row]'));
+
+                rows.forEach((row) => {
+                    const nameValue = normalizeSearch(row.getAttribute('data-' + prefix + '-name') || row.textContent);
+                    const isMatch = query === '' || nameValue.includes(query);
+
+                    row.style.display = isMatch ? '' : 'none';
+
+                    if (!isMatch) {
+                        const checkbox = row.querySelector('[data-' + prefix + '-checkbox]');
+                        if (checkbox) {
+                            checkbox.checked = false;
+                        }
+                    }
+                });
+
+                updateBulkState(prefix);
+            }
+
+            function clearSearch(prefix) {
+                const input = document.querySelector('[data-' + prefix + '-search-input]');
+                if (input) {
+                    input.value = '';
+                }
+
+                filterTable(prefix);
+            }
+
+            function bindSearch(prefix) {
+                const form = document.querySelector('[data-' + prefix + '-search-form]');
+                const input = document.querySelector('[data-' + prefix + '-search-input]');
+
+                if (!form || !input) {
+                    return;
+                }
+
+                form.addEventListener('submit', (event) => {
+                    event.preventDefault();
+                    filterTable(prefix);
+                });
+
+                input.addEventListener('input', () => {
+                    filterTable(prefix);
+                });
+            }
+
+            // Initialize - show requested tab
+            switchTab(@json($resolvedTab));
+
+            document.addEventListener('DOMContentLoaded', () => {
+                clearSearchParams();
+
+                ['office', 'system'].forEach((prefix) => {
+                    bindSearch(prefix);
+                    filterTable(prefix);
+                    getBulkCheckboxes(prefix).forEach((checkbox) => {
+                        checkbox.addEventListener('change', () => updateBulkState(prefix));
+                    });
+                    updateBulkState(prefix);
+                });
+            });
 
             function openEditOfficeDialog(id, name, isActive) {
                 document.getElementById('edit_office_name').value = name;

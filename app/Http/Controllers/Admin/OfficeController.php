@@ -24,7 +24,7 @@ class OfficeController extends Controller
 
         Office::create($validated);
 
-        return redirect()->route('admin.offices.index')->with('status', 'Office added successfully.');
+        return $this->redirectAfterAction($request, 'Office added successfully.');
     }
 
     public function update(Request $request, Office $office): RedirectResponse
@@ -36,12 +36,44 @@ class OfficeController extends Controller
 
         $office->update($validated);
 
-        return redirect()->route('admin.offices.index')->with('status', 'Office updated successfully.');
+        return $this->redirectAfterAction($request, 'Office updated successfully.');
     }
 
-    public function destroy(Office $office): RedirectResponse
+    public function destroy(Request $request, Office $office): RedirectResponse
     {
         $office->delete();
-        return redirect()->route('admin.offices.index')->with('status', 'Office deleted successfully.');
+        return $this->redirectAfterAction($request, 'Office deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:offices,id'],
+        ]);
+
+        $deletedCount = Office::query()
+            ->whereIn('id', $validated['ids'])
+            ->delete();
+
+        $suffix = $deletedCount === 1 ? '' : 's';
+
+        return $this->redirectAfterAction(
+            $request,
+            $deletedCount . ' office' . $suffix . ' deleted successfully.'
+        );
+    }
+
+    private function redirectAfterAction(Request $request, string $message): RedirectResponse
+    {
+        if ($request->input('return_to') === 'management') {
+            return redirect()
+                ->route('admin.management.index', ['tab' => 'offices'])
+                ->with('status', $message);
+        }
+
+        return redirect()
+            ->route('admin.offices.index')
+            ->with('status', $message);
     }
 }

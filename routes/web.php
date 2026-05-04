@@ -119,12 +119,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/admin/management', [\App\Http\Controllers\Admin\ManagementController::class, 'index'])->name('admin.management.index');
     Route::get('/admin/offices', [\App\Http\Controllers\Admin\OfficeController::class, 'index'])->name('admin.offices.index');
     Route::post('/admin/offices', [\App\Http\Controllers\Admin\OfficeController::class, 'store'])->name('admin.offices.store');
+    Route::delete('/admin/offices/bulk-delete', [\App\Http\Controllers\Admin\OfficeController::class, 'bulkDestroy'])->name('admin.offices.bulk-destroy');
     Route::put('/admin/offices/{office}', [\App\Http\Controllers\Admin\OfficeController::class, 'update'])->name('admin.offices.update');
     Route::delete('/admin/offices/{office}', [\App\Http\Controllers\Admin\OfficeController::class, 'destroy'])->name('admin.offices.destroy');
 
     Route::get('/admin/application-systems', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'index'])->name('admin.application-systems.index');
     Route::post('/admin/application-systems', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'store'])->name('admin.application-systems.store');
     Route::put('/admin/application-systems/{system}', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'update'])->name('admin.application-systems.update');
+    Route::delete('/admin/application-systems/bulk-delete', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'bulkDestroy'])->name('admin.application-systems.bulk-destroy');
     Route::delete('/admin/application-systems/{system}', [\App\Http\Controllers\Admin\ApplicationSystemController::class, 'destroy'])->name('admin.application-systems.destroy');
 });
 

@@ -10,10 +10,18 @@ use Illuminate\Http\RedirectResponse;
 
 class ApplicationSystemController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $systems = ApplicationSystem::orderBy('name')->get();
-        return view('admin.application-systems.index', compact('systems'));
+        $search = trim((string) $request->query('search', ''));
+
+        $systems = ApplicationSystem::query()
+            ->when($search !== '', function ($query) use ($search): void {
+                $query->where('name', 'like', '%' . $search . '%');
+            })
+            ->orderBy('name')
+            ->get();
+
+        return view('admin.application-systems.index', compact('systems', 'search'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -24,7 +32,7 @@ class ApplicationSystemController extends Controller
 
         ApplicationSystem::create($validated);
 
-        return redirect()->route('admin.application-systems.index')->with('status', 'Application system added successfully.');
+        return $this->redirectAfterAction($request, 'Application system added successfully.');
     }
 
     public function update(Request $request, ApplicationSystem $system): RedirectResponse
@@ -36,12 +44,44 @@ class ApplicationSystemController extends Controller
 
         $system->update($validated);
 
-        return redirect()->route('admin.application-systems.index')->with('status', 'Application system updated successfully.');
+        return $this->redirectAfterAction($request, 'Application system updated successfully.');
     }
 
-    public function destroy(ApplicationSystem $system): RedirectResponse
+    public function destroy(Request $request, ApplicationSystem $system): RedirectResponse
     {
         $system->delete();
-        return redirect()->route('admin.application-systems.index')->with('status', 'Application system deleted successfully.');
+        return $this->redirectAfterAction($request, 'Application system deleted successfully.');
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array', 'min:1'],
+            'ids.*' => ['integer', 'exists:application_systems,id'],
+        ]);
+
+        $deletedCount = ApplicationSystem::query()
+            ->whereIn('id', $validated['ids'])
+            ->delete();
+
+        $suffix = $deletedCount === 1 ? '' : 's';
+
+        return $this->redirectAfterAction(
+            $request,
+            $deletedCount . ' system' . $suffix . ' deleted successfully.'
+        );
+    }
+
+    private function redirectAfterAction(Request $request, string $message): RedirectResponse
+    {
+        if ($request->input('return_to') === 'management') {
+            return redirect()
+                ->route('admin.management.index', ['tab' => 'systems'])
+                ->with('status', $message);
+        }
+
+        return redirect()
+            ->route('admin.application-systems.index')
+            ->with('status', $message);
     }
 }

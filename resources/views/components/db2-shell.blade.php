@@ -1115,9 +1115,9 @@
             event.preventDefault();
             
             try {
-                const response = await fetch("{{ route('service-requests.chat-requests.ajax') }}", {
+                const response = await fetch(this.href, {
                     headers: {
-                        'Accept': 'application/json',
+                        'Accept': 'text/html',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
@@ -1127,13 +1127,15 @@
                     return;
                 }
 
-                const data = await response.json();
-                const html = data.html || '';
-                
+                const html = await response.text();
+                const parsed = new DOMParser().parseFromString(html, 'text/html');
+                const nextContent = parsed.querySelector('.db2-content');
+
                 // Update page content with new chat requests data
                 const contentArea = document.querySelector('.db2-content');
-                if (contentArea && html) {
-                    contentArea.innerHTML = html;
+                if (contentArea && nextContent) {
+                    contentArea.innerHTML = nextContent.innerHTML;
+                    runInjectedScripts(contentArea);
                     
                     // Update URL without reloading
                     window.history.pushState({ chatRequests: true }, 'Chat Requests', "{{ route('service-requests.chat-requests') }}");
@@ -1218,9 +1220,9 @@
             event.preventDefault();
             
             try {
-                const response = await fetch("{{ route('admin.users.ajax') }}", {
+                const response = await fetch(this.href, {
                     headers: {
-                        'Accept': 'application/json',
+                        'Accept': 'text/html',
                         'X-Requested-With': 'XMLHttpRequest',
                     },
                 });
@@ -1230,13 +1232,14 @@
                     return;
                 }
 
-                const data = await response.json();
-                const html = data.html || '';
-                
+                const html = await response.text();
+                const parsed = new DOMParser().parseFromString(html, 'text/html');
+                const nextContent = parsed.querySelector('.db2-content');
+
                 // Update page content with new accounts data
                 const contentArea = document.querySelector('.db2-content');
-                if (contentArea && html) {
-                    contentArea.innerHTML = html;
+                if (contentArea && nextContent) {
+                    contentArea.innerHTML = nextContent.innerHTML;
                     runInjectedScripts(contentArea);
                     
                     // Update URL without reloading
