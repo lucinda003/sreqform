@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Office extends Model
 {
     protected $fillable = [
+        'parent_name',
         'name',
         'is_active',
     ];

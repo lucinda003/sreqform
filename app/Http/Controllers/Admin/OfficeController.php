@@ -7,19 +7,28 @@ use App\Models\Office;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\Rule;
 
 class OfficeController extends Controller
 {
     public function index(): View
     {
-        $offices = Office::orderBy('name')->get();
-        return view('admin.offices.index', compact('offices'));
+        $offices = Office::orderBy('parent_name')->orderBy('name')->get();
+        $parentOfficeOptions = $this->parentOfficeOptions();
+
+        return view('admin.offices.index', compact('offices', 'parentOfficeOptions'));
     }
 
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:offices,name'],
+            'parent_name' => ['required', 'string', 'max:255', Rule::in($this->parentOfficeOptions())],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('offices', 'name')->where('parent_name', $request->input('parent_name')),
+            ],
         ]);
 
         Office::create($validated);
@@ -30,7 +39,15 @@ class OfficeController extends Controller
     public function update(Request $request, Office $office): RedirectResponse
     {
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255', 'unique:offices,name,' . $office->id],
+            'parent_name' => ['required', 'string', 'max:255', Rule::in($this->parentOfficeOptions())],
+            'name' => [
+                'required',
+                'string',
+                'max:255',
+                Rule::unique('offices', 'name')
+                    ->where('parent_name', $request->input('parent_name'))
+                    ->ignore($office->id),
+            ],
             'is_active' => ['boolean'],
         ]);
 
@@ -75,5 +92,15 @@ class OfficeController extends Controller
         return redirect()
             ->route('admin.offices.index')
             ->with('status', $message);
+    }
+
+    private function parentOfficeOptions(): array
+    {
+        return [
+            'DOH CENTRAL OFFICE',
+            'CENTERS FOR HEALTH DEVELOPMENT',
+            'DOH HOSPITALS',
+            'ATTACHED AGENCIES',
+        ];
     }
 }

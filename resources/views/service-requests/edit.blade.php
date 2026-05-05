@@ -6,6 +6,10 @@
         $canModerateChat = auth()->check();
         $canPersonnelChat = auth()->check();
         $isReadOnlyForm = auth()->check();
+        $canEditSupervisorFields = strtolower(trim((string) auth()->user()?->role)) === 'supervisor';
+        $listingContext = is_array($listingContext ?? null) ? $listingContext : request()->only(['status', 'received', 'assigned', 'q', 'chat_request']);
+        $backToRequestsUrl = route('service-requests.index', $listingContext);
+        $editRouteParams = ['serviceRequest' => $serviceRequest] + $listingContext;
         $hospitalOfficeMap = [
             'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
             'National Kidney and Transplant Institute' => 'East Avenue, Quezon City, Metro Manila',
@@ -1264,7 +1268,7 @@
 
     <div class="srf-card">
         <div class="srf-form-header">
-            <a href="{{ route('service-requests.index') }}" class="srf-header-back" aria-label="Back to Service Requests list">&larr; Back</a>
+            <a href="{{ $backToRequestsUrl }}" class="srf-header-back" aria-label="Back to Service Requests list">&larr; Back</a>
             <span class="srf-form-header-text">Service Request Form</span>
             <div class="srf-form-header-line"></div>
         </div>
@@ -1289,7 +1293,7 @@
                 @if ($canModerateChat && ! ($isReadOnly ?? false))
                     <div class="ms-auto flex flex-wrap items-center gap-2">
                         <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
-                        <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex flex-wrap items-center gap-2" data-status-action-form>
+                        <form method="POST" action="{{ route('service-requests.update-status', $editRouteParams) }}" class="flex flex-wrap items-center gap-2" data-status-action-form>
                             @csrf
                             @method('PATCH')
                             <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
@@ -1368,7 +1372,7 @@
         </div>
 
         <div class="overflow-x-auto bg-white">
-            <form method="POST" action="{{ route('service-requests.update', $serviceRequest) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0" data-service-request-id="{{ $serviceRequest->id }}">
+            <form method="POST" action="{{ route('service-requests.update', $editRouteParams) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0" data-service-request-id="{{ $serviceRequest->id }}">
                 @csrf
                 @method('PUT')
 
@@ -1625,8 +1629,8 @@
                     @endphp
 
                     <div class="px-4 pb-3">
-                        <fieldset @if ($isReadOnly ?? false) disabled @endif>
                         <div class="rounded-xl border border-slate-300 bg-slate-50 p-3">
+                            <fieldset @if ($isReadOnly ?? false) disabled @endif>
                             <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For knowledge management and information technology service only</h3>
 
                             <div class="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white">
@@ -1646,14 +1650,43 @@
                                         @for ($i = 0; $i < 5; $i++)
                                             @php
                                                 $rowSignature = (string) ($logSignatures[$i] ?? '');
+                                                $rowOwnerId = (int) data_get($existingLogs, $i . '.action_user_id', 0);
+                                                $rowHasValues = trim((string) ($logDates[$i] ?? '')) !== ''
+                                                    || trim((string) ($logTimes[$i] ?? '')) !== ''
+                                                    || trim((string) ($logActionDates[$i] ?? '')) !== ''
+                                                    || trim((string) ($logActionTimes[$i] ?? '')) !== ''
+                                                    || trim((string) ($logActions[$i] ?? '')) !== ''
+                                                    || trim((string) ($logOfficers[$i] ?? '')) !== ''
+                                                    || $rowSignature !== '';
+
+                                                if ($rowOwnerId === 0 && $rowHasValues) {
+                                                    $rowOwnerId = (int) ($serviceRequest->received_by_user_id ?? 0);
+                                                    if ($rowOwnerId === 0) {
+                                                        $rowOwnerId = (int) ($serviceRequest->assigned_by_user_id ?? 0);
+                                                    }
+                                                }
+
+                                                $rowLocked = $rowOwnerId > 0 && $rowOwnerId !== (int) auth()->id();
                                             @endphp
                                             <tr data-action-log-row>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="0"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="1"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="date" name="action_log_action_date[]" value="{{ $logActionDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="2"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="3"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="4"></td>
-                                                <td class="border border-slate-300 px-2 py-1"><input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500" data-action-log-step="5"></td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="0" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                </td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="1" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                </td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="date" name="action_log_action_date[]" value="{{ $logActionDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="2" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                </td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="3" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                </td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="4" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                </td>
+                                                <td class="border border-slate-300 px-2 py-1">
+                                                    <input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="5" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                </td>
                                                 <td class="border border-slate-300 px-2 py-1">
                                                     <input type="hidden" name="action_log_signature_drawn[]" value="{{ $rowSignature }}">
                                                     <input type="hidden" name="action_log_signature_x[]" value="{{ $existingLogs[$i]['action_sig_x'] ?? '' }}">
@@ -1666,7 +1699,9 @@
                                     </tbody>
                                 </table>
                             </div>
+                            </fieldset>
 
+                            <fieldset @if (! $canEditSupervisorFields) disabled @endif>
                             <div class="mt-4 grid gap-3 md:grid-cols-2">
                                 @php
                                     $notedBySignatureValue = (string) old('noted_by_signature_drawn', $serviceRequest->noted_by_signature);
@@ -1706,21 +1741,21 @@
                             <x-input-error :messages="$errors->get('noted_by_signature_upload')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
                             <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
+                            </fieldset>
                         </div>
-                        </fieldset>
                     </div>
                 @else
                     <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
                 @endif
 
                 <div class="srf-footer">
-                    <a href="{{ route('service-requests.index') }}" class="srf-btn-back">
+                    <a href="{{ $backToRequestsUrl }}" class="srf-btn-back">
                         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                             <path d="M12 4L6 10L12 16"></path>
                         </svg>
                         Back
                     </a>
-                    @if (! ($isReadOnly ?? false))
+                    @if (! ($isReadOnly ?? false) || $canEditSupervisorFields)
                         <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
                     @endif
                 </div>
@@ -1932,7 +1967,7 @@
             <span class="srf-sticky-status {{ $statusClasses }}">{{ $serviceRequest->status }}</span>
             <div class="srf-sticky-actions">
                 <a id="sticky-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
-                <form method="POST" action="{{ route('service-requests.update-status', $serviceRequest) }}" class="flex items-center gap-2" data-status-action-form>
+                <form method="POST" action="{{ route('service-requests.update-status', $editRouteParams) }}" class="flex items-center gap-2" data-status-action-form>
                     @csrf
                     @method('PATCH')
                     <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>

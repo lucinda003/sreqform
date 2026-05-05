@@ -14,6 +14,7 @@ class ManagementController
         $activeTab = in_array($requestedTab, ['offices', 'systems'], true) ? $requestedTab : 'offices';
 
         $offices = Office::query()
+            ->orderBy('parent_name')
             ->orderBy('name')
             ->get();
 
@@ -25,6 +26,17 @@ class ManagementController
             'offices' => $offices,
             'systems' => $systems,
             'activeTab' => $activeTab,
+            'parentOfficeOptions' => $this->parentOfficeOptions(),
         ]);
+    }
+
+    private function parentOfficeOptions(): array
+    {
+        return [
+            'DOH CENTRAL OFFICE',
+            'CENTERS FOR HEALTH DEVELOPMENT',
+            'DOH HOSPITALS',
+            'ATTACHED AGENCIES',
+        ];
     }
 }

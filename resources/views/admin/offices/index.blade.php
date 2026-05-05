@@ -35,6 +35,7 @@
             <table class="min-w-full text-left text-sm text-slate-600">
                 <thead class="bg-slate-50 text-xs uppercase text-slate-500 border-b border-slate-200">
                     <tr>
+                        <th scope="col" class="px-6 py-4 font-semibold">Parent Office</th>
                         <th scope="col" class="px-6 py-4 font-semibold">Office Name</th>
                         <th scope="col" class="px-6 py-4 font-semibold">Status</th>
                         <th scope="col" class="px-6 py-4 font-semibold text-right">Actions</th>
@@ -43,6 +44,7 @@
                 <tbody class="divide-y divide-slate-100">
                     @forelse ($offices as $office)
                         <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="px-6 py-4 text-slate-700">{{ $office->parent_name ?? 'DOH CENTRAL OFFICE' }}</td>
                             <td class="px-6 py-4 font-medium text-slate-900">{{ $office->name }}</td>
                             <td class="px-6 py-4">
                                 <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $office->is_active ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-slate-200 bg-slate-50 text-slate-600' }}">
@@ -54,7 +56,7 @@
                                     <button 
                                         type="button" 
                                         class="rounded-lg px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 transition border border-transparent hover:border-sky-200"
-                                        onclick="openEditDialog({{ $office->id }}, '{{ addslashes($office->name) }}', {{ $office->is_active ? 'true' : 'false' }})"
+                                        onclick="openEditDialog({{ $office->id }}, @js($office->parent_name ?? 'DOH CENTRAL OFFICE'), @js($office->name), {{ $office->is_active ? 'true' : 'false' }})"
                                     >
                                         Edit
                                     </button>
@@ -71,7 +73,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="3" class="px-6 py-8 text-center text-sm text-slate-500">No offices found. Create one to get started.</td>
+                            <td colspan="4" class="px-6 py-8 text-center text-sm text-slate-500">No offices found. Create one to get started.</td>
                         </tr>
                     @endforelse
                 </tbody>
@@ -96,8 +98,17 @@
                     @csrf
 
                     <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="parent_name">Parent Office</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="parent_name" name="parent_name" required>
+                            @foreach (($parentOfficeOptions ?? ['DOH CENTRAL OFFICE']) as $parentOfficeOption)
+                                <option value="{{ $parentOfficeOption }}">{{ $parentOfficeOption }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="name">Office Name</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="name" name="name" type="text" placeholder="e.g., Manila, Cebu, Davao" required autofocus>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="name" name="name" type="text" placeholder="e.g., Administrative Service" required autofocus>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
@@ -127,6 +138,15 @@
                     @method('PUT')
 
                     <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="edit_parent_name">Parent Office</label>
+                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_parent_name" name="parent_name" required>
+                            @foreach (($parentOfficeOptions ?? ['DOH CENTRAL OFFICE']) as $parentOfficeOption)
+                                <option value="{{ $parentOfficeOption }}">{{ $parentOfficeOption }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
                         <label class="auth-label block text-sm font-medium text-slate-700" for="edit_name">Office Name</label>
                         <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_name" name="name" type="text" required>
                     </div>
@@ -147,7 +167,8 @@
         </dialog>
 
         <script>
-            function openEditDialog(id, name, isActive) {
+            function openEditDialog(id, parentName, name, isActive) {
+                document.getElementById('edit_parent_name').value = parentName || 'DOH CENTRAL OFFICE';
                 document.getElementById('edit_name').value = name;
                 document.getElementById('edit_is_active').checked = isActive;
                 

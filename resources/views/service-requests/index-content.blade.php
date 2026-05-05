@@ -204,7 +204,7 @@
                             <td class="px-4 py-3 text-center whitespace-nowrap">
                                 <div class="flex items-center justify-center gap-3">
                                     @if ($isReceivedView || $isAssignedView || $isArchiveView)
-                                        <a href="{{ route('service-requests.show', $serviceRequest) }}" class="auth-link">Open</a>
+                                        <a href="{{ route('service-requests.show', ['serviceRequest' => $serviceRequest] + request()->only(['status', 'received', 'assigned', 'q', 'chat_request'])) }}" class="auth-link">Open</a>
                                     @else
                                         <button
                                             type="button"
@@ -312,7 +312,8 @@
             return url.toString();
         };
 
-        const fetchAndRender = async function (url) {
+        const fetchAndRender = async function (url, options) {
+            const settings = options || {};
             if (activeRequest) {
                 activeRequest.abort();
             }
@@ -320,10 +321,14 @@
             activeRequest = new AbortController();
 
             try {
-                const response = await fetch(url, {
+                const requestedUrl = new URL(url, window.location.origin);
+                const ajaxUrl = new URL(@json(route('service-requests.ajax')), window.location.origin);
+                ajaxUrl.search = requestedUrl.search;
+
+                const response = await fetch(ajaxUrl.toString(), {
                     headers: {
                         'X-Requested-With': 'XMLHttpRequest',
-                        'Accept': 'text/html',
+                        'Accept': 'application/json',
                     },
                     signal: activeRequest.signal,
                 });
@@ -332,7 +337,8 @@
                     return;
                 }
 
-                const html = await response.text();
+                const payload = await response.json();
+                const html = String(payload.html || '');
                 const parsed = new DOMParser().parseFromString(html, 'text/html');
                 const nextListing = parsed.querySelector('[data-srf-listing-content]');
 
@@ -342,7 +348,9 @@
 
                 listingContent.innerHTML = nextListing.innerHTML;
                 bindPaginationLinks();
-                window.history.replaceState({}, '', url);
+                if (settings.updateHistory !== false) {
+                    window.history.replaceState({}, '', requestedUrl.pathname + requestedUrl.search);
+                }
             } catch (error) {
                 if (error.name !== 'AbortError') {
                     console.error('Search fetch error:', error);
@@ -357,6 +365,19 @@
         });
 
         bindPaginationLinks();
+        window.srfRefreshServiceRequestListing = function () {
+            return fetchAndRender(window.location.href, { updateHistory: false });
+        };
+
+        window.clearInterval(window.srfServiceRequestListingPollId);
+        window.srfServiceRequestListingPollId = window.setInterval(function () {
+            const assignDialog = document.getElementById('assign-request-dialog');
+            if (assignDialog && assignDialog.open) {
+                return;
+            }
+
+            window.srfRefreshServiceRequestListing();
+        }, 4000);
     })();
 </script>
 
@@ -424,7 +445,7 @@
 
             <div class="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-5">
                 <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('assign-request-dialog').close()">Cancel</button>
-                <button type="submit" class="rounded-lg bg-amber-700 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-amber-800 transition">Assign</button>
+                <button type="submit" class="rounded-lg px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style="background:#0f766e; color:#fff;">Assign</button>
             </div>
         </form>
     </div>
@@ -444,4 +465,51 @@
         form.action = '/service-requests/' + requestId + '/assign';
         document.getElementById('assign-request-dialog').showModal();
     }
+
+    (function () {
+        const form = document.getElementById('assign-request-form');
+        const dialog = document.getElementById('assign-request-dialog');
+
+        if (!form || !dialog) {
+            return;
+        }
+
+        form.addEventListener('submit', async function (event) {
+            event.preventDefault();
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+            }
+
+            try {
+                const response = await fetch(form.action, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    body: new FormData(form),
+                });
+
+                if (!response.ok) {
+                    form.submit();
+                    return;
+                }
+
+                form.reset();
+                dialog.close();
+
+                if (typeof window.srfRefreshServiceRequestListing === 'function') {
+                    await window.srfRefreshServiceRequestListing();
+                }
+            } catch (error) {
+                form.submit();
+            } finally {
+                if (submitButton) {
+                    submitButton.disabled = false;
+                }
+            }
+        });
+    })();
 </script>

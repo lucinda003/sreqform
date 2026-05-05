@@ -47,6 +47,11 @@ class ServiceRequestController extends Controller
             $serviceRequestsQuery
                 ->where('assigned_to_user_id', Auth::id())
                 ->whereNotNull('assigned_by_user_id')
+                ->where(function (Builder $builder): void {
+                    $builder
+                        ->whereNull('received_by_user_id')
+                        ->orWhereColumn('assigned_to_user_id', '!=', 'received_by_user_id');
+                })
                 ->whereIn('status', ['pending', 'checking']);
         } elseif ($statusFilter === 'archived') {
             $serviceRequestsQuery->whereIn('status', ['approved']);
@@ -120,6 +125,11 @@ class ServiceRequestController extends Controller
             $serviceRequestsQuery
                 ->where('assigned_to_user_id', Auth::id())
                 ->whereNotNull('assigned_by_user_id')
+                ->where(function (Builder $builder): void {
+                    $builder
+                        ->whereNull('received_by_user_id')
+                        ->orWhereColumn('assigned_to_user_id', '!=', 'received_by_user_id');
+                })
                 ->whereIn('status', ['pending', 'checking']);
         } elseif ($statusFilter === 'archived') {
             $serviceRequestsQuery->whereIn('status', ['approved']);
@@ -831,7 +841,7 @@ class ServiceRequestController extends Controller
         ]);
     }
 
-    public function assign(Request $request, ServiceRequest $serviceRequest): RedirectResponse
+    public function assign(Request $request, ServiceRequest $serviceRequest): RedirectResponse|JsonResponse
     {
         // Only admin, supervisor, technical support can assign
         $userRole = Auth::user()->role ?? '';
@@ -853,6 +863,13 @@ class ServiceRequestController extends Controller
             'assigned_to_user_id' => $validated['assigned_to_user_id'],
             'assigned_by_user_id' => $userId,
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'message' => 'Request assigned successfully.',
+            ]);
+        }
 
         return back()->with('status', 'Request assigned successfully.');
     }
@@ -1265,7 +1282,6 @@ class ServiceRequestController extends Controller
                 }
             );
         } catch (\Throwable $exception) {
-            report($exception);
             $statusMessage = 'Email saved, but sending failed. You can still track using your reference code.';
         }
 
@@ -1339,6 +1355,7 @@ class ServiceRequestController extends Controller
             'chatMessages' => $chatMessages,
             'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
             'isReadOnly' => $isReadOnly,
+            'listingContext' => $this->listingContextFromRequest($request),
         ]);
     }
 
@@ -1385,6 +1402,15 @@ class ServiceRequestController extends Controller
             }
         }
 
+        if ($isModerationEditor && ! $this->isSupervisorRole()) {
+            unset(
+                $validated['noted_by_name'],
+                $validated['noted_by_signature'],
+                $validated['noted_by_position'],
+                $validated['noted_by_date_signed']
+            );
+        }
+
         // Keep department stable for non-admin users so requests remain in their scoped view.
         if (! $this->isAdmin()) {
             $validated['department_code'] = (string) $serviceRequest->department_code;
@@ -1392,16 +1418,18 @@ class ServiceRequestController extends Controller
 
         $serviceRequest->update($validated);
 
+        $routeParams = ['serviceRequest' => $serviceRequest] + $this->listingContextFromRequest($request);
+
         return redirect()
-            ->route('service-requests.edit', $serviceRequest)
+            ->route('service-requests.edit', $routeParams)
             ->with('status', 'Service Request updated successfully.');
     }
 
-    public function show(ServiceRequest $serviceRequest): RedirectResponse
+    public function show(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
-        return redirect()->route('service-requests.edit', $serviceRequest);
+        return redirect()->route('service-requests.edit', ['serviceRequest' => $serviceRequest] + $this->listingContextFromRequest($request));
     }
 
     public function approvedSignature(Request $request, ServiceRequest $serviceRequest): Response
@@ -1475,6 +1503,14 @@ class ServiceRequestController extends Controller
             $actionRowIndex = (int) $matches[1];
             $target = 'action';
         }
+
+        if ($target === 'noted' && ! $this->isSupervisorRole()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Only supervisors can update the supervisor signature.',
+            ], 403);
+        }
+
         $clearRequested = (bool) ($validated['clear'] ?? false);
         $xRatio = $validated['xRatio'] ?? null;
         $yRatio = $validated['yRatio'] ?? null;
@@ -1497,6 +1533,18 @@ class ServiceRequestController extends Controller
             'action_officer' => null,
             'signature' => null,
         ];
+
+        $actionRowOwnerId = (int) ($selectedRow['action_user_id'] ?? 0);
+        if ($actionRowOwnerId === 0 && $this->actionLogRowHasValues($selectedRow)) {
+            $actionRowOwnerId = (int) ($serviceRequest->received_by_user_id ?? 0);
+        }
+
+        if ($target === 'action' && $actionRowOwnerId > 0 && $actionRowOwnerId !== (int) Auth::id()) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'Only the original handler can update this action log row.',
+            ], 403);
+        }
 
         if ($target === 'action') {
             if ($clearRequested) {
@@ -1539,6 +1587,7 @@ class ServiceRequestController extends Controller
 
             $selectedRow['signature'] = $this->storeAuxiliarySignature($signatureData, null, $existingSignature);
             $selectedRow['signature_user_id'] = Auth::id();
+            $selectedRow['action_user_id'] = $actionRowOwnerId > 0 ? $actionRowOwnerId : Auth::id();
 
             if (blank($selectedRow['date'])) {
                 $baseDate = $serviceRequest->kmits_date ?? $serviceRequest->request_date;
@@ -1662,6 +1711,10 @@ class ServiceRequestController extends Controller
             $updates['approved_at'] = null;
             $updates['rejected_at'] = null;
             $updates['completed_at'] = null;
+            $updates['received_by_user_id'] = null;
+            $updates['received_at'] = null;
+            $updates['assigned_to_user_id'] = null;
+            $updates['assigned_by_user_id'] = null;
             $updates['contact_chat_status'] = null;
             $updates['contact_chat_requested_at'] = null;
             $updates['contact_chat_decided_at'] = null;
@@ -1728,6 +1781,8 @@ class ServiceRequestController extends Controller
         $routeParams = ['serviceRequest' => $serviceRequest];
         if ($validated['status'] === 'pending') {
             $routeParams['skip_auto_checking'] = '1';
+        } else {
+            $routeParams += $this->listingContextFromRequest($request);
         }
 
         return redirect()
@@ -1741,6 +1796,38 @@ class ServiceRequestController extends Controller
         $sequence = ((int) ServiceRequest::query()->max('id')) + 1;
 
         return sprintf('SRF-%s-%05d', $datePart, $sequence);
+    }
+
+    private function listingContextFromRequest(Request $request): array
+    {
+        $context = [];
+        $status = trim((string) $request->query('status'));
+        $received = trim((string) $request->query('received'));
+        $assigned = trim((string) $request->query('assigned'));
+        $search = trim((string) $request->query('q'));
+        $chatRequest = trim((string) $request->query('chat_request'));
+
+        if (in_array($status, ['pending', 'checking', 'approved', 'archived'], true)) {
+            $context['status'] = $status;
+        }
+
+        if ($received === 'me') {
+            $context['received'] = 'me';
+        }
+
+        if ($assigned === 'me') {
+            $context['assigned'] = 'me';
+        }
+
+        if ($search !== '') {
+            $context['q'] = $search;
+        }
+
+        if (in_array($chatRequest, ['pending', 'accepted', 'rejected'], true)) {
+            $context['chat_request'] = $chatRequest;
+        }
+
+        return $context;
     }
 
     private function normalizeReferenceCode(string $referenceCode): string
@@ -2047,6 +2134,7 @@ class ServiceRequestController extends Controller
                     ? ($databaseSignature !== '' ? $databaseSignature : null)
                     : ($submittedSignature !== '' ? $submittedSignature : null),
                 'signature_user_id' => $existingRow['signature_user_id'] ?? null,
+                'action_user_id' => $existingRow['action_user_id'] ?? null,
                 'action_sig_x' => $existingRow['action_sig_x'] ?? null,
                 'action_sig_y' => $existingRow['action_sig_y'] ?? null,
                 'action_sig_scale' => $existingRow['action_sig_scale'] ?? null,
@@ -2355,6 +2443,19 @@ class ServiceRequestController extends Controller
 
         unset($validated['description_photos']);
 
+        $hasActionLogSubmission = $request->hasAny([
+            'action_log_date',
+            'action_log_time',
+            'action_log_action_date',
+            'action_log_action_time',
+            'action_log_action_taken',
+            'action_log_action_officer',
+            'action_log_signature_drawn',
+            'action_log_signature_x',
+            'action_log_signature_y',
+            'action_log_signature_scale',
+        ]);
+
         $dateRows = $validated['action_log_date'] ?? [];
         $timeRows = $validated['action_log_time'] ?? [];
         $actionDateRows = $validated['action_log_action_date'] ?? [];
@@ -2371,55 +2472,77 @@ class ServiceRequestController extends Controller
         $existingLogs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
 
         $actionLogs = [];
-        for ($i = 0; $i < 5; $i++) {
-            $actionSignatureUpload = is_array($signatureUploads) ? ($signatureUploads[$i] ?? null) : null;
-            // Get the actual existing signature and metadata from the database
-            $databaseSignature = trim((string) (is_array($existingLogs[$i] ?? null) ? ($existingLogs[$i]['signature'] ?? '') : ''));
-            $existingRow = is_array($existingLogs[$i] ?? null) ? $existingLogs[$i] : [];
+        $currentUserId = (int) (Auth::id() ?? 0);
 
-            // Always prefer the DB-stored position over the stale form hidden-input value.
-            // The hidden inputs are rendered at page-load time, so if the admin adds or moves
-            // a signature via print-preview auto-save AFTER the page loaded, those positions
-            // are only in the DB, not in the submitted form fields.
-            $posX     = array_key_exists('action_sig_x', $existingRow)     ? $existingRow['action_sig_x']     : ($signatureXRows[$i] ?? null);
-            $posY     = array_key_exists('action_sig_y', $existingRow)     ? $existingRow['action_sig_y']     : ($signatureYRows[$i] ?? null);
-            $posScale = array_key_exists('action_sig_scale', $existingRow) ? $existingRow['action_sig_scale'] : ($signatureScaleRows[$i] ?? null);
+        if (! $hasActionLogSubmission) {
+            $actionLogs = $existingLogs;
+        } else {
+            for ($i = 0; $i < 5; $i++) {
+                $actionSignatureUpload = is_array($signatureUploads) ? ($signatureUploads[$i] ?? null) : null;
+                $existingRow = is_array($existingLogs[$i] ?? null) ? $existingLogs[$i] : [];
+                $existingRowHasValues = $this->actionLogRowHasValues($existingRow);
+                $rowOwnerId = (int) ($existingRow['action_user_id'] ?? 0);
 
-            $row = [
-                'date' => $dateRows[$i] ?? null,
-                'time' => $timeRows[$i] ?? null,
-                'action_date' => $actionDateRows[$i] ?? null,
-                'action_time' => $actionTimeRows[$i] ?? null,
-                'action_taken' => $actionRows[$i] ?? null,
-                'action_officer' => $officerRows[$i] ?? null,
-                'signature' => $this->storeAuxiliarySignature(
-                    $databaseSignature,
-                    $actionSignatureUpload,
-                    $databaseSignature
-                ),
-                'signature_user_id' => $existingRow['signature_user_id'] ?? null,
-                // Preserve action signature position from DB (never overwrite with stale form values)
-                'action_sig_x'     => $posX,
-                'action_sig_y'     => $posY,
-                'action_sig_scale' => $posScale,
-                // Preserve noted-by signature coords stored in action_logs[0]; these are only
-                // written by savePrintSignature() and must survive a Save/Update cycle.
-                'noted_sig_x'     => $existingRow['noted_sig_x']     ?? null,
-                'noted_sig_y'     => $existingRow['noted_sig_y']     ?? null,
-                'noted_sig_scale' => $existingRow['noted_sig_scale'] ?? null,
-                'noted_sig_user_id' => $existingRow['noted_sig_user_id'] ?? null,
-            ];
+                if ($rowOwnerId === 0 && $existingRowHasValues) {
+                    $rowOwnerId = (int) ($serviceRequest->received_by_user_id ?? 0);
+                    if ($rowOwnerId === 0) {
+                        $rowOwnerId = (int) ($serviceRequest->assigned_by_user_id ?? 0);
+                    }
+                }
 
-            if (
-                filled($row['date'])
-                || filled($row['time'])
-                || filled($row['action_date'])
-                || filled($row['action_time'])
-                || filled($row['action_taken'])
-                || filled($row['action_officer'])
-                || filled($row['signature'])
-            ) {
-                $actionLogs[] = $row;
+                $rowLocked = $rowOwnerId > 0 && $rowOwnerId !== $currentUserId;
+
+                if ($rowLocked) {
+                    if ($existingRowHasValues) {
+                        $existingRow['action_user_id'] = $rowOwnerId;
+                        $actionLogs[] = $existingRow;
+                    }
+                    continue;
+                }
+
+                // Get the actual existing signature and metadata from the database
+                $databaseSignature = trim((string) (is_array($existingLogs[$i] ?? null) ? ($existingLogs[$i]['signature'] ?? '') : ''));
+
+                // Always prefer the DB-stored position over the stale form hidden-input value.
+                // The hidden inputs are rendered at page-load time, so if the admin adds or moves
+                // a signature via print-preview auto-save AFTER the page loaded, those positions
+                // are only in the DB, not in the submitted form fields.
+                $posX     = array_key_exists('action_sig_x', $existingRow)     ? $existingRow['action_sig_x']     : ($signatureXRows[$i] ?? null);
+                $posY     = array_key_exists('action_sig_y', $existingRow)     ? $existingRow['action_sig_y']     : ($signatureYRows[$i] ?? null);
+                $posScale = array_key_exists('action_sig_scale', $existingRow) ? $existingRow['action_sig_scale'] : ($signatureScaleRows[$i] ?? null);
+
+                $row = [
+                    'date' => $dateRows[$i] ?? null,
+                    'time' => $timeRows[$i] ?? null,
+                    'action_date' => $actionDateRows[$i] ?? null,
+                    'action_time' => $actionTimeRows[$i] ?? null,
+                    'action_taken' => $actionRows[$i] ?? null,
+                    'action_officer' => $officerRows[$i] ?? null,
+                    'signature' => $this->storeAuxiliarySignature(
+                        $databaseSignature,
+                        $actionSignatureUpload,
+                        $databaseSignature
+                    ),
+                    'signature_user_id' => $existingRow['signature_user_id'] ?? null,
+                    'action_user_id' => $rowOwnerId > 0 ? $rowOwnerId : null,
+                    // Preserve action signature position from DB (never overwrite with stale form values)
+                    'action_sig_x'     => $posX,
+                    'action_sig_y'     => $posY,
+                    'action_sig_scale' => $posScale,
+                    // Preserve noted-by signature coords stored in action_logs[0]; these are only
+                    // written by savePrintSignature() and must survive a Save/Update cycle.
+                    'noted_sig_x'     => $existingRow['noted_sig_x']     ?? null,
+                    'noted_sig_y'     => $existingRow['noted_sig_y']     ?? null,
+                    'noted_sig_scale' => $existingRow['noted_sig_scale'] ?? null,
+                    'noted_sig_user_id' => $existingRow['noted_sig_user_id'] ?? null,
+                ];
+
+                if ($this->actionLogRowHasValues($row)) {
+                    if ((int) ($row['action_user_id'] ?? 0) === 0) {
+                        $row['action_user_id'] = $currentUserId;
+                    }
+                    $actionLogs[] = $row;
+                }
             }
         }
 
@@ -2452,6 +2575,17 @@ class ServiceRequestController extends Controller
         unset($validated['noted_by_signature_upload']);
 
         return $validated;
+    }
+
+    private function actionLogRowHasValues(array $row): bool
+    {
+        return filled($row['date'] ?? null)
+            || filled($row['time'] ?? null)
+            || filled($row['action_date'] ?? null)
+            || filled($row['action_time'] ?? null)
+            || filled($row['action_taken'] ?? null)
+            || filled($row['action_officer'] ?? null)
+            || filled($row['signature'] ?? null);
     }
 
     private function validateActionLogStepOrder(
@@ -2719,6 +2853,11 @@ class ServiceRequestController extends Controller
     private function isKmits(): bool
     {
         return strtoupper((string) Auth::user()?->department) === 'KMITS';
+    }
+
+    private function isSupervisorRole(): bool
+    {
+        return strtolower(trim((string) Auth::user()?->role)) === 'supervisor';
     }
 
     private function isAssignedToOtherUser(ServiceRequest $serviceRequest): bool
