@@ -2939,7 +2939,6 @@
 
                 let pendingSaveRequest = false;
                 let pendingSaveTimeoutId = null;
-
                 const setSaveStatus = function (message, isError, tone) {
                     saveStatus.textContent = String(message || '');
                     if (isError || tone === 'delete') {

@@ -2081,11 +2081,11 @@ class ServiceRequestController extends Controller
             'action_log_date' => ['nullable', 'array', 'max:5'],
             'action_log_date.*' => ['nullable', 'date'],
             'action_log_time' => ['nullable', 'array', 'max:5'],
-            'action_log_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_time.*' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
             'action_log_action_date' => ['nullable', 'array', 'max:5'],
             'action_log_action_date.*' => ['nullable', 'date'],
             'action_log_action_time' => ['nullable', 'array', 'max:5'],
-            'action_log_action_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_action_time.*' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
             'action_log_action_taken' => ['nullable', 'array', 'max:5'],
             'action_log_action_taken.*' => ['nullable', 'string', 'max:255'],
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
@@ -2106,9 +2106,9 @@ class ServiceRequestController extends Controller
         $validated['approved_by_position'] = trim((string) ($validated['approved_by_position'] ?? ''));
 
         $dateRows = $validated['action_log_date'] ?? [];
-        $timeRows = $validated['action_log_time'] ?? [];
+        $timeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_time'] ?? []);
         $actionDateRows = $validated['action_log_action_date'] ?? [];
-        $actionTimeRows = $validated['action_log_action_time'] ?? [];
+        $actionTimeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_action_time'] ?? []);
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
         $signatureRows = $validated['action_log_signature_drawn'] ?? [];
@@ -2415,11 +2415,11 @@ class ServiceRequestController extends Controller
             'action_log_date' => ['nullable', 'array', 'max:5'],
             'action_log_date.*' => ['nullable', 'date'],
             'action_log_time' => ['nullable', 'array', 'max:5'],
-            'action_log_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_time.*' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
             'action_log_action_date' => ['nullable', 'array', 'max:5'],
             'action_log_action_date.*' => ['nullable', 'date'],
             'action_log_action_time' => ['nullable', 'array', 'max:5'],
-            'action_log_action_time.*' => ['nullable', 'date_format:H:i'],
+            'action_log_action_time.*' => ['nullable', 'regex:/^\d{2}:\d{2}(:\d{2})?$/'],
             'action_log_action_taken' => ['nullable', 'array', 'max:5'],
             'action_log_action_taken.*' => ['nullable', 'string', 'max:255'],
             'action_log_action_officer' => ['nullable', 'array', 'max:5'],
@@ -2457,9 +2457,9 @@ class ServiceRequestController extends Controller
         ]);
 
         $dateRows = $validated['action_log_date'] ?? [];
-        $timeRows = $validated['action_log_time'] ?? [];
+        $timeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_time'] ?? []);
         $actionDateRows = $validated['action_log_action_date'] ?? [];
-        $actionTimeRows = $validated['action_log_action_time'] ?? [];
+        $actionTimeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_action_time'] ?? []);
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
         $signatureXRows = $validated['action_log_signature_x'] ?? [];
@@ -2511,13 +2511,21 @@ class ServiceRequestController extends Controller
                 $posY     = array_key_exists('action_sig_y', $existingRow)     ? $existingRow['action_sig_y']     : ($signatureYRows[$i] ?? null);
                 $posScale = array_key_exists('action_sig_scale', $existingRow) ? $existingRow['action_sig_scale'] : ($signatureScaleRows[$i] ?? null);
 
+                $preserveIfBlank = static function (mixed $submittedValue, array $existingRow, string $key): mixed {
+                    $submittedString = trim((string) ($submittedValue ?? ''));
+
+                    return $submittedString !== ''
+                        ? $submittedValue
+                        : ($existingRow[$key] ?? null);
+                };
+
                 $row = [
-                    'date' => $dateRows[$i] ?? null,
-                    'time' => $timeRows[$i] ?? null,
-                    'action_date' => $actionDateRows[$i] ?? null,
-                    'action_time' => $actionTimeRows[$i] ?? null,
-                    'action_taken' => $actionRows[$i] ?? null,
-                    'action_officer' => $officerRows[$i] ?? null,
+                    'date' => $preserveIfBlank($dateRows[$i] ?? null, $existingRow, 'date'),
+                    'time' => $preserveIfBlank($timeRows[$i] ?? null, $existingRow, 'time'),
+                    'action_date' => $preserveIfBlank($actionDateRows[$i] ?? null, $existingRow, 'action_date'),
+                    'action_time' => $preserveIfBlank($actionTimeRows[$i] ?? null, $existingRow, 'action_time'),
+                    'action_taken' => $preserveIfBlank($actionRows[$i] ?? null, $existingRow, 'action_taken'),
+                    'action_officer' => $preserveIfBlank($officerRows[$i] ?? null, $existingRow, 'action_officer'),
                     'signature' => $this->storeAuxiliarySignature(
                         $databaseSignature,
                         $actionSignatureUpload,
@@ -2586,6 +2594,21 @@ class ServiceRequestController extends Controller
             || filled($row['action_taken'] ?? null)
             || filled($row['action_officer'] ?? null)
             || filled($row['signature'] ?? null);
+    }
+
+    private function normalizeActionLogTime(mixed $value): string
+    {
+        $value = trim((string) ($value ?? ''));
+
+        if ($value === '') {
+            return '';
+        }
+
+        if (preg_match('/^\d{2}:\d{2}:\d{2}$/', $value) === 1) {
+            return substr($value, 0, 5);
+        }
+
+        return $value;
     }
 
     private function validateActionLogStepOrder(

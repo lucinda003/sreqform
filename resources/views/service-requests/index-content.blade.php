@@ -411,8 +411,8 @@
 </dialog>
 
 <!-- Assign Dialog -->
-<dialog id="assign-request-dialog" class="w-full max-w-md rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
-    <div class="rounded-2xl bg-white p-6 sm:p-8">
+<dialog id="assign-request-dialog" class="w-full max-w-md rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40" style="overflow: hidden;">
+    <div class="flex min-h-[420px] flex-col rounded-2xl bg-white p-6 sm:p-8">
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
                 <h3 class="text-lg font-bold text-slate-900">Assign Request</h3>
@@ -433,7 +433,7 @@
             
             <div>
                 <label class="auth-label block text-sm font-medium text-slate-700" for="assign_to_user">Assign to User</label>
-                <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="assign_to_user" name="assigned_to_user_id" required>
+                <select class="auth-input mt-1 block max-h-44 w-full overflow-y-auto rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="assign_to_user" name="assigned_to_user_id" required>
                     <option value="" disabled selected>Select user...</option>
                     @forelse ($assignableUsers ?? [] as $user)
                         <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->role ?? 'No Role' }})</option>

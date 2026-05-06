@@ -840,7 +840,7 @@
         runInjectedScripts(contentArea);
 
         window.history.pushState({ dashboard: true }, 'Dashboard', requestedUrl.pathname + requestedUrl.search);
-        document.title = 'Dashboard | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+        document.title = 'Dashboard';
 
         document.querySelectorAll('.db2-nav-item').forEach(item => {
             item.classList.remove('active');
@@ -1008,7 +1008,7 @@
         runInjectedScripts(contentArea);
 
         window.history.pushState(meta.state, meta.title, requestedUrl.pathname + requestedUrl.search);
-        document.title = meta.title + ' | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+        document.title = meta.title;
 
         setActiveServiceRequestNav(meta.navHref);
         contentArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1141,7 +1141,7 @@
                     window.history.pushState({ chatRequests: true }, 'Chat Requests', "{{ route('service-requests.chat-requests') }}");
                     
                     // Update page title
-                    document.title = 'Chat Requests | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+                    document.title = 'Chat Requests';
                     
                     // Update active nav item highlight
                     document.querySelectorAll('.db2-nav-item').forEach(item => {
@@ -1193,7 +1193,7 @@
                     window.history.pushState({ profile: true }, 'Profile', "{{ route('profile.edit') }}");
                     
                     // Update page title
-                    document.title = 'Profile | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+                    document.title = 'Profile';
                     
                     // Update active nav item highlight
                     document.querySelectorAll('.db2-nav-item').forEach(item => {
@@ -1246,7 +1246,7 @@
                     window.history.pushState({ accounts: true }, 'Accounts', "{{ route('admin.users.index') }}");
                     
                     // Update page title
-                    document.title = 'Accounts | ' + (document.title.split('|')[1] || '{{ config('app.name', 'Laravel') }}');
+                    document.title = 'Accounts';
                     
                     // Update active nav item highlight
                     document.querySelectorAll('.db2-nav-item').forEach(item => {

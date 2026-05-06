@@ -420,8 +420,8 @@
         </dialog>
 
         <!-- Assign Dialog -->
-        <dialog id="assign-request-dialog" class="w-full max-w-md rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
-            <div class="rounded-2xl bg-white p-6 sm:p-8">
+        <dialog id="assign-request-dialog" class="w-full max-w-2xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40" style="overflow: hidden;">
+            <div class="flex min-h-[420px] flex-col rounded-2xl bg-white p-6 sm:p-8">
                 <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
                     <div>
                         <h3 class="text-lg font-bold text-slate-900">Assign Request</h3>
@@ -440,26 +440,136 @@
                     @csrf
                     @method('PATCH')
                     
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="assign_to_user">Assign to User</label>
-                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="assign_to_user" name="assigned_to_user_id" required>
+                    <div x-data="assignUserSearch()" @assign-dialog-open.window="initUsers($event)" @click.outside="isOpen = false">
+                        <label class="auth-label block text-sm font-medium text-slate-700">Assign to User</label>
+                        
+                        <!-- Dropdown Trigger -->
+                        <div class="mt-3">
+                            <button
+                                type="button"
+                                @click="isOpen = !isOpen; $nextTick(() => { if (isOpen) { document.querySelector('.assign-search-input')?.focus(); } })"
+                                class="auth-input w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm text-left flex items-center justify-between bg-white hover:bg-slate-50 transition"
+                            >
+                                <span x-text="selectedUserId ? selectedUserName : 'Select user...' " class="text-slate-900"></span>
+                                <svg class="h-5 w-5 text-slate-400 transition" :class="{ 'rotate-180': isOpen }" viewBox="0 0 20 20" fill="currentColor">
+                                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                </svg>
+                            </button>
+
+                            <!-- Dropdown List -->
+                            <div
+                                x-show="isOpen"
+                                @click.stop
+                                class="mt-1 rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden"
+                                style="display: none;"
+                            >
+                                <!-- Search Input in Dropdown -->
+                                <div class="border-b border-slate-100 p-2" @click.stop>
+                                    <input
+                                        type="text"
+                                        class="assign-search-input w-full rounded px-3 py-2 text-sm border border-slate-200 focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                        x-model="search"
+                                        @input="filterUsers()"
+                                        @keydown.escape="isOpen = false"
+                                        placeholder="Search by name or role..."
+                                        autocomplete="off"
+                                    />
+                                </div>
+
+                                <!-- User Options -->
+                                <ul class="overflow-y-auto" style="max-height: 180px;">
+                                    <template x-if="filteredUsers.length === 0">
+                                        <li class="px-4 py-6 text-center text-sm text-slate-500">
+                                            <template x-if="search">No users match your search</template>
+                                            <template x-if="!search">No users available</template>
+                                        </li>
+                                    </template>
+
+                                    <template x-for="user in filteredUsers" :key="user.id">
+                                        <li>
+                                            <button
+                                                type="button"
+                                                @click="selectUser(user); isOpen = false"
+                                                class="w-full px-4 py-3 text-left text-sm hover:bg-slate-50 transition flex items-center justify-between border-b border-slate-100 last:border-b-0"
+                                                :class="{ 'bg-slate-100': selectedUserId === user.id }"
+                                            >
+                                                <div>
+                                                    <p class="font-medium text-slate-900" x-text="user.name"></p>
+                                                    <p class="text-xs text-slate-500" x-text="user.role || 'No Role'"></p>
+                                                </div>
+                                                <svg x-show="selectedUserId === user.id" class="h-5 w-5 text-teal-600" viewBox="0 0 20 20" fill="currentColor">
+                                                    <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                </svg>
+                                            </button>
+                                        </li>
+                                    </template>
+                                </ul>
+                            </div>
+                        </div>
+
+                        <!-- Hidden Select for Form Submission -->
+                        <select id="assign_to_user" name="assigned_to_user_id" x-model="selectedUserId" required class="hidden">
                             <option value="" disabled selected>Select user...</option>
                             @forelse ($assignableUsers ?? [] as $user)
-                                <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->role ?? 'No Role' }})</option>
+                                <option value="{{ $user->id }}">{{ $user->name }}</option>
                             @empty
-                                <option value="" disabled>No users available</option>
                             @endforelse
                         </select>
                     </div>
 
-                    <div class="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-5">
+                    <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
                         <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('assign-request-dialog').close()">Cancel</button>
                         <button type="submit" class="rounded-lg px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style="background:#0f766e; color:#fff;">Assign</button>
+                    </div>
                 </form>
             </div>
         </dialog>
 
         <script>
+            function assignUserSearch() {
+                return {
+                    isOpen: false,
+                    search: '',
+                    selectedUserId: '',
+                    selectedUserName: '',
+                    allUsers: [],
+                    filteredUsers: [],
+
+                    initUsers(event) {
+                        const users = {!! json_encode($assignableUsers ?? []) !!};
+                        this.allUsers = users.map(u => ({
+                            id: u.id,
+                            name: u.name,
+                            role: u.role || 'No Role'
+                        }));
+                        this.filteredUsers = this.allUsers;
+                        this.search = '';
+                        this.selectedUserId = '';
+                        this.selectedUserName = '';
+                        this.isOpen = false;
+                    },
+
+                    filterUsers() {
+                        const query = this.search.toLowerCase().trim();
+                        if (!query) {
+                            this.filteredUsers = this.allUsers;
+                        } else {
+                            this.filteredUsers = this.allUsers.filter(user =>
+                                user.name.toLowerCase().includes(query) ||
+                                user.role.toLowerCase().includes(query)
+                            );
+                        }
+                    },
+
+                    selectUser(user) {
+                        this.selectedUserId = user.id;
+                        this.selectedUserName = user.name;
+                        this.search = '';
+                        this.filterUsers();
+                    }
+                };
+            }
+
             function openReceiveDialog(action, referenceCode) {
                 document.getElementById('receive-request-ref').textContent = 'Reference: ' + referenceCode;
                 const form = document.getElementById('receive-request-form');
@@ -472,6 +582,11 @@
                 const form = document.getElementById('assign-request-form');
                 form.action = '/service-requests/' + requestId + '/assign';
                 document.getElementById('assign-request-dialog').showModal();
+                
+                // Trigger Alpine.js init for the dialog
+                const dialog = document.getElementById('assign-request-dialog');
+                const event = new CustomEvent('assign-dialog-open');
+                window.dispatchEvent(event);
             }
 
             (function () {
