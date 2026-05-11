@@ -114,6 +114,22 @@ return [
             // 'trust_server_certificate' => env('DB_TRUST_SERVER_CERTIFICATE', 'false'),
         ],
 
+        'oston' => [
+            'driver' => 'mysql',
+            'host' => env('OSTON_DB_HOST', '127.0.0.1'),
+            'port' => env('OSTON_DB_PORT', '3306'),
+            'database' => env('OSTON_DB_DATABASE', 'oston_dbo'),
+            'username' => env('OSTON_DB_USERNAME', 'root'),
+            'password' => env('OSTON_DB_PASSWORD', ''),
+            'unix_socket' => env('OSTON_DB_SOCKET', ''),
+            'charset' => 'latin1',
+            'collation' => 'latin1_swedish_ci',
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'strict' => true,
+            'engine' => null,
+        ],
+
     ],
 
     /*

@@ -41,6 +41,7 @@ Route::get('/admin/dashboard', [DashboardController::class, 'index'])
 
 Route::get('/service-requests/create', [ServiceRequestController::class, 'create'])->name('service-requests.create');
 Route::post('/service-requests', [ServiceRequestController::class, 'store'])->name('service-requests.store');
+Route::get('/api/offices/search', [ServiceRequestController::class, 'officeSearch'])->name('offices.search');
 Route::get('/track-your-request', [ServiceRequestController::class, 'track'])->name('service-requests.track');
 Route::post('/track-your-request/{referenceCode}/verify/send-code', [ServiceRequestController::class, 'sendTrackAccessCode'])
     ->middleware('throttle:track-send-code')

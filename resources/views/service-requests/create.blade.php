@@ -1,42 +1,8 @@
 @php View::share('pageTitle', 'Service Request Form'); @endphp
 <x-guest-layout>
     @php
-        $hospitalOfficeMap = [
-            'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
-            'National Kidney and Transplant Institute' => 'East Avenue, Quezon City, Metro Manila',
-            'Lung Center of the Philippines' => 'Quezon Avenue, Quezon City, Metro Manila',
-            'Philippine Children\'s Medical Center' => 'Quezon Avenue, Quezon City, Metro Manila',
-            'National Center for Mental Health' => 'Nueve de Febrero, Mandaluyong City, Metro Manila',
-            'Research Institute for Tropical Medicine' => '9002 Research Dr, Alabang, Muntinlupa',
-            'Amang Rodriguez Memorial Medical Center' => 'Sumulong Hwy, Marikina, Metro Manila',
-            'Dr. Jose N. Rodriguez Memorial Hospital and Sanitarium' => 'Tala, Caloocan City, Metro Manila',
-            'Jose R. Reyes Memorial Medical Center' => 'Rizal Avenue, Sta. Cruz, Manila',
-            'San Lazaro Hospital' => 'Quiricada St, Sta. Cruz, Manila',
-            'Tondo Medical Center' => 'Honorio Lopez Blvd, Tondo, Manila',
-            'Quirino Memorial Medical Center' => 'Project 4, Quezon City, Metro Manila',
-            'East Avenue Medical Center' => 'East Avenue, Diliman, Quezon City',
-            'Rizal Medical Center' => 'Pasig Blvd, Pasig, Metro Manila',
-            'Las Piñas General Hospital and Satellite Trauma Center' => 'P. Diego Cera Ave, Las Piñas',
-            'Valenzuela Medical Center' => 'Padrigal St, Karuhatan, Valenzuela',
-            'Philippine General Hospital' => 'Taft Ave, Ermita, Manila',
-            'Baguio General Hospital and Medical Center' => 'Gov. Pack Rd, Baguio City, Benguet',
-            'Ilocos Training and Regional Medical Center' => 'Parian, San Fernando City, La Union',
-            'Mariano Marcos Memorial Hospital and Medical Center' => 'Batac City, Ilocos Norte',
-            'Cagayan Valley Medical Center' => 'Carig, Tuguegarao City, Cagayan',
-            'Jose B. Lingad Memorial General Hospital' => 'San Fernando, Pampanga',
-            'Bicol Regional Hospital and Medical Center' => 'Concepcion Pequeña, Naga City, Camarines Sur',
-            'Batangas Medical Center' => 'Bihi-Road, Kumintang Ibaba, Batangas City',
-            'Western Visayas Medical Center' => 'Q. Abeto St, Mandurriao, Iloilo City',
-            'Vicente Sotto Memorial Medical Center' => 'B. Rodriguez St, Cebu City',
-            'Corazon Locsin Montelibano Memorial Regional Hospital' => 'Lacson St, Bacolod City',
-            'Eastern Visayas Medical Center' => 'Brgy. Bagasumbol, Tacloban City',
-            'Zamboanga City Medical Center' => 'Dr. Evangelista St, Zamboanga City',
-            'Northern Mindanao Medical Center' => 'Capitol Compound, Cagayan de Oro City',
-            'Southern Philippines Medical Center' => 'J.P. Laurel Ave, Davao City',
-            'Cotabato Regional and Medical Center' => 'Sinsuat Ave, Cotabato City',
-            'Davao Regional Medical Center' => 'Apokon, Tagum City, Davao del Norte',
-            'Maguindanao Provincial Hospital' => 'Shariff Aguak, Maguindanao',
-        ];
+        $hospitalOfficeMap = is_array($hospitalOfficeMap ?? null) ? $hospitalOfficeMap : [];
+        $officeRegcodeMap = is_array($officeRegcodeMap ?? null) ? $officeRegcodeMap : [];
     @endphp
 
     <style>
@@ -243,6 +209,21 @@
             letter-spacing: 0.04em;
             text-transform: uppercase;
             color: #000;
+        }
+        .srf-office-label-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .srf-input.srf-office-region-filter {
+            width: auto;
+            min-width: 150px;
+            max-width: 220px;
+            flex: 0 1 220px;
+            padding-top: 4px;
+            padding-bottom: 4px;
+            font-size: 13px;
         }
         .srf-required {
             color: #ef4444;
@@ -768,11 +749,11 @@
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="expected_completion_date">
-                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion
+                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion <span class="srf-required">*</span>
                                 </label>
                                 <div style="display: flex; gap: 8px;">
-                                    <input id="expected_completion_date" type="date" name="expected_completion_date" value="{{ old('expected_completion_date') }}" class="srf-input" style="width: 180px;">
-                                    <input id="expected_completion_time" type="time" name="expected_completion_time" value="{{ old('expected_completion_time') }}" class="srf-input" style="width: 140px;">
+                                    <input id="expected_completion_date" type="date" name="expected_completion_date" value="{{ old('expected_completion_date') }}" class="srf-input" style="width: 180px;" required>
+                                    <input id="expected_completion_time" type="time" name="expected_completion_time" value="{{ old('expected_completion_time') }}" class="srf-input" style="width: 140px;" required>
                                 </div>
                             </div>
                         </div>
@@ -822,35 +803,42 @@
 
                         <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
                             <div class="srf-field">
-                                <label class="srf-label" for="office">
-                                    <span class="srf-number-badge">5</span> Office <span class="srf-required">*</span>
-                                </label>
+                                <div class="srf-office-label-row">
+                                    <label class="srf-label" for="office">
+                                        <span class="srf-number-badge">5</span> Office <span class="srf-required">*</span>
+                                    </label>
+                                    <select id="office_region_filter" name="office_region_filter" class="srf-input srf-office-region-filter">
+                                        <option value="">All regions</option>
+                                        @foreach (($parentOfficeOptions ?? []) as $parentOfficeOption)
+                                            <option value="{{ $parentOfficeOption }}" {{ old('office_region_filter') === $parentOfficeOption ? 'selected' : '' }}>
+                                                {{ $parentOfficeOption }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
                                 @php
-                                    $officeOptions = collect($officeOptions ?? []);
+                                    $regions = $regions ?? [];
+                                    $hospitalsByRegion = $hospitalsByRegion ?? [];
+                                    $parentOfficeOptions = $parentOfficeOptions ?? [];
+                                    $officesByParent = $officesByParent ?? [];
+                                    $officeParentMap = $officeParentMap ?? [];
                                     $oldOffice = (string) old('office', '');
                                 @endphp
                                 <div class="srf-system-picker" data-office-picker>
-                                    <input
-                                        id="office"
-                                        type="hidden"
-                                        name="office"
-                                        value="{{ $oldOffice }}"
-                                    >
+                                    <input type="hidden" id="office" name="office" value="{{ old('office', '') }}">
                                     <div class="srf-system-picker-box">
                                         <div id="office_chips" class="srf-system-picker-chips"></div>
                                         <input
                                             id="office_search"
                                             type="text"
                                             class="srf-system-picker-input"
+                                            placeholder="Search and select an office..."
                                             autocomplete="off"
-                                            placeholder="Office"
                                         >
                                     </div>
-                                    <div
-                                        id="office_results"
-                                        class="srf-system-picker-results hidden"
-                                    ></div>
+                                    <div id="office_results" class="srf-system-picker-results hidden"></div>
                                 </div>
+                                <p id="office-regcode-label" class="mt-1 text-[11px] text-slate-500"></p>
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="address">
@@ -872,13 +860,13 @@
                                     oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile No <span class="srf-required">*</span></label>
+                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile No</label>
                                 <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="tel"
-                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" autocomplete="tel-national" required maxlength="20">
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" autocomplete="tel-national" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span> Email Address</label>
-                                <input id="email_address" type="text" name="email_address" value="{{ old('email_address') }}" class="srf-input" autocomplete="email">
+                                <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span> Email Address <span class="srf-required">*</span></label>
+                                <input id="email_address" type="email" name="email_address" value="{{ old('email_address') }}" class="srf-input" autocomplete="email" required>
                             </div>
                         </div>
                     </div>
@@ -994,7 +982,11 @@
             const requestCategoryOther = document.getElementById('request_category_other');
             const draftStorageKey = 'service-request-create-draft-v1';
             const applicationSystemOptions = @json($applicationSystemOptions->values());
-            const officeOptions = @json($officeOptions->values());
+            const officeOptions = [];
+            const officeParentMap = {};
+            const hospitalOfficeMap = {};
+            const officeRegcodeMap = {};
+            const officeSearchEndpoint = @json(route('offices.search'));
 
             const escapeHtml = function (value) {
                 return String(value || '')
@@ -1010,7 +1002,7 @@
                 const searchInput = document.getElementById(config.searchId);
                 const chipsContainer = document.getElementById(config.chipsId);
                 const results = document.getElementById(config.resultsId);
-                const options = Array.isArray(config.options) ? config.options : [];
+                let options = Array.isArray(config.options) ? config.options : [];
                 const maxSelections = Number(config.maxSelections || 0);
 
                 if (!hiddenInput || !searchInput || !chipsContainer || !results) return null;
@@ -1095,8 +1087,64 @@
                     return selectedKey(option).includes(selectedKey(query));
                 };
 
-                const renderResults = function () {
+                const loadRemoteOptions = async function (query) {
+                    if (!config.searchEndpoint) {
+                        return;
+                    }
+
+                    const url = new URL(config.searchEndpoint, window.location.origin);
+                    url.searchParams.set('q', query);
+
+                    if (config.parentFilterId) {
+                        const parentFilter = document.getElementById(config.parentFilterId);
+                        const parentValue = parentFilter ? parentFilter.value.trim() : '';
+                        if (parentValue !== '') {
+                            url.searchParams.set('parent_name', parentValue);
+                        }
+                    }
+
+                    try {
+                        const response = await fetch(url.toString(), {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+
+                        if (!response.ok) {
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        const offices = Array.isArray(payload.offices) ? payload.offices : [];
+
+                        offices.forEach(function (office) {
+                            const name = normalize(office.name || '');
+                            if (name === '') {
+                                return;
+                            }
+
+                            hospitalOfficeMap[name] = String(office.address || '');
+                            officeRegcodeMap[name] = String(office.regcode || '');
+                            officeParentMap[name] = String(office.parent_name || '');
+                        });
+
+                        options = offices
+                            .map(function (office) {
+                                return normalize(office.name || '');
+                            })
+                            .filter(function (name) {
+                                return name !== '';
+                            });
+                    } catch (error) {
+                        // Keep the current option list when search fails.
+                    }
+                };
+
+                const renderResults = async function () {
                     const query = normalize(searchInput.value);
+                    await loadRemoteOptions(query);
+
                     const selectedKeys = selected.map(selectedKey);
                     const matches = options
                         .filter(function (option) {
@@ -1175,10 +1223,16 @@
                     });
                 }
 
+                const setOptions = function (nextOptions) {
+                    options = Array.isArray(nextOptions) ? nextOptions : [];
+                    renderResults();
+                };
+
                 setFromHiddenInput();
 
                 return {
                     setFromHiddenInput: setFromHiddenInput,
+                    setOptions: setOptions,
                 };
             };
 
@@ -1231,10 +1285,38 @@
                 resultsId: 'office_results',
                 rootSelector: '[data-office-picker]',
                 options: officeOptions,
+                searchEndpoint: officeSearchEndpoint,
+                parentFilterId: 'office_region_filter',
                 placeholder: 'Office',
-                requiredMessage: 'Please select or type an office.',
+                requiredMessage: 'Please select an office.',
                 maxSelections: 1,
             });
+
+            const officeRegionFilter = document.getElementById('office_region_filter');
+            const officeHiddenInput = document.getElementById('office');
+            const applyOfficeRegionFilter = function () {
+                if (!officeRegionFilter || !officePicker) return;
+
+                const selectedRegion = officeRegionFilter.value.trim();
+                officePicker.setOptions([]);
+
+                if (!officeHiddenInput) return;
+                const currentOffice = officeHiddenInput.value.trim();
+                const currentOfficeRegion = String(officeParentMap[currentOffice] || '').trim();
+                if (currentOffice !== '' && currentOfficeRegion !== '' && selectedRegion !== '' && currentOfficeRegion !== selectedRegion) {
+                    officeHiddenInput.value = '';
+                    officePicker.setFromHiddenInput();
+                }
+            };
+
+            if (officeRegionFilter && officeHiddenInput && officeHiddenInput.value.trim() !== '' && officeParentMap[officeHiddenInput.value.trim()]) {
+                officeRegionFilter.value = officeParentMap[officeHiddenInput.value.trim()];
+            }
+
+            if (officeRegionFilter) {
+                officeRegionFilter.addEventListener('change', applyOfficeRegionFilter);
+                applyOfficeRegionFilter();
+            }
 
             const saveDraftToStorage = function () {
                 if (!createForm) return;
@@ -1425,12 +1507,20 @@
 
             const officeInput = document.getElementById('office');
             const addressInput = document.getElementById('address');
-            const officeAddressMap = @json($hospitalOfficeMap);
+            const officeRegcodeLabel = document.getElementById('office-regcode-label');
 
             const syncAddress = function () {
                 if (!addressInput) return;
-                const mapped = officeAddressMap[officeInput.value.trim()] || '';
+                const selectedOffice = officeInput.value.trim();
+                const mapped = hospitalOfficeMap[selectedOffice] || '';
                 if (mapped) addressInput.value = mapped;
+
+                if (officeRegcodeLabel) {
+                    const regcode = officeRegcodeMap[selectedOffice] || '';
+                    officeRegcodeLabel.textContent = regcode !== ''
+                        ? 'Regional Hospital / Health Facility Code (for reference): ' + regcode
+                        : '';
+                }
             };
 
             if (officeInput) {

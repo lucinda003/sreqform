@@ -274,6 +274,8 @@ class ServiceRequestController extends Controller
         $submissionToken = (string) Str::uuid();
         session()->put('service_request_submission_token', $submissionToken);
 
+        $officeData = $this->officeLookupData();
+
         $departmentOptions = [];
         $authUser = Auth::user();
 
@@ -293,15 +295,105 @@ class ServiceRequestController extends Controller
 
         return view('service-requests.create', [
             'departmentOptions' => $departmentOptions,
-            'officeOptions' => Office::query()
-                ->where('is_active', true)
-                ->orderBy('name')
-                ->pluck('name'),
+            'regions' => $officeData['regions'],
+            'parentOfficeOptions' => $officeData['parentOfficeOptions'],
+            'hospitalsByRegion' => $officeData['hospitalsByRegion'],
+            'officesByParent' => $officeData['officesByParent'],
+            'hospitalOfficeMap' => $officeData['hospitalOfficeMap'],
+            'officeRegcodeMap' => $officeData['officeRegcodeMap'],
+            'officeParentMap' => $officeData['officeParentMap'],
+            'officeOptions' => $officeData['officeOptions'],
             'applicationSystemOptions' => ApplicationSystem::query()
                 ->where('is_active', true)
                 ->orderBy('name')
                 ->pluck('name'),
             'submissionToken' => $submissionToken,
+        ]);
+    }
+
+    private function officeLookupData(): array
+    {
+        $regions = Office::query()
+            ->where('is_active', true)
+            ->whereNotNull('regcode')
+            ->select('regcode')
+            ->distinct()
+            ->orderBy('regcode')
+            ->pluck('regcode')
+            ->map(function ($value) {
+                return trim((string) $value);
+            })
+            ->filter(function ($value) {
+                return $value !== '';
+            })
+            ->values()
+            ->all();
+
+        $parentOfficeOptions = Office::query()
+            ->where('is_active', true)
+            ->whereNotNull('parent_name')
+            ->select('parent_name')
+            ->distinct()
+            ->orderBy('parent_name')
+            ->pluck('parent_name')
+            ->map(function ($value) {
+                return trim((string) $value);
+            })
+            ->filter(function ($value) {
+                return $value !== '';
+            })
+            ->unique()
+            ->sort()
+            ->values()
+            ->all();
+
+        return [
+            'regions' => $regions,
+            'parentOfficeOptions' => $parentOfficeOptions,
+            'hospitalsByRegion' => [],
+            'officesByParent' => [],
+            'hospitalOfficeMap' => [],
+            'officeRegcodeMap' => [],
+            'officeParentMap' => [],
+            'officeOptions' => collect(),
+        ];
+    }
+
+    public function officeSearch(Request $request): JsonResponse
+    {
+        $search = trim((string) $request->query('q', ''));
+        $parentName = trim((string) $request->query('parent_name', ''));
+
+        $offices = Office::query()
+            ->where('is_active', true)
+            ->when($parentName !== '', function (Builder $query) use ($parentName): void {
+                $query->where('parent_name', $parentName);
+            })
+            ->when($search !== '', function (Builder $query) use ($search): void {
+                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $search) . '%';
+
+                $query->where(function (Builder $builder) use ($like): void {
+                    $builder
+                        ->where('name', 'like', $like)
+                        ->orWhere('address', 'like', $like)
+                        ->orWhere('regcode', 'like', $like)
+                        ->orWhere('parent_name', 'like', $like);
+                });
+            })
+            ->orderBy('parent_name')
+            ->orderBy('name')
+            ->limit(25)
+            ->get(['name', 'address', 'regcode', 'parent_name']);
+
+        return response()->json([
+            'offices' => $offices->map(function (Office $office): array {
+                return [
+                    'name' => trim((string) $office->name),
+                    'address' => trim((string) ($office->address ?? '')),
+                    'regcode' => trim((string) ($office->regcode ?? '')),
+                    'parent_name' => trim((string) ($office->parent_name ?? '')),
+                ];
+            })->values(),
         ]);
     }
 
@@ -1073,9 +1165,19 @@ class ServiceRequestController extends Controller
             ['referenceCode' => $serviceRequest->reference_code]
         );
 
+        $officeData = $this->officeLookupData();
+
         return view('service-requests.track-edit', [
             'serviceRequest' => $serviceRequest,
             'signedUpdateUrl' => $signedUpdateUrl,
+            'regions' => $officeData['regions'],
+            'parentOfficeOptions' => $officeData['parentOfficeOptions'],
+            'hospitalsByRegion' => $officeData['hospitalsByRegion'],
+            'officesByParent' => $officeData['officesByParent'],
+            'hospitalOfficeMap' => $officeData['hospitalOfficeMap'],
+            'officeRegcodeMap' => $officeData['officeRegcodeMap'],
+            'officeParentMap' => $officeData['officeParentMap'],
+            'officeOptions' => $officeData['officeOptions'],
         ]);
     }
 
@@ -1349,6 +1451,8 @@ class ServiceRequestController extends Controller
             ? $this->chatMessagesFor($serviceRequest, 150)
             : collect();
 
+        $officeData = $this->officeLookupData();
+
         return view('service-requests.edit', [
             'serviceRequest' => $serviceRequest,
             'departmentOptions' => $this->approvedDepartmentOptions(true, $currentDepartment !== '' ? $currentDepartment : null),
@@ -1356,6 +1460,14 @@ class ServiceRequestController extends Controller
             'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
             'isReadOnly' => $isReadOnly,
             'listingContext' => $this->listingContextFromRequest($request),
+            'regions' => $officeData['regions'],
+            'parentOfficeOptions' => $officeData['parentOfficeOptions'],
+            'hospitalsByRegion' => $officeData['hospitalsByRegion'],
+            'officesByParent' => $officeData['officesByParent'],
+            'hospitalOfficeMap' => $officeData['hospitalOfficeMap'],
+            'officeRegcodeMap' => $officeData['officeRegcodeMap'],
+            'officeParentMap' => $officeData['officeParentMap'],
+            'officeOptions' => $officeData['officeOptions'],
         ]);
     }
 
@@ -2054,8 +2166,8 @@ class ServiceRequestController extends Controller
             'department_code' => ['nullable', 'string', 'max:30'],
             'request_category' => ['nullable', 'string', 'max:100'],
             'application_system_name' => ['required', 'string', 'max:255'],
-            'expected_completion_date' => ['nullable', 'date'],
-            'expected_completion_time' => ['nullable', 'date_format:H:i'],
+            'expected_completion_date' => ['required', 'date'],
+            'expected_completion_time' => ['required', 'date_format:H:i'],
             'contact_last_name' => ['required', 'string', 'max:255'],
             'contact_first_name' => ['required', 'string', 'max:255'],
             'contact_middle_name' => ['nullable', 'string', 'max:255'],
@@ -2064,8 +2176,8 @@ class ServiceRequestController extends Controller
             'address' => ['required', 'string', 'max:255'],
             'landline' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+() \-]*$/'],
             'fax_no' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+() \-]*$/'],
-            'mobile_no' => ['required', 'string', 'max:50', 'regex:/^[0-9+() \-]+$/'],
-            'email_address' => ['nullable', 'string', 'max:255'],
+            'mobile_no' => ['nullable', 'string', 'max:50', 'regex:/^[0-9+() \-]*$/'],
+            'email_address' => ['required', 'string', 'email', 'max:255'],
             'description_request' => ['required', 'string', 'max:5000'],
             'description_photos' => ['nullable', 'array', 'max:3'],
             'description_photos.*' => ['nullable', 'image', 'max:5120'],

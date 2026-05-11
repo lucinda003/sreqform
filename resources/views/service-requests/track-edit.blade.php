@@ -1,42 +1,4 @@
 <x-guest-layout>
-    @php
-        $hospitalOfficeMap = [
-            'Philippine Heart Center' => 'East Avenue, Quezon City, Metro Manila',
-            'National Kidney and Transplant Institute' => 'East Avenue, Quezon City, Metro Manila',
-            'Lung Center of the Philippines' => 'Quezon Avenue, Quezon City, Metro Manila',
-            'Philippine Children\'s Medical Center' => 'Quezon Avenue, Quezon City, Metro Manila',
-            'National Center for Mental Health' => 'Nueve de Febrero, Mandaluyong City, Metro Manila',
-            'Research Institute for Tropical Medicine' => '9002 Research Dr, Alabang, Muntinlupa',
-            'Amang Rodriguez Memorial Medical Center' => 'Sumulong Hwy, Marikina, Metro Manila',
-            'Dr. Jose N. Rodriguez Memorial Hospital and Sanitarium' => 'Tala, Caloocan City, Metro Manila',
-            'Jose R. Reyes Memorial Medical Center' => 'Rizal Avenue, Sta. Cruz, Manila',
-            'San Lazaro Hospital' => 'Quiricada St, Sta. Cruz, Manila',
-            'Tondo Medical Center' => 'Honorio Lopez Blvd, Tondo, Manila',
-            'Quirino Memorial Medical Center' => 'Project 4, Quezon City, Metro Manila',
-            'East Avenue Medical Center' => 'East Avenue, Diliman, Quezon City',
-            'Rizal Medical Center' => 'Pasig Blvd, Pasig, Metro Manila',
-            'Las Piñas General Hospital and Satellite Trauma Center' => 'P. Diego Cera Ave, Las Piñas',
-            'Valenzuela Medical Center' => 'Padrigal St, Karuhatan, Valenzuela',
-            'Philippine General Hospital' => 'Taft Ave, Ermita, Manila',
-            'Baguio General Hospital and Medical Center' => 'Gov. Pack Rd, Baguio City, Benguet',
-            'Ilocos Training and Regional Medical Center' => 'Parian, San Fernando City, La Union',
-            'Mariano Marcos Memorial Hospital and Medical Center' => 'Batac City, Ilocos Norte',
-            'Cagayan Valley Medical Center' => 'Carig, Tuguegarao City, Cagayan',
-            'Jose B. Lingad Memorial General Hospital' => 'San Fernando, Pampanga',
-            'Bicol Regional Hospital and Medical Center' => 'Concepcion Pequeña, Naga City, Camarines Sur',
-            'Batangas Medical Center' => 'Bihi-Road, Kumintang Ibaba, Batangas City',
-            'Western Visayas Medical Center' => 'Q. Abeto St, Mandurriao, Iloilo City',
-            'Vicente Sotto Memorial Medical Center' => 'B. Rodriguez St, Cebu City',
-            'Corazon Locsin Montelibano Memorial Regional Hospital' => 'Lacson St, Bacolod City',
-            'Eastern Visayas Medical Center' => 'Brgy. Bagasumbol, Tacloban City',
-            'Zamboanga City Medical Center' => 'Dr. Evangelista St, Zamboanga City',
-            'Northern Mindanao Medical Center' => 'Capitol Compound, Cagayan de Oro City',
-            'Southern Philippines Medical Center' => 'J.P. Laurel Ave, Davao City',
-            'Cotabato Regional and Medical Center' => 'Sinsuat Ave, Cotabato City',
-            'Davao Regional Medical Center' => 'Apokon, Tagum City, Davao del Norte',
-            'Maguindanao Provincial Hospital' => 'Shariff Aguak, Maguindanao',
-        ];
-    @endphp
     <header class="auth-login-topbar">
         <div class="auth-login-brand">
             <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
@@ -92,9 +54,9 @@
                             <td class="border border-slate-400 px-2 py-1">3) Application System Name * : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" required></td>
                         </tr>
                         <tr>
-                            <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of Completion :
-                                <input type="date" name="expected_completion_date" value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}" class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                                <input type="time" name="expected_completion_time" value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}" class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
+                            <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of Completion * :
+                                <input type="date" name="expected_completion_date" value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}" class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0" required>
+                                <input type="time" name="expected_completion_time" value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}" class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0" required>
                             </td>
                         </tr>
                         <tr>
@@ -127,8 +89,15 @@
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">6) Office :
-                                <input id="office" list="hospital-office-options" name="office" value="{{ old('office', $serviceRequest->office) }}" autocomplete="off" class="auth-input !inline-block !min-h-0 !w-[450px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" required>
-                                <p class="mt-1 text-[11px] text-slate-500">Type or pick from the regional hospital list.</p>
+                                <div data-office-picker style="display: inline-block; vertical-align: top; width: 450px;">
+                                    <input type="hidden" id="office" name="office" value="{{ old('office', $serviceRequest->office) }}">
+                                    <div style="display: flex; align-items: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; background: white; min-height: 32px;">
+                                        <div id="office_chips" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1;"></div>
+                                        <input type="search" id="office_search" placeholder="Office..." autocomplete="off" style="border: none; outline: none; padding: 4px; flex: 1; min-width: 150px; font-size: 12px;">
+                                    </div>
+                                    <div id="office_results" style="display: none; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; background: white; margin-top: 2px; font-size: 12px;"></div>
+                                </div>
+                                <p id="office-regcode-display" class="mt-1 text-[11px] text-slate-500"></p>
                             </td>
                         </tr>
                         <tr>
@@ -147,10 +116,10 @@
                                             <input name="fax_no" value="{{ old('fax_no', $serviceRequest->fax_no) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
                                         </td>
                                         <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">10) Mobile No :
-                                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>
+                                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel-national" maxlength="20">
                                         </td>
-                                        <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address :
-                                            <input type="text" name="email_address" value="{{ old('email_address', $serviceRequest->email_address) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
+                                        <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address * :
+                                            <input type="email" name="email_address" value="{{ old('email_address', $serviceRequest->email_address) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="email" required>
                                         </td>
                                     </tr>
                                 </table>
@@ -236,74 +205,286 @@
         </div>
     </div>
     </section>
-    <datalist id="hospital-office-options">
-        @foreach (array_keys($hospitalOfficeMap) as $hospitalOfficeOption)
-            <option value="{{ $hospitalOfficeOption }}"></option>
-        @endforeach
-    </datalist>
     <script>
         document.addEventListener('DOMContentLoaded', function () {
+            const escapePickerHtml = function (value) {
+                return String(value || '')
+                    .replace(/&/g, '&amp;')
+                    .replace(/</g, '&lt;')
+                    .replace(/>/g, '&gt;')
+                    .replace(/"/g, '&quot;')
+                    .replace(/'/g, '&#039;');
+            };
+
+            const initChipSearchPicker = function (config) {
+                const hiddenInput = document.getElementById(config.hiddenId);
+                const searchInput = document.getElementById(config.searchId);
+                const chipsContainer = document.getElementById(config.chipsId);
+                const results = document.getElementById(config.resultsId);
+                let options = Array.isArray(config.options) ? config.options : [];
+                const maxSelections = Number(config.maxSelections || 0);
+
+                if (!hiddenInput || !searchInput || !chipsContainer || !results) {
+                    return null;
+                }
+
+                let selected = [];
+
+                const normalize = function (value) {
+                    return String(value || '').trim();
+                };
+
+                const selectedKey = function (value) {
+                    return normalize(value).toLowerCase();
+                };
+
+                const syncHiddenInput = function () {
+                    hiddenInput.value = selected.join(', ');
+                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+                    searchInput.setCustomValidity('');
+                };
+
+                const renderChips = function () {
+                    chipsContainer.innerHTML = selected.map(function (value, index) {
+                        return '<span style="display:inline-flex;align-items:center;gap:4px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;padding:2px 7px;font-size:11px;font-weight:600;color:#0f172a;">' +
+                            escapePickerHtml(value) +
+                            '<button type="button" data-chip-picker-remove="' + index + '" aria-label="Remove ' + escapePickerHtml(value) + '" style="border:0;background:transparent;color:#64748b;font-weight:700;cursor:pointer;padding:0;">x</button>' +
+                            '</span>';
+                    }).join('');
+
+                    searchInput.placeholder = selected.length > 0 ? '' : config.placeholder;
+                    searchInput.classList.toggle('hidden', maxSelections > 0 && selected.length >= maxSelections);
+                };
+
+                const loadRemoteOptions = async function (query) {
+                    if (!config.searchEndpoint) {
+                        return;
+                    }
+
+                    const url = new URL(config.searchEndpoint, window.location.origin);
+                    url.searchParams.set('q', query);
+
+                    try {
+                        const response = await fetch(url.toString(), {
+                            headers: {
+                                'Accept': 'application/json',
+                                'X-Requested-With': 'XMLHttpRequest',
+                            },
+                        });
+
+                        if (!response.ok) {
+                            return;
+                        }
+
+                        const payload = await response.json();
+                        const offices = Array.isArray(payload.offices) ? payload.offices : [];
+
+                        offices.forEach(function (office) {
+                            const name = normalize(office.name || '');
+                            if (name === '') {
+                                return;
+                            }
+
+                            officeAddressMap[name] = String(office.address || '');
+                            officeRegcodeMap[name] = String(office.regcode || '');
+                        });
+
+                        options = offices
+                            .map(function (office) {
+                                return normalize(office.name || '');
+                            })
+                            .filter(function (name) {
+                                return name !== '';
+                            });
+                    } catch (error) {
+                        // Keep current options on transient failures.
+                    }
+                };
+
+                const renderResults = async function () {
+                    const query = normalize(searchInput.value);
+                    await loadRemoteOptions(query);
+
+                    const selectedKeys = selected.map(selectedKey);
+                    const matches = options
+                        .filter(function (option) {
+                            return selectedKeys.indexOf(selectedKey(option)) === -1;
+                        })
+                        .filter(function (option) {
+                            return query === '' || selectedKey(option).includes(selectedKey(query));
+                        })
+                        .slice(0, 20);
+
+                    const rows = matches.map(function (option) {
+                        return '<button type="button" data-chip-picker-option="' + escapePickerHtml(option) + '" style="display:block;width:100%;border:0;background:#fff;padding:6px 8px;text-align:left;cursor:pointer;">' +
+                            escapePickerHtml(option) +
+                            '</button>';
+                    });
+
+                    const exactMatch = options.some(function (option) {
+                        return selectedKey(option) === selectedKey(query);
+                    });
+                    const alreadySelected = selectedKeys.indexOf(selectedKey(query)) !== -1;
+
+                    if (query !== '' && !exactMatch && !alreadySelected) {
+                        rows.unshift('<button type="button" data-chip-picker-option="' + escapePickerHtml(query) + '" style="display:block;width:100%;border:0;background:#fff;padding:6px 8px;text-align:left;cursor:pointer;">Add "' + escapePickerHtml(query) + '"</button>');
+                    }
+
+                    results.innerHTML = rows.length > 0
+                        ? rows.join('')
+                        : '<div style="padding:6px 8px;color:#64748b;">No matching records.</div>';
+                    results.style.display = 'block';
+                };
+
+                const addSelection = function (value) {
+                    const normalized = normalize(value);
+                    if (normalized === '') {
+                        return;
+                    }
+
+                    if (maxSelections > 0 && selected.length >= maxSelections) {
+                        selected = [];
+                    }
+
+                    const exists = selected.some(function (item) {
+                        return selectedKey(item) === selectedKey(normalized);
+                    });
+
+                    if (!exists) {
+                        selected.push(normalized);
+                    }
+
+                    searchInput.value = '';
+                    results.style.display = 'none';
+                    syncHiddenInput();
+                    renderChips();
+                };
+
+                const removeSelection = function (index) {
+                    selected.splice(index, 1);
+                    syncHiddenInput();
+                    renderChips();
+                    renderResults();
+                    searchInput.focus();
+                };
+
+                const setFromHiddenInput = function () {
+                    selected = hiddenInput.value
+                        .split(',')
+                        .map(normalize)
+                        .filter(function (value, index, items) {
+                            return value !== '' && items.findIndex(function (item) {
+                                return selectedKey(item) === selectedKey(value);
+                            }) === index;
+                        });
+
+                    syncHiddenInput();
+                    renderChips();
+                };
+
+                searchInput.addEventListener('input', renderResults);
+                searchInput.addEventListener('focus', renderResults);
+                searchInput.addEventListener('keydown', function (event) {
+                    if (event.key !== 'Enter') {
+                        return;
+                    }
+
+                    event.preventDefault();
+                    const firstOption = results.querySelector('[data-chip-picker-option]');
+                    addSelection(firstOption ? firstOption.getAttribute('data-chip-picker-option') : searchInput.value);
+                });
+
+                results.addEventListener('mousedown', function (event) {
+                    event.preventDefault();
+                });
+
+                results.addEventListener('click', function (event) {
+                    const option = event.target.closest('[data-chip-picker-option]');
+                    if (!option) {
+                        return;
+                    }
+
+                    addSelection(option.getAttribute('data-chip-picker-option'));
+                });
+
+                chipsContainer.addEventListener('click', function (event) {
+                    const removeButton = event.target.closest('[data-chip-picker-remove]');
+                    if (!removeButton) {
+                        return;
+                    }
+
+                    removeSelection(Number(removeButton.getAttribute('data-chip-picker-remove')));
+                });
+
+                document.addEventListener('click', function (event) {
+                    if (event.target.closest(config.rootSelector)) {
+                        return;
+                    }
+
+                    results.style.display = 'none';
+                });
+
+                setFromHiddenInput();
+
+                return {
+                    setFromHiddenInput: setFromHiddenInput,
+                    setOptions: function (nextOptions) {
+                        options = Array.isArray(nextOptions) ? nextOptions : [];
+                        renderResults();
+                    },
+                };
+            };
+
+            // Initialize office chip picker
+            const officeOptions = [];
+            const officeAddressMap = {};
+            const officeRegcodeMap = {};
+            const officeSearchEndpoint = @json(route('offices.search'));
+            const currentOffice = @json(old('office', $serviceRequest->office ?? ''));
+            
+            const officePicker = initChipSearchPicker({
+                hiddenId: 'office',
+                searchId: 'office_search',
+                chipsId: 'office_chips',
+                resultsId: 'office_results',
+                rootSelector: '[data-office-picker]',
+                options: officeOptions,
+                searchEndpoint: officeSearchEndpoint,
+                placeholder: 'Office',
+                requiredMessage: 'Please select an office.',
+                maxSelections: 1,
+            });
+
+            // Sync address and regcode when office changes
             const officeInput = document.getElementById('office');
             const addressInput = document.getElementById('address');
-            const optionsList = document.getElementById('hospital-office-options');
-            const officeAddressMap = @json($hospitalOfficeMap);
-
-            if (!officeInput || !optionsList) {
-                return;
-            }
-
-            const staticOptions = Object.keys(officeAddressMap);
-            const initialDatalistOptions = Array.from(optionsList.querySelectorAll('option')).map(function (option) {
-                return option.value;
-            });
-
-            if (initialDatalistOptions.length === 0) {
-                return;
-            }
-
-            const setOptions = function (items) {
-                optionsList.innerHTML = '';
-                items.forEach(function (item) {
-                    const option = document.createElement('option');
-                    option.value = item;
-                    optionsList.appendChild(option);
-                });
-            };
-
-            officeInput.addEventListener('input', function () {
-                const term = officeInput.value.trim();
-                const termLower = term.toLowerCase();
-
-                if (termLower === '') {
-                    setOptions(staticOptions.slice(0, 50));
-                    return;
-                }
-
-                const startsWithMatches = staticOptions.filter(function (item) {
-                    return item.toLowerCase().startsWith(termLower);
-                });
-                const containsMatches = staticOptions.filter(function (item) {
-                    return item.toLowerCase().includes(termLower);
-                });
-                const filtered = (startsWithMatches.length > 0 ? startsWithMatches : containsMatches).slice(0, 50);
-                setOptions(filtered);
-            });
-
-            const syncAddress = function () {
-                if (!addressInput) {
-                    return;
-                }
-
+            
+            const syncOfficeDetails = function () {
                 const selectedOffice = officeInput.value.trim();
-                const mappedAddress = officeAddressMap[selectedOffice] || '';
-
-                if (mappedAddress !== '') {
-                    addressInput.value = mappedAddress;
+                
+                if (selectedOffice && officeAddressMap[selectedOffice]) {
+                    addressInput.value = officeAddressMap[selectedOffice];
+                }
+                
+                const regcodeDisplay = document.getElementById('office-regcode-display');
+                if (regcodeDisplay && selectedOffice && officeRegcodeMap[selectedOffice]) {
+                    regcodeDisplay.textContent = 'Regional Hospital / Health Facility Code (for reference): ' + officeRegcodeMap[selectedOffice];
                 }
             };
-
-            officeInput.addEventListener('change', syncAddress);
-            officeInput.addEventListener('blur', syncAddress);
+            
+            // Observe changes to office input
+            if (officeInput) {
+                const observer = new MutationObserver(syncOfficeDetails);
+                observer.observe(officeInput, { attributes: true, attributeFilter: ['value'] });
+                
+                officeInput.addEventListener('change', syncOfficeDetails);
+            }
+            
+            // Initial sync if there's an existing office
+            if (currentOffice) {
+                syncOfficeDetails();
+            }
 
             const initSignatureInput = function () {
                 const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');
