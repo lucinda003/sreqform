@@ -74,13 +74,13 @@
                         id="office-search"
                         name="office_search"
                         type="text"
-                        value=""
+                        value="{{ $officeSearch ?? '' }}"
                         placeholder="Search offices..."
                         class="auth-input h-9 w-64 rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
                         data-office-search-input
                     >
-                    <button type="button" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700" onclick="filterTable('office')">Search</button>
-                    <button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" onclick="clearSearch('office')" data-office-clear-button>Clear</button>
+                    <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Search</button>
+                    <a href="{{ route('admin.management.index', ['tab' => 'offices']) }}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-office-clear-button>Clear</a>
                 </form>
 
                 <div class="flex flex-wrap items-center gap-2">
@@ -119,15 +119,19 @@
                             <th scope="col" class="px-4 py-4 font-semibold">
                                 <span class="sr-only">Select</span>
                             </th>
-                            <th scope="col" class="px-6 py-4 font-semibold">Parent Office</th>
-                            <th scope="col" class="px-6 py-4 font-semibold">Office Name</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Name</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Facility Type</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Classification</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Region</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">City / Province</th>
+                            <th scope="col" class="px-6 py-4 font-semibold">Licensing Status</th>
                             <th scope="col" class="px-6 py-4 font-semibold">Status</th>
                             <th scope="col" class="px-6 py-4 font-semibold text-right">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-100">
                         @forelse ($offices as $office)
-                            <tr class="hover:bg-slate-50 transition-colors" data-office-row data-office-name="{{ $office->parent_name ?? 'DOH CENTRAL OFFICE' }} {{ $office->name }}">
+                            <tr class="hover:bg-slate-50 transition-colors" data-office-row data-office-name="{{ $office->name }} {{ $office->facility_type }} {{ $office->classification }} {{ $office->region }} {{ $office->city }} {{ $office->province }}">
                                 <td class="px-4 py-4">
                                     <input
                                         type="checkbox"
@@ -138,8 +142,12 @@
                                         class="h-4 w-4 rounded border-slate-300 text-slate-700 focus:ring-slate-500"
                                     >
                                 </td>
-                                <td class="px-6 py-4 text-slate-700">{{ $office->parent_name ?? 'DOH CENTRAL OFFICE' }}</td>
                                 <td class="px-6 py-4 font-medium text-slate-900">{{ $office->name }}</td>
+                                <td class="px-6 py-4 text-slate-700">{{ $office->facility_type ?: '--' }}</td>
+                                <td class="px-6 py-4 text-slate-700">{{ $office->classification ?: '--' }}</td>
+                                <td class="px-6 py-4 text-slate-700">{{ $office->region ?: ($office->parent_name ?: '--') }}</td>
+                                <td class="px-6 py-4 text-slate-700">{{ collect([$office->city, $office->province])->filter()->implode(' / ') ?: '--' }}</td>
+                                <td class="px-6 py-4 text-slate-700">{{ $office->licensing_status ?: '--' }}</td>
                                 <td class="px-6 py-4">
                                     <span class="inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-semibold {{ $office->is_active ? 'border border-emerald-200 bg-emerald-50 text-emerald-700' : 'border border-slate-200 bg-slate-50 text-slate-600' }}">
                                         {{ $office->is_active ? 'Active' : 'Inactive' }}
@@ -148,9 +156,24 @@
                                 <td class="px-6 py-4 text-right">
                                     <div class="inline-flex gap-2">
                                         <button 
-                                            type="button" 
-                                            class="rounded-lg px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 transition border border-transparent hover:border-sky-200"
-                                            onclick="openEditOfficeDialog({{ $office->id }}, @js($office->parent_name ?? 'DOH CENTRAL OFFICE'), @js($office->name), {{ $office->is_active ? 'true' : 'false' }})"
+                                        type="button" 
+                                        class="rounded-lg px-3 py-1.5 text-xs font-semibold text-sky-700 hover:bg-sky-50 transition border border-transparent hover:border-sky-200"
+                                            onclick="openEditOfficeDialog(@js([
+                                                'id' => $office->id,
+                                                'name' => $office->name,
+                                                'licensing_status' => $office->licensing_status,
+                                                'license_date' => optional($office->license_date)->toDateString(),
+                                                'facility_type' => $office->facility_type,
+                                                'classification' => $office->classification,
+                                                'street' => $office->street,
+                                                'building' => $office->building,
+                                                'region' => $office->region ?: $office->parent_name,
+                                                'province' => $office->province,
+                                                'city' => $office->city,
+                                                'barangay' => $office->barangay,
+                                                'phone' => $office->phone,
+                                                'is_active' => (bool) $office->is_active,
+                                            ]))"
                                         >
                                             Edit
                                         </button>
@@ -169,11 +192,15 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-6 py-8 text-center text-sm text-slate-500">No offices found. Create one to get started.</td>
+                                <td colspan="9" class="px-6 py-8 text-center text-sm text-slate-500">No offices found. Create one to get started.</td>
                             </tr>
                         @endforelse
                     </tbody>
                 </table>
+            </div>
+
+            <div class="mt-4">
+                <x-admin-pagination :paginator="$offices" label="offices" />
             </div>
         </div>
 
@@ -205,13 +232,13 @@
                         id="system-search"
                         name="system_search"
                         type="text"
-                        value=""
+                        value="{{ $systemSearch ?? '' }}"
                         placeholder="Search systems..."
                         class="auth-input h-9 w-64 rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
                         data-system-search-input
                     >
-                    <button type="button" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700" onclick="filterTable('system')">Search</button>
-                    <button type="button" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" onclick="clearSearch('system')" data-system-clear-button>Clear</button>
+                    <button type="submit" class="rounded-lg bg-slate-900 px-3 py-1.5 text-xs font-semibold text-white hover:bg-slate-700">Search</button>
+                    <a href="{{ route('admin.management.index', ['tab' => 'systems']) }}" class="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-50" data-system-clear-button>Clear</a>
                 </form>
 
                 <div class="flex flex-wrap items-center gap-2">
@@ -304,10 +331,14 @@
                     </tbody>
                 </table>
             </div>
+
+            <div class="mt-4">
+                <x-admin-pagination :paginator="$systems" label="systems" />
+            </div>
         </div>
 
         <!-- Create Office Dialog -->
-        <dialog id="create-office-dialog" class="w-full max-w-lg rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+        <dialog id="create-office-dialog" class="w-full max-w-3xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
             <div class="rounded-2xl bg-white p-6 sm:p-8">
                 <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
                     <h3 class="text-lg font-bold text-slate-900">Add Office</h3>
@@ -325,19 +356,7 @@
                     <input type="hidden" name="return_to" value="management">
                     <input type="hidden" name="return_tab" value="offices">
 
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="office_parent_name">Parent Office</label>
-                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="office_parent_name" name="parent_name" required>
-                            @foreach (($parentOfficeOptions ?? ['DOH CENTRAL OFFICE']) as $parentOfficeOption)
-                                <option value="{{ $parentOfficeOption }}">{{ $parentOfficeOption }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="office_name">Office Name</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="office_name" name="name" type="text" placeholder="e.g., Administrative Service" required autofocus>
-                    </div>
+                    <x-admin-office-fields prefix="office" :parent-office-options="$parentOfficeOptions" autofocus />
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
                         <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('create-office-dialog').close()">Cancel</button>
@@ -348,7 +367,7 @@
         </dialog>
 
         <!-- Edit Office Dialog -->
-        <dialog id="edit-office-dialog" class="w-full max-w-lg rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
+        <dialog id="edit-office-dialog" class="w-full max-w-3xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40">
             <div class="rounded-2xl bg-white p-6 sm:p-8">
                 <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
                     <h3 class="text-lg font-bold text-slate-900">Edit Office</h3>
@@ -367,19 +386,7 @@
                     <input type="hidden" name="return_to" value="management">
                     <input type="hidden" name="return_tab" value="offices">
 
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="edit_office_parent_name">Parent Office</label>
-                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_office_parent_name" name="parent_name" required>
-                            @foreach (($parentOfficeOptions ?? ['DOH CENTRAL OFFICE']) as $parentOfficeOption)
-                                <option value="{{ $parentOfficeOption }}">{{ $parentOfficeOption }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="edit_office_name">Office Name</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="edit_office_name" name="name" type="text" required>
-                    </div>
+                    <x-admin-office-fields prefix="edit_office" :parent-office-options="$parentOfficeOptions" />
 
                     <div>
                         <label class="flex items-center gap-3">
@@ -491,20 +498,6 @@
                 window.history.replaceState({}, '', url.toString());
             }
 
-            function clearSearchParams() {
-                const url = new URL(window.location.href);
-                const hasOfficeSearch = url.searchParams.has('office_search');
-                const hasSystemSearch = url.searchParams.has('system_search');
-
-                if (!hasOfficeSearch && !hasSystemSearch) {
-                    return;
-                }
-
-                url.searchParams.delete('office_search');
-                url.searchParams.delete('system_search');
-                window.history.replaceState({}, '', url.toString());
-            }
-
             function getBulkCheckboxes(prefix) {
                 return Array.from(document.querySelectorAll('[data-' + prefix + '-checkbox]'));
             }
@@ -553,68 +546,11 @@
                 return confirm('Delete ' + selectedCount + ' selected ' + label + (selectedCount === 1 ? '' : 's') + '?');
             }
 
-            function normalizeSearch(value) {
-                return String(value || '').trim().toLowerCase();
-            }
-
-            function filterTable(prefix) {
-                const input = document.querySelector('[data-' + prefix + '-search-input]');
-                const query = normalizeSearch(input ? input.value : '');
-                const rows = Array.from(document.querySelectorAll('[data-' + prefix + '-row]'));
-
-                rows.forEach((row) => {
-                    const nameValue = normalizeSearch(row.getAttribute('data-' + prefix + '-name') || row.textContent);
-                    const isMatch = query === '' || nameValue.includes(query);
-
-                    row.style.display = isMatch ? '' : 'none';
-
-                    if (!isMatch) {
-                        const checkbox = row.querySelector('[data-' + prefix + '-checkbox]');
-                        if (checkbox) {
-                            checkbox.checked = false;
-                        }
-                    }
-                });
-
-                updateBulkState(prefix);
-            }
-
-            function clearSearch(prefix) {
-                const input = document.querySelector('[data-' + prefix + '-search-input]');
-                if (input) {
-                    input.value = '';
-                }
-
-                filterTable(prefix);
-            }
-
-            function bindSearch(prefix) {
-                const form = document.querySelector('[data-' + prefix + '-search-form]');
-                const input = document.querySelector('[data-' + prefix + '-search-input]');
-
-                if (!form || !input) {
-                    return;
-                }
-
-                form.addEventListener('submit', (event) => {
-                    event.preventDefault();
-                    filterTable(prefix);
-                });
-
-                input.addEventListener('input', () => {
-                    filterTable(prefix);
-                });
-            }
-
             // Initialize - show requested tab
             switchTab(@json($resolvedTab));
 
             document.addEventListener('DOMContentLoaded', () => {
-                clearSearchParams();
-
                 ['office', 'system'].forEach((prefix) => {
-                    bindSearch(prefix);
-                    filterTable(prefix);
                     getBulkCheckboxes(prefix).forEach((checkbox) => {
                         checkbox.addEventListener('change', () => updateBulkState(prefix));
                     });
@@ -622,13 +558,31 @@
                 });
             });
 
-            function openEditOfficeDialog(id, parentName, name, isActive) {
-                document.getElementById('edit_office_parent_name').value = parentName || 'DOH CENTRAL OFFICE';
-                document.getElementById('edit_office_name').value = name;
-                document.getElementById('edit_office_is_active').checked = isActive;
+            function openEditOfficeDialog(office) {
+                [
+                    'name',
+                    'licensing_status',
+                    'license_date',
+                    'facility_type',
+                    'classification',
+                    'street',
+                    'building',
+                    'region',
+                    'province',
+                    'city',
+                    'barangay',
+                    'phone',
+                ].forEach(function (field) {
+                    var input = document.getElementById('edit_office_' + field);
+                    if (input) {
+                        input.value = office[field] || '';
+                    }
+                });
+
+                document.getElementById('edit_office_is_active').checked = !!office.is_active;
                 
                 const form = document.getElementById('edit-office-form');
-                form.action = "/admin/offices/" + id;
+                form.action = "/admin/offices/" + office.id;
                 
                 document.getElementById('edit-office-dialog').showModal();
             }

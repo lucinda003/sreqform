@@ -53,17 +53,17 @@
                 </div>
 
                 <div class="mt-3 flex flex-wrap gap-3">
-                    <a href="{{ route('service-requests.index', ['status' => 'pending']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
-                        <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Pending</p>
-                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($pendingRequests) }}</p>
-                    </a>
                     <a href="{{ route('service-requests.index', ['status' => 'checking']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-sky-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Checking</p>
-                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($checkingRequests) }}</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($receivedCheckingRequests) }}</p>
+                    </a>
+                    <a href="{{ route('service-requests.index', ['received' => 'me']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-indigo-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+                        <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Received</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($receivedRequests) }}</p>
                     </a>
                     <a href="{{ route('service-requests.index', ['status' => 'approved']) }}" class="w-full max-w-[170px] rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                         <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Approved</p>
-                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($approvedRequests) }}</p>
+                        <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($receivedApprovedRequests) }}</p>
                     </a>
                 </div>
             </div>
@@ -90,7 +90,18 @@
                                 @forelse ($recentRequests as $request)
                                     <tr class="border-t border-slate-200/90 hover:bg-slate-50">
                                         <td class="py-3 pe-4 font-semibold text-slate-900 whitespace-nowrap">
-                                            <a href="{{ route('service-requests.show', $request) }}" class="auth-link">{{ $request->reference_code }}</a>
+                                            @php
+                                                $currentUserId = (int) (auth()->id() ?? 0);
+                                                $isSuperAdmin = strtolower(trim((string) (auth()->user()?->role ?? ''))) === 'super admin';
+                                                $canOpen = $isSuperAdmin
+                                                    || ((int) ($request->received_by_user_id ?? 0) === $currentUserId
+                                                        && (string) $request->status !== 'approved');
+                                            @endphp
+                                            @if ($canOpen)
+                                                <a href="{{ route('service-requests.show', $request) }}" class="auth-link">{{ $request->reference_code }}</a>
+                                            @else
+                                                <span class="text-slate-900">{{ $request->reference_code }}</span>
+                                            @endif
                                         </td>
                                         <td class="py-3 pe-4 text-slate-700">{{ $request->office }}</td>
                                         <td class="py-3 pe-4 text-slate-700">{{ $request->contact_last_name }}, {{ $request->contact_first_name }}</td>

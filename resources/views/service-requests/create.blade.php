@@ -602,6 +602,55 @@
             background: #134e4a;
             box-shadow: 0 4px 12px rgba(15,118,110,0.25);
         }
+        .srf-btn-clear {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 11px;
+            font-weight: 700;
+            color: #475569;
+            background: #fff;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            padding: 4px 10px;
+            cursor: pointer;
+            transition: border-color 0.18s, color 0.18s, background 0.18s;
+        }
+        .srf-btn-clear:hover {
+            border-color: #cbd5e1;
+            color: #1e293b;
+            background: #f8fafc;
+        }
+        .srf-scroll-top {
+            position: fixed;
+            bottom: 28px;
+            right: 24px;
+            z-index: 88;
+            width: 44px;
+            height: 44px;
+            border-radius: 999px;
+            border: 1.5px solid #cbd5e1;
+            background: rgba(255, 255, 255, 0.92);
+            backdrop-filter: blur(8px);
+            color: #0f172a;
+            box-shadow: 0 6px 20px rgba(15, 23, 42, 0.15);
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+        }
+        .srf-scroll-top.visible {
+            display: inline-flex;
+        }
+        .srf-scroll-top:hover {
+            background: #f0fdfa;
+            border-color: #0f766e;
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(15, 118, 110, 0.2);
+        }
+        .srf-scroll-top svg {
+            width: 20px;
+            height: 20px;
+        }
 
         .srf-number-badge {
             display: inline-flex;
@@ -893,6 +942,7 @@
                                         accept="image/*" multiple class="srf-file-input">
                                     <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 images, 5MB each. You can choose files multiple times.</p>
                                     <p id="description-photos-selected" style="font-size:11px; color:#0f766e; margin: 4px 0 0;"></p>
+                                    <button type="button" id="description-photos-clear" class="srf-btn-clear" style="margin-top:6px;" hidden>Clear photos</button>
                                     <x-input-error :messages="$errors->get('description_photos')" class="mt-1" />
                                     <x-input-error :messages="$errors->get('description_photos.*')" class="mt-1" />
                                 </div>
@@ -964,6 +1014,9 @@
                 </form>
             </div>
         </section>
+        <button type="button" class="srf-scroll-top" id="srf-scroll-top" aria-label="Scroll to top">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V5"></path><path d="M5 9l5-5 5 5"></path></svg>
+        </button>
     </div>
 
     <script>
@@ -1017,6 +1070,46 @@
                     return normalize(value).toLowerCase();
                 };
 
+                const optionValue = function (option) {
+                    return typeof option === 'object' && option !== null
+                        ? normalize(option.value || option.name || '')
+                        : normalize(option);
+                };
+
+                const optionLabel = function (option) {
+                    if (typeof option === 'object' && option !== null) {
+                        return normalize(option.label || option.display_name || option.value || option.name || '');
+                    }
+
+                    return normalize(option);
+                };
+
+                const optionSearchText = function (option) {
+                    if (typeof option === 'object' && option !== null) {
+                        return [
+                            option.label,
+                            option.display_name,
+                            option.value,
+                            option.name,
+                            option.facility_type,
+                            option.classification,
+                            option.code,
+                            option.regcode,
+                            option.address,
+                            option.phone,
+                        ].map(normalize).filter(Boolean).join(' ');
+                    }
+
+                    return normalize(option);
+                };
+
+                const selectedLabels = {};
+                let renderedOptions = [];
+                let remoteAbortController = null;
+                let remoteRequestSequence = 0;
+                let remoteSearchTimer = null;
+                const remoteOptionsCache = {};
+
                 const syncHiddenInput = function () {
                     hiddenInput.value = selected.join(', ');
                     hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
@@ -1026,9 +1119,10 @@
 
                 const renderChips = function () {
                     chipsContainer.innerHTML = selected.map(function (value, index) {
+                        const label = selectedLabels[value] || value;
                         return '<span class="srf-system-picker-chip">' +
-                            escapeHtml(value) +
-                            '<button type="button" class="srf-system-picker-remove" data-chip-picker-remove="' + index + '" aria-label="Remove ' + escapeHtml(value) + '">x</button>' +
+                            escapeHtml(label) +
+                            '<button type="button" class="srf-system-picker-remove" data-chip-picker-remove="' + index + '" aria-label="Remove ' + escapeHtml(label) + '">x</button>' +
                             '</span>';
                     }).join('');
 
@@ -1036,8 +1130,8 @@
                     searchInput.classList.toggle('hidden', maxSelections > 0 && selected.length >= maxSelections);
                 };
 
-                const addSelection = function (value) {
-                    const normalized = normalize(value);
+                const addSelection = function (option) {
+                    const normalized = optionValue(option);
                     if (normalized === '') return;
 
                     if (maxSelections > 0 && selected.length >= maxSelections) {
@@ -1052,6 +1146,15 @@
                         selected.push(normalized);
                     }
 
+                    const label = optionLabel(option);
+                    if (label !== '') {
+                        selectedLabels[normalized] = label;
+                    }
+
+                    if (typeof config.onSelect === 'function') {
+                        config.onSelect(option, normalized);
+                    }
+
                     searchInput.value = '';
                     results.classList.add('hidden');
                     syncHiddenInput();
@@ -1062,6 +1165,7 @@
                 };
 
                 const removeSelection = function (index) {
+                    delete selectedLabels[selected[index]];
                     selected.splice(index, 1);
                     syncHiddenInput();
                     renderChips();
@@ -1084,14 +1188,10 @@
                 };
 
                 const optionMatches = function (option, query) {
-                    return selectedKey(option).includes(selectedKey(query));
+                    return selectedKey(optionSearchText(option)).includes(selectedKey(query));
                 };
 
-                const loadRemoteOptions = async function (query) {
-                    if (!config.searchEndpoint) {
-                        return;
-                    }
-
+                const remoteSearchUrl = function (query) {
                     const url = new URL(config.searchEndpoint, window.location.origin);
                     url.searchParams.set('q', query);
 
@@ -1103,19 +1203,46 @@
                         }
                     }
 
+                    return url.toString();
+                };
+
+                const loadRemoteOptions = async function (query, requestSequence) {
+                    if (!config.searchEndpoint) {
+                        return false;
+                    }
+
+                    const url = remoteSearchUrl(query);
+                    if (remoteOptionsCache[url]) {
+                        options = remoteOptionsCache[url];
+                        return true;
+                    }
+
+                    if (remoteAbortController) {
+                        remoteAbortController.abort();
+                    }
+
+                    remoteAbortController = typeof AbortController !== 'undefined'
+                        ? new AbortController()
+                        : null;
+
                     try {
-                        const response = await fetch(url.toString(), {
+                        const response = await fetch(url, {
                             headers: {
                                 'Accept': 'application/json',
                                 'X-Requested-With': 'XMLHttpRequest',
                             },
+                            signal: remoteAbortController ? remoteAbortController.signal : undefined,
                         });
 
-                        if (!response.ok) {
-                            return;
+                        if (!response.ok || requestSequence !== remoteRequestSequence) {
+                            return false;
                         }
 
                         const payload = await response.json();
+                        if (requestSequence !== remoteRequestSequence) {
+                            return false;
+                        }
+
                         const offices = Array.isArray(payload.offices) ? payload.offices : [];
 
                         offices.forEach(function (office) {
@@ -1131,43 +1258,78 @@
 
                         options = offices
                             .map(function (office) {
-                                return normalize(office.name || '');
+                                const name = normalize(office.name || '');
+                                const facilityType = normalize(office.facility_type || '');
+                                if (name === '') {
+                                    return null;
+                                }
+
+                                return {
+                                    id: office.id || '',
+                                    value: name,
+                                    label: normalize(office.display_name || (facilityType !== '' ? name + ' • ' + facilityType : name)),
+                                    address: String(office.address || ''),
+                                    regcode: String(office.regcode || office.code || ''),
+                                    parent_name: String(office.parent_name || ''),
+                                    facility_type: facilityType,
+                                    classification: normalize(office.classification || ''),
+                                    code: normalize(office.code || office.regcode || ''),
+                                    phone: String(office.phone || ''),
+                                };
                             })
-                            .filter(function (name) {
-                                return name !== '';
+                            .filter(function (office) {
+                                return office !== null;
                             });
+                        remoteOptionsCache[url] = options;
+                        return true;
                     } catch (error) {
+                        if (error && error.name === 'AbortError') {
+                            return false;
+                        }
+
                         // Keep the current option list when search fails.
+                        return false;
                     }
                 };
 
-                const renderResults = async function () {
+                const renderResults = function (message) {
                     const query = normalize(searchInput.value);
-                    await loadRemoteOptions(query);
+                    const isFocused = document.activeElement === searchInput;
+
+                    if (!isFocused && query === '') {
+                        results.classList.add('hidden');
+                        return;
+                    }
 
                     const selectedKeys = selected.map(selectedKey);
                     const matches = options
                         .filter(function (option) {
-                            return selectedKeys.indexOf(selectedKey(option)) === -1;
+                            return selectedKeys.indexOf(selectedKey(optionValue(option))) === -1;
                         })
                         .filter(function (option) {
                             return query === '' || optionMatches(option, query);
                         })
                         .slice(0, 20);
 
-                    const rows = matches.map(function (option) {
-                        return '<button type="button" class="srf-system-picker-option" data-chip-picker-option="' + escapeHtml(option) + '">' +
-                            escapeHtml(option) +
+                    renderedOptions = matches;
+
+                    const rows = matches.map(function (option, index) {
+                        return '<button type="button" class="srf-system-picker-option" data-chip-picker-index="' + index + '">' +
+                            escapeHtml(optionLabel(option)) +
                             '</button>';
                     });
 
                     const exactMatch = options.some(function (option) {
-                        return selectedKey(option) === selectedKey(query);
+                        return selectedKey(optionValue(option)) === selectedKey(query);
                     });
                     const alreadySelected = selectedKeys.indexOf(selectedKey(query)) !== -1;
 
-                    if (query !== '' && !exactMatch && !alreadySelected) {
-                        rows.unshift('<button type="button" class="srf-system-picker-option" data-chip-picker-option="' + escapeHtml(query) + '">Add "' + escapeHtml(query) + '"</button>');
+                    if (query !== '' && matches.length === 0 && !exactMatch && !alreadySelected) {
+                        rows.unshift('<button type="button" class="srf-system-picker-option" data-chip-picker-value="' + escapeHtml(query) + '">Add "' + escapeHtml(query) + '"</button>');
+                    }
+
+                    if (message) {
+                        rows.unshift('<div class="srf-system-picker-empty">' + escapeHtml(message) + '</div>');
                     }
 
                     results.innerHTML = rows.length > 0
@@ -1176,14 +1338,44 @@
                     results.classList.remove('hidden');
                 };
 
-                searchInput.addEventListener('input', renderResults);
-                searchInput.addEventListener('focus', renderResults);
+                const refreshResults = function (delay) {
+                    if (!config.searchEndpoint) {
+                        renderResults();
+                        return;
+                    }
+
+                    clearTimeout(remoteSearchTimer);
+                    remoteSearchTimer = setTimeout(async function () {
+                        const query = normalize(searchInput.value);
+                        const requestSequence = remoteRequestSequence + 1;
+                        remoteRequestSequence = requestSequence;
+
+                        renderResults(query !== '' ? 'Searching...' : '');
+                        const loaded = await loadRemoteOptions(query, requestSequence);
+
+                        if (loaded && requestSequence === remoteRequestSequence) {
+                            renderResults();
+                        }
+                    }, delay);
+                };
+
+                searchInput.addEventListener('input', function () {
+                    refreshResults(180);
+                });
+                searchInput.addEventListener('focus', function () {
+                    refreshResults(0);
+                });
                 searchInput.addEventListener('keydown', function (event) {
                     if (event.key !== 'Enter') return;
 
                     event.preventDefault();
-                    const firstOption = results.querySelector('[data-chip-picker-option]');
-                    addSelection(firstOption ? firstOption.getAttribute('data-chip-picker-option') : searchInput.value);
+                    const firstOption = results.querySelector('[data-chip-picker-index], [data-chip-picker-value]');
+                    if (firstOption && firstOption.hasAttribute('data-chip-picker-index')) {
+                        addSelection(renderedOptions[Number(firstOption.getAttribute('data-chip-picker-index'))]);
+                        return;
+                    }
+
+                    addSelection(firstOption ? firstOption.getAttribute('data-chip-picker-value') : searchInput.value);
                 });
 
                 results.addEventListener('mousedown', function (event) {
@@ -1191,10 +1383,15 @@
                 });
 
                 results.addEventListener('click', function (event) {
-                    const option = event.target.closest('[data-chip-picker-option]');
+                    const option = event.target.closest('[data-chip-picker-index], [data-chip-picker-value]');
                     if (!option) return;
 
-                    addSelection(option.getAttribute('data-chip-picker-option'));
+                    if (option.hasAttribute('data-chip-picker-index')) {
+                        addSelection(renderedOptions[Number(option.getAttribute('data-chip-picker-index'))]);
+                        return;
+                    }
+
+                    addSelection(option.getAttribute('data-chip-picker-value'));
                 });
 
                 chipsContainer.addEventListener('click', function (event) {
@@ -1225,7 +1422,7 @@
 
                 const setOptions = function (nextOptions) {
                     options = Array.isArray(nextOptions) ? nextOptions : [];
-                    renderResults();
+                    refreshResults(0);
                 };
 
                 setFromHiddenInput();
@@ -1290,6 +1487,58 @@
                 placeholder: 'Office',
                 requiredMessage: 'Please select an office.',
                 maxSelections: 1,
+                onSelect: function (option, selectedOffice) {
+                    if (typeof option !== 'object' || option === null) {
+                        return;
+                    }
+
+                    hospitalOfficeMap[selectedOffice] = String(option.address || '');
+                    officeRegcodeMap[selectedOffice] = String(option.regcode || option.code || '');
+                    officeParentMap[selectedOffice] = String(option.parent_name || '');
+
+                    const landlineInput = document.getElementById('landline');
+                    const mobileInput = document.getElementById('mobile_no');
+                    const phoneValue = String(option.phone || '').trim();
+
+                    if (!landlineInput || !mobileInput) {
+                        return;
+                    }
+
+                    const parts = phoneValue
+                        .split(/\s*(?:,|;|\/|\bor\b|\band\b)\s*/i)
+                        .map(function (value) {
+                            return value.replace(/[^0-9+() -]/g, '').trim();
+                        })
+                        .filter(Boolean);
+
+                    let landline = '';
+                    let mobile = '';
+
+                    parts.forEach(function (part) {
+                        const digits = part.replace(/\D/g, '');
+                        const isMobile = /^09\d{9}$/.test(digits)
+                            || /^639\d{9}$/.test(digits)
+                            || /^0639\d{9}$/.test(digits);
+
+                        if (isMobile && mobile === '') {
+                            mobile = part;
+                            return;
+                        }
+
+                        if (!isMobile && landline === '') {
+                            landline = part;
+                        }
+                    });
+
+                    if (landline === '' && mobile === '' && parts.length > 0) {
+                        landline = parts[0];
+                    }
+
+                    landlineInput.value = landline;
+                    mobileInput.value = mobile;
+                    landlineInput.dispatchEvent(new Event('input', { bubbles: true }));
+                    mobileInput.dispatchEvent(new Event('input', { bubbles: true }));
+                },
             });
 
             const officeRegionFilter = document.getElementById('office_region_filter');
@@ -1562,6 +1811,7 @@
             const initDescriptionPhotoSelection = function () {
                 const photoInput = document.getElementById('description_photos');
                 const selectedLabel = document.getElementById('description-photos-selected');
+                const clearButton = document.getElementById('description-photos-clear');
 
                 if (!photoInput || typeof DataTransfer === 'undefined') {
                     return;
@@ -1569,9 +1819,95 @@
 
                 const maxFiles = 3;
                 let selectedFiles = [];
+                const hasIndexedDb = typeof indexedDB !== 'undefined';
+                const photoDbName = 'service-request-create';
+                const photoStoreName = 'description_photos';
 
                 const fileKey = function (file) {
                     return [file.name, file.size, file.lastModified, file.type].join('::');
+                };
+
+                const openPhotoDb = function () {
+                    return new Promise(function (resolve, reject) {
+                        const request = indexedDB.open(photoDbName, 1);
+
+                        request.onupgradeneeded = function () {
+                            const db = request.result;
+                            if (!db.objectStoreNames.contains(photoStoreName)) {
+                                db.createObjectStore(photoStoreName, { keyPath: 'key' });
+                            }
+                        };
+
+                        request.onsuccess = function () {
+                            resolve(request.result);
+                        };
+
+                        request.onerror = function () {
+                            reject(request.error);
+                        };
+                    });
+                };
+
+                const writeStoredPhotos = function (files) {
+                    if (!hasIndexedDb) return Promise.resolve();
+
+                    return openPhotoDb().then(function (db) {
+                        return new Promise(function (resolve, reject) {
+                            const tx = db.transaction(photoStoreName, 'readwrite');
+                            const store = tx.objectStore(photoStoreName);
+                            store.clear();
+
+                            files.forEach(function (file) {
+                                store.put({
+                                    key: fileKey(file),
+                                    name: file.name,
+                                    type: file.type,
+                                    lastModified: file.lastModified,
+                                    size: file.size,
+                                    blob: file,
+                                });
+                            });
+
+                            tx.oncomplete = function () {
+                                resolve();
+                            };
+                            tx.onerror = function () {
+                                reject(tx.error);
+                            };
+                        });
+                    });
+                };
+
+                const readStoredPhotos = function () {
+                    if (!hasIndexedDb) return Promise.resolve([]);
+
+                    return openPhotoDb().then(function (db) {
+                        return new Promise(function (resolve, reject) {
+                            const tx = db.transaction(photoStoreName, 'readonly');
+                            const store = tx.objectStore(photoStoreName);
+                            const request = store.getAll();
+
+                            request.onsuccess = function () {
+                                resolve(request.result || []);
+                            };
+                            request.onerror = function () {
+                                reject(request.error);
+                            };
+                        });
+                    });
+                };
+
+                const clearStoredPhotos = function () {
+                    if (!hasIndexedDb) return;
+
+                    openPhotoDb()
+                        .then(function (db) {
+                            const tx = db.transaction(photoStoreName, 'readwrite');
+                            tx.objectStore(photoStoreName).clear();
+                        })
+                        .catch(function () {
+                            // Ignore storage failures.
+                        });
                 };
 
                 const syncInputFiles = function () {
@@ -1589,13 +1925,64 @@
 
                     if (selectedFiles.length === 0) {
                         selectedLabel.textContent = '';
+                        if (clearButton) {
+                            clearButton.hidden = true;
+                        }
                         return;
                     }
 
                     selectedLabel.textContent = selectedFiles.length + ' file(s) selected: ' + selectedFiles.map(function (file) {
                         return file.name;
                     }).join(', ');
+                    if (clearButton) {
+                        clearButton.hidden = false;
+                    }
                 };
+
+                const persistSelectedFiles = function () {
+                    writeStoredPhotos(selectedFiles).catch(function () {
+                        // Ignore storage failures.
+                    });
+                };
+
+                const restoreStoredFiles = function () {
+                    readStoredPhotos()
+                        .then(function (entries) {
+                            if (!Array.isArray(entries) || entries.length === 0) {
+                                return;
+                            }
+
+                            selectedFiles = entries
+                                .map(function (entry) {
+                                    const blob = entry.blob || entry;
+                                    if (blob instanceof File) {
+                                        return blob;
+                                    }
+
+                                    return new File([blob], entry.name || 'photo', {
+                                        type: entry.type || (blob && blob.type) || 'image/png',
+                                        lastModified: entry.lastModified || Date.now(),
+                                    });
+                                })
+                                .slice(0, maxFiles);
+
+                            syncInputFiles();
+                            syncSelectedLabel();
+                        })
+                        .catch(function () {
+                            // Ignore storage failures.
+                        });
+                };
+
+                if (clearButton) {
+                    clearButton.addEventListener('click', function () {
+                        selectedFiles = [];
+                        syncInputFiles();
+                        syncSelectedLabel();
+                        persistSelectedFiles();
+                        saveDraftToStorage();
+                    });
+                }
 
                 photoInput.addEventListener('change', function () {
                     const incoming = Array.from(photoInput.files || []);
@@ -1617,12 +2004,20 @@
 
                     syncInputFiles();
                     syncSelectedLabel();
+                    persistSelectedFiles();
                     saveDraftToStorage();
                 });
 
                 selectedFiles = Array.from(photoInput.files || []).slice(0, maxFiles);
                 syncInputFiles();
                 syncSelectedLabel();
+                restoreStoredFiles();
+
+                if (createForm) {
+                    createForm.addEventListener('submit', function () {
+                        clearStoredPhotos();
+                    });
+                }
             };
 
             initDescriptionPhotoSelection();
@@ -1805,7 +2200,36 @@
                 }
             };
 
+            const initScrollTopButton = function () {
+                const scrollTopBtn = document.getElementById('srf-scroll-top');
+                if (!scrollTopBtn) return;
+
+                scrollTopBtn.addEventListener('click', function () {
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                });
+
+                let ticking = false;
+                const handleScroll = function () {
+                    if (window.scrollY > 200) {
+                        scrollTopBtn.classList.add('visible');
+                    } else {
+                        scrollTopBtn.classList.remove('visible');
+                    }
+                    ticking = false;
+                };
+
+                window.addEventListener('scroll', function () {
+                    if (!ticking) {
+                        window.requestAnimationFrame(handleScroll);
+                        ticking = true;
+                    }
+                }, { passive: true });
+
+                handleScroll();
+            };
+
             initSignatureInput();
+            initScrollTopButton();
         });
     </script>
 </x-guest-layout>

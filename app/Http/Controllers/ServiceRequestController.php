@@ -363,35 +363,115 @@ class ServiceRequestController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
         $parentName = trim((string) $request->query('parent_name', ''));
+        $escapedSearch = str_replace(['%', '_'], ['\%', '\_'], $search);
+        $like = '%' . $escapedSearch . '%';
+        $prefixLike = $escapedSearch . '%';
 
         $offices = Office::query()
             ->where('is_active', true)
             ->when($parentName !== '', function (Builder $query) use ($parentName): void {
                 $query->where('parent_name', $parentName);
             })
-            ->when($search !== '', function (Builder $query) use ($search): void {
-                $like = '%' . str_replace(['%', '_'], ['\%', '\_'], $search) . '%';
-
+            ->when($search !== '', function (Builder $query) use ($like): void {
                 $query->where(function (Builder $builder) use ($like): void {
                     $builder
                         ->where('name', 'like', $like)
                         ->orWhere('address', 'like', $like)
                         ->orWhere('regcode', 'like', $like)
-                        ->orWhere('parent_name', 'like', $like);
+                        ->orWhere('parent_name', 'like', $like)
+                        ->orWhere('facility_type', 'like', $like)
+                        ->orWhere('classification', 'like', $like)
+                        ->orWhere('region', 'like', $like)
+                        ->orWhere('province', 'like', $like)
+                        ->orWhere('city', 'like', $like)
+                        ->orWhere('barangay', 'like', $like);
                 });
             })
-            ->orderBy('parent_name')
+            ->when($search !== '', function (Builder $query) use ($like, $prefixLike): void {
+                $query->orderByRaw(
+                    'CASE
+                        WHEN name LIKE ? THEN 0
+                        WHEN name LIKE ? THEN 1
+                        WHEN regcode LIKE ? THEN 2
+                        WHEN facility_type LIKE ? THEN 3
+                        WHEN classification LIKE ? THEN 3
+                        WHEN parent_name LIKE ? THEN 4
+                        WHEN province LIKE ? THEN 5
+                        WHEN city LIKE ? THEN 5
+                        WHEN barangay LIKE ? THEN 5
+                        WHEN address LIKE ? THEN 6
+                        WHEN region LIKE ? THEN 7
+                        ELSE 8
+                    END',
+                    [
+                        $prefixLike,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                        $like,
+                    ]
+                );
+            })
+            ->when($search === '', function (Builder $query): void {
+                $query->orderBy('region');
+            })
             ->orderBy('name')
             ->limit(25)
-            ->get(['name', 'address', 'regcode', 'parent_name']);
+            ->get([
+                'id',
+                'name',
+                'address',
+                'regcode',
+                'parent_name',
+                'facility_type',
+                'classification',
+                'building',
+                'street',
+                'region',
+                'province',
+                'city',
+                'barangay',
+                'phone',
+            ]);
 
         return response()->json([
             'offices' => $offices->map(function (Office $office): array {
+                $name = trim((string) $office->name);
+                $facilityType = trim((string) ($office->facility_type ?? ''));
+                $address = trim((string) ($office->address ?? ''));
+                if ($address === '') {
+                    $address = collect([
+                        $office->building,
+                        $office->street,
+                        $office->barangay,
+                        $office->city,
+                        $office->province,
+                        $office->region,
+                    ])
+                        ->map(fn ($value): string => trim((string) $value))
+                        ->filter()
+                        ->unique()
+                        ->implode(', ');
+                }
+
                 return [
-                    'name' => trim((string) $office->name),
-                    'address' => trim((string) ($office->address ?? '')),
+                    'id' => (int) $office->id,
+                    'code' => trim((string) ($office->regcode ?? '')),
+                    'name' => $name,
+                    'display_name' => $facilityType !== '' ? $name . ' • ' . $facilityType : $name,
+                    'address' => $address,
                     'regcode' => trim((string) ($office->regcode ?? '')),
-                    'parent_name' => trim((string) ($office->parent_name ?? '')),
+                    'parent_name' => trim((string) ($office->parent_name ?? $office->region ?? '')),
+                    'facility_type' => $facilityType,
+                    'classification' => trim((string) ($office->classification ?? '')),
+                    'region' => trim((string) ($office->region ?? '')),
+                    'phone' => trim((string) ($office->phone ?? '')),
                 ];
             })->values(),
         ]);

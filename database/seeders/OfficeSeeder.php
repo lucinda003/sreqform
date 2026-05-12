@@ -2,122 +2,201 @@
 
 namespace Database\Seeders;
 
-use App\Models\Office;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class OfficeSeeder extends Seeder
 {
     public function run(): void
     {
-        // Path to the SQL dump file
-        $sqlFile = 'C:\\Users\\doh\\Downloads\\free-claude-code-main\\free-claude-code-main\\nhfr_offices_all.sql';
+        $jsonFile = 'C:\\Users\\doh\\Downloads\\free-claude-code-main\\free-claude-code-main\\nhfr_facilities_all.json';
 
-        if (! file_exists($sqlFile)) {
-            $this->command->error("SQL file not found: {$sqlFile}");
+        if (! file_exists($jsonFile)) {
+            $this->command->error("JSON file not found: {$jsonFile}");
             return;
         }
 
-        // Truncate existing data
+        $this->command->warn('This will truncate existing offices and import NHFR facilities from JSON.');
         $this->command->info('Truncating existing offices...');
         DB::table('offices')->truncate();
 
-        $this->command->info('Starting to import offices from SQL file...');
-
-        $content = file_get_contents($sqlFile);
-        $lines = explode("\n", $content);
-
         $batch = [];
         $count = 0;
-        $errors = 0;
         $batchSize = 500;
+        $now = now();
 
-        foreach ($lines as $lineNum => $line) {
-            $line = trim($line);
-
-            if (empty($line) || ! str_contains($line, 'INSERT INTO')) {
+        $this->command->info('Streaming NHFR JSON file...');
+        foreach ($this->recordsFromJsonArray($jsonFile) as $record) {
+            $name = $this->clean($record['name'] ?? '');
+            if ($name === '') {
                 continue;
             }
 
-            // Parse: INSERT INTO `offices` (`parent_name`, `name`, `is_active`) VALUES ('val1', 'val2', 'val3')
-            if (preg_match("/VALUES\s*\((.*)\)\s*;?\s*$/i", $line, $matches)) {
-                $valuesStr = $matches[1];
+            $region = $this->clean($record['region'] ?? '');
+            $payload = [
+                'parent_name' => $region !== '' ? mb_substr($region, 0, 255) : null,
+                'name' => mb_substr($name, 0, 255),
+                'regcode' => $this->clean($record['code'] ?? '') ?: null,
+                'address' => $this->buildAddress($record),
+                'licensing_status' => $this->nullableString($record['licensingStatus'] ?? null),
+                'license_date' => $this->nullableDate($record['licenseDate'] ?? null),
+                'facility_type' => $this->nullableString($record['facilityType'] ?? null),
+                'classification' => $this->nullableString($record['classification'] ?? null),
+                'street' => $this->nullableString($record['street'] ?? null),
+                'building' => $this->nullableString($record['building'] ?? null),
+                'region' => $region !== '' ? mb_substr($region, 0, 255) : null,
+                'province' => $this->nullableString($record['province'] ?? null),
+                'city' => $this->nullableString($record['city'] ?? null),
+                'barangay' => $this->nullableString($record['barangay'] ?? null),
+                'phone' => $this->nullableString($record['phone'] ?? null),
+                'is_active' => 1,
+                'created_at' => $now,
+                'updated_at' => $now,
+            ];
 
-                // Extract the three values (they are single-quoted)
-                if (preg_match_all("/'([^']*(?:''[^']*)*)'/", $valuesStr, $valueMatches)) {
-                    $values = array_map(function ($val) {
-                        // Unescape single quotes
-                        return str_replace("''", "'", $val);
-                    }, $valueMatches[1]);
+            $batch[] = $payload;
+            $count++;
 
-                    if (count($values) >= 3) {
-                        $parentName = $values[0];
-                        $name = $values[1];
-                        $address = $values[2];
-                        $address = str_replace(['Building name and #:', 'Zip Code:'], '', $address);
-                        $address = preg_replace('/\s*,\s*,+/', ', ', $address);
-                        $address = preg_replace('/\s{2,}/', ' ', $address);
-                        $address = trim($address, " ,");
+            if (count($batch) >= $batchSize) {
+                DB::table('offices')->insert($batch);
+                $this->command->info("Imported {$count} offices...");
+                $batch = [];
+            }
+        }
 
-                        // Extract regcode from parent_name
-                        // Examples: 'REGION I (ILOCOS REGION)' -> 'ILOCOS REGION'
-                        // 'NATIONAL CAPITAL REGION (NCR)' -> 'NCR'
-                        $regcode = null;
-                        if (preg_match('/\(([^)]+)\)$/', $parentName, $rcMatch)) {
-                            $code = trim($rcMatch[1]);
-                            $regcode = mb_substr($code, 0, 50);
+        if ($batch !== []) {
+            DB::table('offices')->insert($batch);
+        }
+
+        $this->command->info("Import complete. Final office count: " . DB::table('offices')->count());
+    }
+
+    private function recordsFromJsonArray(string $jsonFile): \Generator
+    {
+        $handle = fopen($jsonFile, 'rb');
+        if ($handle === false) {
+            return;
+        }
+
+        $buffer = '';
+        $depth = 0;
+        $inString = false;
+        $escaped = false;
+        $capturing = false;
+
+        try {
+            while (($chunk = fread($handle, 8192)) !== false && $chunk !== '') {
+                $length = strlen($chunk);
+
+                for ($index = 0; $index < $length; $index++) {
+                    $char = $chunk[$index];
+
+                    if ($capturing) {
+                        $buffer .= $char;
+                    }
+
+                    if ($inString) {
+                        if ($escaped) {
+                            $escaped = false;
+                            continue;
                         }
 
-                        $batch[] = [
-                            'parent_name' => mb_substr($parentName, 0, 255),
-                            'name' => mb_substr($name, 0, 255),
-                            'regcode' => $regcode,
-                            'address' => $address,
-                            'is_active' => 1,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ];
+                        if ($char === '\\') {
+                            $escaped = true;
+                            continue;
+                        }
 
-                        $count++;
+                        if ($char === '"') {
+                            $inString = false;
+                        }
 
-                        // Insert in batches
-                        if (count($batch) >= $batchSize) {
-                            try {
-                                DB::table('offices')->insert($batch);
-                                $this->command->info("Imported {$count} offices...");
-                            } catch (\Exception $e) {
-                                $errors++;
-                                if ($errors <= 5) {
-                                    $this->command->warn("Batch error near line " . ($lineNum + 1) . ": " . $e->getMessage());
-                                }
+                        continue;
+                    }
+
+                    if ($char === '"') {
+                        $inString = true;
+                        continue;
+                    }
+
+                    if ($char === '{') {
+                        if (! $capturing) {
+                            $capturing = true;
+                            $buffer = '{';
+                        }
+
+                        $depth++;
+                        continue;
+                    }
+
+                    if ($char === '}') {
+                        $depth--;
+
+                        if ($capturing && $depth === 0) {
+                            $record = json_decode($buffer, true);
+                            if (is_array($record)) {
+                                yield $record;
                             }
-                            $batch = [];
+
+                            $buffer = '';
+                            $capturing = false;
                         }
                     }
                 }
             }
+        } finally {
+            fclose($handle);
+        }
+    }
+
+    private function clean(mixed $value): string
+    {
+        $cleaned = trim(preg_replace('/\s+/', ' ', (string) $value) ?? '');
+        $cleaned = trim($cleaned, " \t\n\r\0\x0B,");
+
+        $cleaned = preg_replace('/^(Building name and #:|Zip Code:)\s*/i', '', $cleaned) ?? '';
+        $cleaned = trim($cleaned, " \t\n\r\0\x0B,");
+
+        if (in_array(strtolower($cleaned), ['building name and #:', 'zip code:'], true)) {
+            return '';
         }
 
-        // Insert remaining records
-        if (! empty($batch)) {
-            try {
-                DB::table('offices')->insert($batch);
-            } catch (\Exception $e) {
-                $errors++;
-                if ($errors <= 5) {
-                    $this->command->warn("Final batch error: " . $e->getMessage());
-                }
-            }
+        return $cleaned;
+    }
+
+    private function nullableString(mixed $value): ?string
+    {
+        $cleaned = $this->clean($value);
+        return $cleaned !== '' ? mb_substr($cleaned, 0, 255) : null;
+    }
+
+    private function nullableDate(mixed $value): ?string
+    {
+        $cleaned = $this->clean($value);
+        if ($cleaned === '') {
+            return null;
         }
 
-        $this->command->info("✓ Import complete!");
-        $this->command->info("Successfully processed: {$count} office records");
-        if ($errors > 0) {
-            $this->command->warn("Errors encountered: {$errors}");
+        try {
+            return Carbon::parse($cleaned)->toDateString();
+        } catch (\Throwable) {
+            return null;
         }
+    }
 
-        // Final count
-        $finalCount = DB::table('offices')->count();
-        $this->command->info("Final office count in database: {$finalCount}");
+    private function buildAddress(array $record): string
+    {
+        return collect([
+            $record['building'] ?? null,
+            $record['street'] ?? null,
+            $record['barangay'] ?? null,
+            $record['city'] ?? null,
+            $record['province'] ?? null,
+            $record['region'] ?? null,
+        ])
+            ->map(fn ($value): string => $this->clean($value))
+            ->filter()
+            ->unique()
+            ->implode(', ');
     }
 }

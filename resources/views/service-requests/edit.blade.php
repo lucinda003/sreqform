@@ -1427,11 +1427,11 @@
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">6) Office :
-                                <div data-office-picker style="display: inline-block; vertical-align: top; width: 450px;">
+                                <div data-office-picker style="display: inline-block; vertical-align: top; width: calc(100% - 85px);">
                                     <input type="hidden" id="office" name="office" value="{{ old('office', $serviceRequest->office) }}">
-                                    <div style="display: flex; align-items: center; border: 1px solid #ccc; border-radius: 4px; padding: 2px 4px; background: white; min-height: 32px;">
-                                        <div id="office_chips" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1;"></div>
-                                        <input type="search" id="office_search" placeholder="Office..." autocomplete="off" style="border: none; outline: none; padding: 4px; flex: 1; min-width: 150px; font-size: 12px;">
+                                    <div style="display: flex; align-items: center; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding: 0 2px; background: transparent; min-height: 22px;">
+                                        <div id="office_chips" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0;"></div>
+                                        <input type="search" id="office_search" placeholder="Office..." autocomplete="off" style="border: none; outline: none; padding: 0 4px; flex: 1; min-width: 140px; font-size: 12px; background: transparent;">
                                     </div>
                                     <div id="office_results" style="display: none; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; background: white; margin-top: 2px; font-size: 12px;"></div>
                                 </div>
@@ -1440,7 +1440,7 @@
                         </tr>
                         <tr>
                             <td class="border border-slate-400 px-2 py-1">7) Address :
-                                <input id="address" name="address" value="{{ old('address', $serviceRequest->address) }}" class="auth-input !inline-block !min-h-0 !w-[450px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" autocomplete="street-address" required>
+                                <input id="address" name="address" value="{{ old('address', $serviceRequest->address) }}" class="auth-input !inline-block !min-h-0 !rounded-none !border-0 !border-b !border-slate-200 !bg-transparent px-1 py-0 text-[12px]" style="width: calc(100% - 85px);" autocomplete="street-address" required>
                             </td>
                         </tr>
                         <tr>
@@ -2007,14 +2007,14 @@
 
                 const renderChips = function () {
                     chipsContainer.innerHTML = selected.map(function (value, index) {
-                        return '<span style="display:inline-flex;align-items:center;gap:4px;border:1px solid #cbd5e1;border-radius:999px;background:#f8fafc;padding:2px 7px;font-size:11px;font-weight:600;color:#0f172a;">' +
+                        return '<span style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;font-size:12px;font-weight:600;color:#0f172a;">' +
                             escapePickerHtml(value) +
-                            '<button type="button" data-chip-picker-remove="' + index + '" aria-label="Remove ' + escapePickerHtml(value) + '" style="border:0;background:transparent;color:#64748b;font-weight:700;cursor:pointer;padding:0;">x</button>' +
                             '</span>';
                     }).join('');
 
                     searchInput.placeholder = selected.length > 0 ? '' : config.placeholder;
-                    searchInput.classList.toggle('hidden', maxSelections > 0 && selected.length >= maxSelections);
+                    searchInput.style.flex = selected.length > 0 ? '0 0 24px' : '1';
+                    searchInput.classList.remove('hidden');
                 };
 
                 const addSelection = function (value) {

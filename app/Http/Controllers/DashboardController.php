@@ -63,6 +63,9 @@ class DashboardController extends Controller
             ]);
         }
 
+        $user = Auth::user();
+        $userId = (int) ($user?->id ?? 0);
+        $isSuperAdmin = strtolower(trim((string) ($user?->role ?? ''))) === 'super admin';
         $totalRequests = (clone $baseQuery)->count();
         $todayRequests = $this->scopeForDashboard(ServiceRequest::query())
             ->whereDate('created_at', today())
@@ -77,12 +80,52 @@ class DashboardController extends Controller
         $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
         $checkingRequests = (clone $baseQuery)->where('status', 'checking')->count();
         $approvedRequests = (clone $baseQuery)->where('status', 'approved')->count();
+        if ($isSuperAdmin) {
+            $receivedRequests = (clone $baseQuery)->whereNotNull('received_by_user_id')->count();
+            $receivedCheckingRequests = (clone $baseQuery)->where('status', 'checking')->count();
+            $receivedApprovedRequests = (clone $baseQuery)->where('status', 'approved')->count();
+        } else {
+            $receivedRequests = $userId > 0
+                ? (clone $baseQuery)->where('received_by_user_id', $userId)->count()
+                : 0;
+            $receivedCheckingRequests = $userId > 0
+                ? (clone $baseQuery)
+                    ->where('received_by_user_id', $userId)
+                    ->where('status', 'checking')
+                    ->count()
+                : 0;
+            $receivedApprovedRequests = $userId > 0
+                ? (clone $baseQuery)
+                    ->where('received_by_user_id', $userId)
+                    ->where('status', 'approved')
+                    ->count()
+                : 0;
+        }
         $requestMessages = (clone $chatBaseQuery)->count();
 
-        $recentRequests = (clone $baseQuery)
-            ->latest()
-            ->take(8)
-            ->get();
+        $recentRequests = $isSuperAdmin
+            ? (clone $baseQuery)->latest()->take(8)->get()
+            : (clone $baseQuery)
+                ->where(function (Builder $builder) use ($userId): void {
+                    $builder
+                        ->where('received_by_user_id', $userId)
+                        ->orWhere(function (Builder $approvedBuilder) use ($userId): void {
+                            $approvedBuilder
+                                ->where('status', 'approved')
+                                ->where(function (Builder $ownerBuilder) use ($userId): void {
+                                    $ownerBuilder
+                                        ->where('approved_by_user_id', $userId)
+                                        ->orWhere(function (Builder $legacyBuilder) use ($userId): void {
+                                            $legacyBuilder
+                                                ->whereNull('approved_by_user_id')
+                                                ->where('user_id', $userId);
+                                        });
+                                });
+                        });
+                })
+                ->latest()
+                ->take(8)
+                ->get();
 
         $recentChatRequests = (clone $chatBaseQuery)
             ->orderByDesc('contact_chat_requested_at')
@@ -98,6 +141,9 @@ class DashboardController extends Controller
             'pendingRequests' => $pendingRequests,
             'checkingRequests' => $checkingRequests,
             'approvedRequests' => $approvedRequests,
+            'receivedRequests' => $receivedRequests,
+            'receivedCheckingRequests' => $receivedCheckingRequests,
+            'receivedApprovedRequests' => $receivedApprovedRequests,
             'requestMessages' => $requestMessages,
             'recentRequests' => $recentRequests,
             'recentChatRequests' => $recentChatRequests,
