@@ -8,7 +8,8 @@
     $isArchiveView = request()->routeIs('service-requests.index') && request()->query('status') === 'archived';
     $isReceiveView = request()->routeIs('service-requests.index') && request()->query('received') === 'me';
     $isAssignedView = request()->routeIs('service-requests.index') && request()->query('assigned') === 'me';
-    $isServiceRequestView = request()->routeIs('service-requests.index') && ! $isArchiveView && ! $isReceiveView && ! $isAssignedView;
+    $isReceiversView = request()->routeIs('service-requests.index') && request()->query('receivers') === 'all';
+    $isServiceRequestView = request()->routeIs('service-requests.index') && ! $isArchiveView && ! $isReceiveView && ! $isAssignedView && ! $isReceiversView;
 @endphp
 
 <style>
@@ -97,7 +98,15 @@
         transition: all 0.15s;
     }
     .db2-nav-item:hover { background: #f0f7f0; color: #1a5c3a; }
-    .db2-nav-item.active { background: #2d7a6e; color: #fff; }
+    .db2-nav-item.active {
+        background: #2d7a6e;
+        color: #fff;
+        box-shadow: inset 3px 0 0 #facc15;
+    }
+    .db2-nav-item:focus-visible {
+        outline: 2px solid #99f6e4;
+        outline-offset: 2px;
+    }
     .db2-nav-item svg { width: 18px; height: 18px; flex-shrink: 0; }
     .db2-nav-label { white-space: nowrap; }
     .db2-sidebar-logout {
@@ -128,15 +137,45 @@
     .db2-topbar {
         background: #fff;
         border-bottom: 1px solid #eef2ee;
-        padding: 12px 24px;
+        padding: 12px 24px 12px 72px;
         display: flex;
         align-items: center;
-        justify-content: flex-end;
+        justify-content: space-between;
         gap: 12px;
         min-height: 64px;
         position: sticky;
         top: 0;
         z-index: 5;
+    }
+    .db2-topbar-left {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+    }
+    .db2-topbar-date {
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #64748b;
+    }
+    .db2-topbar-user {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 6px;
+        font-size: 13px;
+        color: #0f172a;
+    }
+    .db2-topbar-user-name {
+        font-weight: 700;
+    }
+    .db2-topbar-user-separator {
+        color: #94a3b8;
+    }
+    .db2-topbar-user-meta {
+        color: #64748b;
     }
     .db2-topbar-chip {
         display: inline-flex;
@@ -419,7 +458,9 @@
     }
 
     @media (max-width: 640px) {
-        .db2-topbar { padding: 10px 14px; }
+        .db2-topbar { padding: 10px 14px 10px 64px; }
+        .db2-topbar-left { max-width: calc(100vw - 86px); }
+        .db2-topbar-user { font-size: 12px; }
         .db2-search { display: none; }
         .db2-content { padding: 14px; }
         .db2-page-title { font-size: 1.25rem; }
@@ -458,9 +499,15 @@
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M5 4h10a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V6a2 2 0 012-2z"/><path d="M7 8h6M7 12h4"/></svg>
                 <span class="db2-nav-label">Assigned</span>
             </a>
+            @if ($isAdmin)
+                <a href="{{ route('service-requests.index', ['receivers' => 'all']) }}" class="db2-nav-item {{ $isReceiversView ? 'active' : '' }}">
+                    <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="7" cy="7" r="3"/><path d="M1 17c0-3.3 2.7-6 6-6s6 2.7 6 6"/><path d="M13 7a3 3 0 010 6M19 17c0-2.2-1.3-4.1-3-5"/></svg>
+                    <span class="db2-nav-label">Receivers</span>
+                </a>
+            @endif
             <a href="{{ route('service-requests.index', ['status' => 'archived']) }}" class="db2-nav-item {{ $isArchiveView ? 'active' : '' }}">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 4h12v3H4zM4 7h12v9a2 2 0 01-2 2H6a2 2 0 01-2-2V7z"/><path d="M8 11h4"/></svg>
-                <span class="db2-nav-label">Archive</span>
+                <span class="db2-nav-label">Action Taken</span>
             </a>
             <a href="{{ route('service-requests.chat-requests') }}" class="db2-nav-item {{ request()->routeIs('service-requests.chat-requests') ? 'active' : '' }}">
                 <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5a2 2 0 012-2h10a2 2 0 012 2v7a2 2 0 01-2 2H9l-4 3v-3H5a2 2 0 01-2-2V5z"/><path d="M7 8h6M7 11h4"/></svg>
@@ -494,10 +541,15 @@
 
     <div class="db2-main">
         <div class="db2-topbar">
+            <div class="db2-topbar-left">
+                <span class="db2-topbar-date">{{ now()->format('M j, Y') }}</span>
+                <div class="db2-topbar-user">
+                    <span class="db2-topbar-user-name">{{ Auth::user()?->name }}</span>
+                    <span class="db2-topbar-user-separator">|</span>
+                    <span class="db2-topbar-user-meta">{{ strtoupper((string) Auth::user()?->department) }}</span>
+                </div>
+            </div>
             <div class="db2-topbar-right">
-                @if (! $isAdmin)
-                    <span class="db2-topbar-chip">{{ strtoupper((string) Auth::user()?->department) }}</span>
-                @endif
                 <div class="db2-notif-wrap" data-db2-notif-wrap data-poll-endpoint="{{ route('service-requests.notifications') }}">
                     <button type="button" class="db2-icon-btn" data-db2-notif-toggle aria-label="View notifications">
                         <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 2a6 6 0 00-6 6v3l-1.5 2.5h15L16 11V8a6 6 0 00-6-6zM8 17a2 2 0 004 0"/></svg>
@@ -925,11 +977,12 @@
         const status = requestedUrl.searchParams.get('status') || '';
         const received = requestedUrl.searchParams.get('received') || '';
         const assigned = requestedUrl.searchParams.get('assigned') || '';
+        const receivers = requestedUrl.searchParams.get('receivers') || '';
 
         if (status === 'archived' || status === 'approved') {
             return {
                 state: { archive: true },
-                title: 'Archive',
+                title: 'Action Taken',
                 navHref: "{{ route('service-requests.index', ['status' => 'archived']) }}",
             };
         }
@@ -947,6 +1000,14 @@
                 state: { assigned: true },
                 title: 'Assigned',
                 navHref: "{{ route('service-requests.index', ['assigned' => 'me']) }}",
+            };
+        }
+
+        if (receivers === 'all') {
+            return {
+                state: { receivers: true },
+                title: 'Receivers',
+                navHref: "{{ route('service-requests.index', ['receivers' => 'all']) }}",
             };
         }
 
@@ -1063,7 +1124,23 @@
         });
     })();
 
-    // AJAX Archive Navigation
+    // AJAX Receivers Navigation
+    (function () {
+        const receiversLink = document.querySelector('a[href="{{ route('service-requests.index', ['receivers' => 'all']) }}"]');
+        if (!receiversLink) return;
+
+        receiversLink.addEventListener('click', async function (event) {
+            event.preventDefault();
+
+            try {
+                await loadServiceRequestsContent(this.href);
+            } catch (error) {
+                window.location.href = this.href;
+            }
+        });
+    })();
+
+    // AJAX Action Taken Navigation
     (function () {
         const archiveLink = document.querySelector('a[href="{{ route('service-requests.index', ['status' => 'archived']) }}"]');
         if (!archiveLink) return;

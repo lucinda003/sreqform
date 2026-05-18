@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Office;
 use App\Models\ServiceRequest;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
@@ -66,6 +68,12 @@ class DashboardController extends Controller
         $user = Auth::user();
         $userId = (int) ($user?->id ?? 0);
         $isSuperAdmin = strtolower(trim((string) ($user?->role ?? ''))) === 'super admin';
+        $receiverStats = collect();
+        $receiverSummary = [
+            'total' => 0,
+            'received_open' => 0,
+            'assigned_open' => 0,
+        ];
         $totalRequests = (clone $baseQuery)->count();
         $todayRequests = $this->scopeForDashboard(ServiceRequest::query())
             ->whereDate('created_at', today())
@@ -76,10 +84,11 @@ class DashboardController extends Controller
                 now()->endOfWeek(),
             ])
             ->count();
-        $uniqueOffices = (clone $baseQuery)->distinct('office')->count('office');
+        $uniqueOffices = Office::where('is_active', true)->count();
         $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
         $checkingRequests = (clone $baseQuery)->where('status', 'checking')->count();
         $approvedRequests = (clone $baseQuery)->where('status', 'approved')->count();
+        $unresolvedRequests = $pendingRequests + $checkingRequests;
         if ($isSuperAdmin) {
             $receivedRequests = (clone $baseQuery)->whereNotNull('received_by_user_id')->count();
             $receivedCheckingRequests = (clone $baseQuery)->where('status', 'checking')->count();
@@ -102,6 +111,42 @@ class DashboardController extends Controller
                 : 0;
         }
         $requestMessages = (clone $chatBaseQuery)->count();
+
+        if ($isSuperAdmin) {
+            $receiverStatsQuery = User::query()
+                ->select(['id', 'name', 'role', 'department'])
+                ->whereHas('receivedRequests')
+                ->withCount([
+                    'receivedRequests as received_open_count' => function (Builder $query): void {
+                        $query->whereIn('status', ['pending', 'checking']);
+                    },
+                    'assignedRequests as assigned_open_count' => function (Builder $query): void {
+                        $query->whereIn('status', ['pending', 'checking']);
+                    },
+                ])
+                ->withMax([
+                    'receivedRequests as last_received_at',
+                ], 'received_at')
+                ->withMin([
+                    'assignedRequests as first_assigned_at' => function (Builder $query): void {
+                        $query->whereIn('status', ['pending', 'checking']);
+                    },
+                ], 'updated_at')
+                ->withMax([
+                    'assignedRequests as last_assigned_at' => function (Builder $query): void {
+                        $query->whereIn('status', ['pending', 'checking']);
+                    },
+                ], 'updated_at')
+                ->orderByDesc('received_open_count')
+                ->orderBy('name');
+
+            $receiverStats = $receiverStatsQuery->get();
+            $receiverSummary = [
+                'total' => $receiverStats->count(),
+                'received_open' => (int) $receiverStats->sum('received_open_count'),
+                'assigned_open' => (int) $receiverStats->sum('assigned_open_count'),
+            ];
+        }
 
         $recentRequests = $isSuperAdmin
             ? (clone $baseQuery)->latest()->take(8)->get()
@@ -133,6 +178,46 @@ class DashboardController extends Controller
             ->take(8)
             ->get();
 
+        $needsAttentionRequests = (clone $baseQuery)
+            ->whereIn('status', ['pending', 'checking'])
+            ->orderByRaw('COALESCE(checking_at, pending_at, created_at) asc')
+            ->take(5)
+            ->get();
+
+        $officeBreakdown = (clone $baseQuery)
+            ->get(['office'])
+            ->map(fn (ServiceRequest $request): string => trim((string) $request->office) !== ''
+                ? (string) preg_replace('/\s+/', ' ', trim((string) $request->office))
+                : 'Unspecified')
+            ->countBy()
+            ->sortDesc()
+            ->take(5);
+
+        $requestOffices = (clone $baseQuery)
+            ->get(['office'])
+            ->map(fn (ServiceRequest $request): string => (string) preg_replace('/\s+/', ' ', trim((string) $request->office)))
+            ->filter()
+            ->values();
+
+        $officeRegionMap = $requestOffices->isNotEmpty()
+            ? Office::query()
+                ->whereIn('name', $requestOffices->unique()->all())
+                ->get(['name', 'region'])
+                ->mapWithKeys(fn (Office $office): array => [
+                    strtolower((string) preg_replace('/\s+/', ' ', trim((string) $office->name))) => trim((string) ($office->region ?? '')),
+                ])
+            : collect();
+
+        $regionBreakdown = $requestOffices
+            ->map(function (string $officeName) use ($officeRegionMap): string {
+                $region = $officeRegionMap->get(strtolower($officeName), '');
+
+                return $region !== '' ? $region : 'Unmapped';
+            })
+            ->countBy()
+            ->sortDesc()
+            ->take(5);
+
         return [
             'totalRequests' => $totalRequests,
             'todayRequests' => $todayRequests,
@@ -141,12 +226,18 @@ class DashboardController extends Controller
             'pendingRequests' => $pendingRequests,
             'checkingRequests' => $checkingRequests,
             'approvedRequests' => $approvedRequests,
+            'unresolvedRequests' => $unresolvedRequests,
             'receivedRequests' => $receivedRequests,
             'receivedCheckingRequests' => $receivedCheckingRequests,
             'receivedApprovedRequests' => $receivedApprovedRequests,
             'requestMessages' => $requestMessages,
             'recentRequests' => $recentRequests,
             'recentChatRequests' => $recentChatRequests,
+            'needsAttentionRequests' => $needsAttentionRequests,
+            'officeBreakdown' => $officeBreakdown,
+            'regionBreakdown' => $regionBreakdown,
+            'receiverStats' => $receiverStats,
+            'receiverSummary' => $receiverSummary,
             'range' => $range,
         ];
     }

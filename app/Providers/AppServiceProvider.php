@@ -56,6 +56,13 @@ class AppServiceProvider extends ServiceProvider
             ];
         });
 
+        RateLimiter::for('office-search', function (Request $request): array {
+            return [
+                Limit::perMinute(60)->by('office-search-minute:' . $request->ip()),
+                Limit::perMinutes(15, 300)->by('office-search-window:' . $request->ip()),
+            ];
+        });
+
         RateLimiter::for('profile-signature-send-code', function (Request $request): array {
             $userId = (int) ($request->user()?->id ?? 0);
 

@@ -13,14 +13,18 @@ return new class extends Migration
             $table->dropUnique('offices_parent_name_name_unique');
         });
 
-        DB::statement('ALTER TABLE offices MODIFY regcode VARCHAR(50) NULL');
-        DB::statement('ALTER TABLE offices MODIFY address TEXT NULL');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE offices MODIFY regcode VARCHAR(50) NULL');
+            DB::statement('ALTER TABLE offices MODIFY address TEXT NULL');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE offices MODIFY regcode VARCHAR(10) NULL');
-        DB::statement('ALTER TABLE offices MODIFY address VARCHAR(255) NULL');
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE offices MODIFY regcode VARCHAR(10) NULL');
+            DB::statement('ALTER TABLE offices MODIFY address VARCHAR(255) NULL');
+        }
 
         Schema::table('offices', function (Blueprint $table) {
             $table->unique(['parent_name', 'name'], 'offices_parent_name_name_unique');

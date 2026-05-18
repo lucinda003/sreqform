@@ -120,11 +120,20 @@ class AdminUserController extends Controller
         $this->authorizeAdmin();
 
         $validated = $request->validate([
-            'name' => ['required', 'string', 'max:255'],
+            'first_name' => ['required', 'string', 'max:255'],
+            'middle_name' => ['nullable', 'string', 'max:255'],
+            'last_name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'role' => ['required', 'in:super admin,admin,supervisor,technical support'],
             'department_code' => ['required', 'string', 'max:30', Rule::in($this->availableDepartmentCodes())],
         ]);
+
+        $fullNameParts = [
+            trim($validated['first_name']),
+            trim((string) ($validated['middle_name'] ?? '')),
+            trim($validated['last_name']),
+        ];
+        $fullName = trim(implode(' ', array_filter($fullNameParts, fn ($part) => $part !== '')));
 
         $departmentCode = strtoupper(trim($validated['department_code']));
         $departmentStatus = 'pending';
@@ -150,7 +159,7 @@ class AdminUserController extends Controller
         $generatedPassword = Str::random(12);
 
         $user = User::create([
-            'name' => $validated['name'],
+            'name' => $fullName,
             'username' => $username,
             'email' => $validated['email'],
             'password' => Hash::make($generatedPassword),

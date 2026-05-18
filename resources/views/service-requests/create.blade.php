@@ -54,11 +54,13 @@
             align-items: stretch;
             min-height: 64px;
         }
+
         .srf-topbar-accent {
             width: 6px;
             background: #f0fdf4;
             flex-shrink: 0;
         }
+
         .srf-topbar-inner {
             display: flex;
             align-items: center;
@@ -66,17 +68,20 @@
             padding: 0 1.5rem;
             flex: 1;
         }
+
         .srf-topbar-brand {
             display: flex;
             align-items: center;
             gap: 14px;
         }
+
         .srf-topbar-logo {
             width: 40px;
             height: 40px;
             object-fit: contain;
             filter: brightness(0) invert(1);
         }
+
         .srf-topbar-title {
             font-size: 11px;
             font-weight: 600;
@@ -86,12 +91,14 @@
             margin: 0;
             line-height: 1;
         }
+
         .srf-topbar-sub {
             font-size: 11px;
             color: #5eead4;
             margin: 3px 0 0;
             letter-spacing: 0.04em;
         }
+
         .srf-track-btn {
             font-size: 12px;
             font-weight: 500;
@@ -104,6 +111,7 @@
             letter-spacing: 0.03em;
             transition: background 0.18s, color 0.18s;
         }
+
         .srf-track-btn:hover {
             background: #f0fdf4;
             color: #0f766e;
@@ -115,7 +123,7 @@
             border-radius: 12px;
             border: 1.5px solid #cbd5e1;
             overflow: hidden;
-            box-shadow: 0 2px 16px 0 rgba(15,118,110,0.07);
+            box-shadow: 0 2px 16px 0 rgba(15, 118, 110, 0.07);
         }
 
         /* ── Form header bar ── */
@@ -150,6 +158,7 @@
             border-color: rgba(255, 255, 255, 0.7);
             transform: translateY(-1px);
         }
+
         .srf-form-header-text {
             font-size: 21px;
             font-weight: 700;
@@ -158,16 +167,18 @@
             color: #fff;
             margin: 0;
         }
+
         .srf-form-header-line {
             flex: 1;
             height: 1px;
-            background: rgba(255,255,255,0.2);
+            background: rgba(255, 255, 255, 0.2);
         }
 
         /* ── Section label ── */
         .srf-section {
             padding: 16px 20px 0;
         }
+
         .srf-section-label {
             font-size: 17px;
             font-weight: 700;
@@ -179,6 +190,7 @@
             align-items: center;
             gap: 8px;
         }
+
         .srf-section-label::after {
             content: '';
             flex: 1;
@@ -192,17 +204,33 @@
             gap: 12px;
             margin-bottom: 12px;
         }
-        .srf-field-grid-2 { grid-template-columns: 1fr 1fr; }
-        .srf-field-grid-3 { grid-template-columns: 1fr 1fr 1fr; }
-        .srf-field-grid-4 { grid-template-columns: 1fr 1fr 1fr 1fr; }
-        .srf-field-grid-54 { grid-template-columns: 5fr 4fr; }
-        .srf-field-grid-name { grid-template-columns: 220px 1fr 1fr 1fr 100px; }
+
+        .srf-field-grid-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .srf-field-grid-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .srf-field-grid-4 {
+            grid-template-columns: 1fr 1fr 1fr 1fr;
+        }
+
+        .srf-field-grid-54 {
+            grid-template-columns: 5fr 4fr;
+        }
+
+        .srf-field-grid-name {
+            grid-template-columns: 220px 1fr 1fr 1fr 100px;
+        }
 
         .srf-field {
             display: flex;
             flex-direction: column;
             gap: 4px;
         }
+
         .srf-label {
             font-size: 14px;
             font-weight: 700;
@@ -210,12 +238,14 @@
             text-transform: uppercase;
             color: #000;
         }
+
         .srf-office-label-row {
             display: flex;
             align-items: center;
             gap: 10px;
             flex-wrap: wrap;
         }
+
         .srf-input.srf-office-region-filter {
             width: auto;
             min-width: 150px;
@@ -225,13 +255,16 @@
             padding-bottom: 4px;
             font-size: 13px;
         }
+
         .srf-required {
             color: #ef4444;
             margin-left: 2px;
         }
 
         /* ── Inputs ── */
-        .srf-input, .srf-select, .srf-textarea {
+        .srf-input,
+        .srf-select,
+        .srf-textarea {
             font-family: 'DM Sans', sans-serif;
             font-size: 16px;
             color: #000;
@@ -245,18 +278,25 @@
             box-sizing: border-box;
             transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
         }
-        .srf-input:hover, .srf-select:hover {
+
+        .srf-input:hover,
+        .srf-select:hover {
             border-color: #94a3b8;
             background: #fff;
         }
-        .srf-input:focus, .srf-select:focus, .srf-textarea:focus {
+
+        .srf-input:focus,
+        .srf-select:focus,
+        .srf-textarea:focus {
             border-color: #0f766e;
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
         }
+
         .srf-system-picker {
             position: relative;
         }
+
         .srf-system-picker-box {
             display: flex;
             min-height: 39px;
@@ -270,20 +310,24 @@
             box-sizing: border-box;
             transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
         }
+
         .srf-system-picker-box:hover {
             border-color: #94a3b8;
             background: #fff;
         }
+
         .srf-system-picker-box:focus-within {
             border-color: #0f766e;
             background: #fff;
-            box-shadow: 0 0 0 3px rgba(15,118,110,0.1);
+            box-shadow: 0 0 0 3px rgba(15, 118, 110, 0.1);
         }
+
         .srf-system-picker-chips {
             display: flex;
             flex-wrap: wrap;
             gap: 5px;
         }
+
         .srf-system-picker-chip {
             display: inline-flex;
             align-items: center;
@@ -298,6 +342,7 @@
             font-weight: 600;
             line-height: 1.2;
         }
+
         .srf-system-picker-remove {
             border: 0;
             background: transparent;
@@ -308,9 +353,11 @@
             line-height: 1;
             padding: 0 1px;
         }
+
         .srf-system-picker-remove:hover {
             color: #dc2626;
         }
+
         .srf-system-picker-input {
             flex: 1;
             min-width: 160px;
@@ -323,10 +370,12 @@
             font-weight: 600;
             padding: 3px 2px;
         }
+
         .srf-system-picker-input::placeholder {
             color: #64748b;
             font-weight: 500;
         }
+
         .srf-system-picker-results {
             position: absolute;
             left: 0;
@@ -340,6 +389,7 @@
             background: #fff;
             box-shadow: 0 12px 24px rgba(15, 23, 42, 0.18);
         }
+
         .srf-system-picker-option {
             display: block;
             width: 100%;
@@ -352,19 +402,23 @@
             font-weight: 500;
             cursor: pointer;
         }
+
         .srf-system-picker-option:hover {
             background: #f1f5f9;
         }
+
         .srf-system-picker-empty {
             padding: 8px 10px;
             color: #64748b;
             font-size: 14px;
         }
+
         .srf-textarea {
             resize: vertical;
             min-height: 160px;
             line-height: 1.6;
         }
+
         .srf-hint {
             font-size: 13px;
             color: #000;
@@ -385,6 +439,7 @@
             border-radius: 8px;
             overflow: hidden;
         }
+
         .srf-desc-header {
             background: #f8fafc;
             border-bottom: 1.5px solid #e2e8f0;
@@ -395,6 +450,7 @@
             text-transform: uppercase;
             color: #475569;
         }
+
         .srf-desc-body {
             padding: 12px 14px;
         }
@@ -405,6 +461,7 @@
             padding-top: 12px;
             border-top: 1px solid #f1f5f9;
         }
+
         .srf-upload-label {
             font-size: 13px;
             font-weight: 700;
@@ -414,10 +471,12 @@
             display: block;
             margin-bottom: 6px;
         }
+
         .srf-file-input {
             font-size: 15px;
             color: #475569;
         }
+
         .srf-file-input::file-selector-button {
             font-size: 15px;
             font-weight: 700;
@@ -430,6 +489,7 @@
             cursor: pointer;
             transition: background 0.18s;
         }
+
         .srf-file-input::file-selector-button:hover {
             background: #134e4a;
         }
@@ -441,6 +501,7 @@
             background: #fafafa;
             padding: 10px;
         }
+
         .srf-sig-modes {
             display: flex;
             gap: 16px;
@@ -449,12 +510,14 @@
             font-weight: 600;
             margin-bottom: 8px;
         }
+
         .srf-sig-modes label {
             display: flex;
             align-items: center;
             gap: 5px;
             cursor: pointer;
         }
+
         .srf-sig-canvas {
             width: 100%;
             height: 300px;
@@ -464,6 +527,7 @@
             background: #fff;
             display: block;
         }
+
         .srf-sig-upload-area {
             min-height: 300px;
             border: 1px dashed #cbd5e1;
@@ -473,12 +537,15 @@
             align-items: center;
             padding: 12px;
         }
+
         .hidden.srf-sig-upload-area {
             display: none !important;
         }
+
         .srf-sig-upload-area .srf-file-input {
             width: 100%;
         }
+
         .srf-sig-clear {
             margin-top: 6px;
             font-size: 11px;
@@ -491,6 +558,7 @@
             cursor: pointer;
             transition: border-color 0.18s, color 0.18s;
         }
+
         .srf-sig-clear:hover {
             border-color: #94a3b8;
             color: #1e293b;
@@ -498,13 +566,14 @@
 
         /* ── Approved section ── */
         .srf-approved-grid {
-            
+
             display: grid;
             grid-template-columns: auto 1fr;
             border: 1.5px solid #e2e8f0;
             border-radius: 8px;
             overflow: hidden;
         }
+
         .srf-approved-label-cell {
             background: #f8fafc;
             border-right: 1.5px solid #e2e8f0;
@@ -519,20 +588,24 @@
             transform: rotate(180deg);
             white-space: nowrap;
         }
+
         .srf-approved-body {
             padding: 14px 16px;
         }
+
         .srf-approved-inner {
             display: grid;
             grid-template-columns: 1fr;
             gap: 0;
         }
+
         .srf-field-underline {
             display: flex;
             flex-direction: column;
             gap: 4px;
             margin-top: 12px;
         }
+
         .srf-input-underline {
             font-family: 'DM Sans', sans-serif;
             font-size: 16px;
@@ -547,12 +620,15 @@
             width: 100%;
             transition: border-color 0.18s;
         }
+
         .srf-input-underline:focus {
             border-bottom-color: #0f766e;
         }
+
         .srf-input-underline:hover {
             border-bottom-color: #94a3b8;
         }
+
         .srf-sublabel {
             font-size: 13px;
             color: #000;
@@ -569,6 +645,7 @@
             background: #f8fafc;
             border-top: 1.5px solid #e2e8f0;
         }
+
         .srf-btn-back {
             font-family: 'DM Sans', sans-serif;
             font-size: 16px;
@@ -581,10 +658,12 @@
             text-decoration: none;
             transition: border-color 0.18s, color 0.18s;
         }
+
         .srf-btn-back:hover {
             border-color: #94a3b8;
             color: #1e293b;
         }
+
         .srf-btn-submit {
             font-family: 'DM Sans', sans-serif;
             font-size: 16px;
@@ -598,10 +677,12 @@
             letter-spacing: 0.03em;
             transition: background 0.18s, box-shadow 0.18s;
         }
+
         .srf-btn-submit:hover {
             background: #134e4a;
-            box-shadow: 0 4px 12px rgba(15,118,110,0.25);
+            box-shadow: 0 4px 12px rgba(15, 118, 110, 0.25);
         }
+
         .srf-btn-clear {
             font-family: 'DM Sans', sans-serif;
             font-size: 11px;
@@ -614,11 +695,13 @@
             cursor: pointer;
             transition: border-color 0.18s, color 0.18s, background 0.18s;
         }
+
         .srf-btn-clear:hover {
             border-color: #cbd5e1;
             color: #1e293b;
             background: #f8fafc;
         }
+
         .srf-scroll-top {
             position: fixed;
             bottom: 28px;
@@ -638,15 +721,18 @@
             justify-content: center;
             transition: background 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
         }
+
         .srf-scroll-top.visible {
             display: inline-flex;
         }
+
         .srf-scroll-top:hover {
             background: #f0fdfa;
             border-color: #0f766e;
             transform: translateY(-2px);
             box-shadow: 0 8px 24px rgba(15, 118, 110, 0.2);
         }
+
         .srf-scroll-top svg {
             width: 20px;
             height: 20px;
@@ -688,13 +774,15 @@
 
                 {{-- Form header --}}
                 <div class="srf-form-header">
-                    <a href="{{ route('service-requests.track') }}" class="srf-header-back" aria-label="Back to tracking page">&larr; Back</a>
+                    <a href="{{ route('service-requests.track') }}" class="srf-header-back"
+                        aria-label="Back to tracking page">&larr; Back</a>
                     <span class="srf-form-header-text">Service Request Form</span>
                     <div class="srf-form-header-line"></div>
                 </div>
 
                 @if ($errors->has('form'))
-                    <div class="mx-5 mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
+                    <div
+                        class="mx-5 mt-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-medium text-amber-800">
                         {{ $errors->first('form') }}
                     </div>
                 @endif
@@ -702,7 +790,8 @@
                 <form method="POST" action="{{ route('service-requests.store') }}" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="submission_token" value="{{ $submissionToken ?? '' }}">
-                    <input id="request_date" name="request_date" type="hidden" value="{{ old('request_date', now()->toDateString()) }}">
+                    <input id="request_date" name="request_date" type="hidden"
+                        value="{{ old('request_date', now()->toDateString()) }}">
                     <input name="time_received" type="hidden" value="{{ old('time_received', now()->format('H:i')) }}">
 
                     {{-- Section: Request Info --}}
@@ -712,7 +801,8 @@
                         <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
                             <div class="srf-field">
                                 <label class="srf-label" for="department_code">
-                                    <span class="srf-number-badge">1</span> Send to Department <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">1</span> Send to Department <span
+                                        class="srf-required">*</span>
                                 </label>
                                 <select id="department_code" name="department_code" class="srf-select" required>
                                     <option value="">Select department</option>
@@ -740,69 +830,68 @@
                                     ];
                                     $oldRequestCategory = (string) old('request_category', '');
                                     $hasCustomRequestCategory = $oldRequestCategory !== ''
-                                        && ! in_array($oldRequestCategory, $requestCategoryOptions, true);
+                                        && !in_array($oldRequestCategory, $requestCategoryOptions, true);
                                 @endphp
                                 <label class="srf-label" for="request_category">
-                                    <span class="srf-number-badge">2</span> Request Category <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">2</span> Request Category <span
+                                        class="srf-required">*</span>
                                 </label>
                                 <select name="request_category" id="request_category" class="srf-select">
                                     <option value="Technical Assistance" @selected(old('request_category') === 'Technical Assistance')>Technical Assistance</option>
-                                    <option value="System Access" @selected(old('request_category') === 'System Access')>System Access</option>
-                                    <option value="Network/Internet" @selected(old('request_category') === 'Network/Internet')>Network/Internet</option>
+                                    <option value="System Access" @selected(old('request_category') === 'System Access')>
+                                        System Access</option>
+                                    <option value="Network/Internet"
+                                        @selected(old('request_category') === 'Network/Internet')>Network/Internet
+                                    </option>
                                     <option value="Hardware Support" @selected(old('request_category') === 'Hardware Support')>Hardware Support</option>
                                     <option value="Software Installation" @selected(old('request_category') === 'Software Installation')>Software Installation</option>
-                                    <option value="Data Request" @selected(old('request_category') === 'Data Request')>Data Request</option>
+                                    <option value="Data Request" @selected(old('request_category') === 'Data Request')>
+                                        Data Request</option>
                                     @if ($hasCustomRequestCategory)
-                                        <option value="{{ $oldRequestCategory }}" selected data-custom="1">{{ $oldRequestCategory }}</option>
+                                        <option value="{{ $oldRequestCategory }}" selected data-custom="1">
+                                            {{ $oldRequestCategory }}</option>
                                     @endif
                                     <option value="Others" @selected(old('request_category') === 'Others' || $hasCustomRequestCategory)>Others</option>
                                 </select>
-                                <input
-                                    type="text"
-                                    id="request_category_other"
+                                <input type="text" id="request_category_other"
                                     class="srf-input mt-2 {{ old('request_category') === 'Others' || $hasCustomRequestCategory ? '' : 'hidden' }}"
                                     placeholder="Type request category"
-                                    value="{{ $hasCustomRequestCategory ? $oldRequestCategory : '' }}"
-                                >
+                                    value="{{ $hasCustomRequestCategory ? $oldRequestCategory : '' }}">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="application_system_name">
-                                    <span class="srf-number-badge">3</span> Application System Name <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">3</span> Application System Name <span
+                                        class="srf-required">*</span>
                                 </label>
                                 @php
                                     $applicationSystemOptions = collect($applicationSystemOptions ?? []);
                                     $oldApplicationSystemName = (string) old('application_system_name', '');
                                 @endphp
                                 <div class="srf-system-picker" data-application-system-picker>
-                                    <input
-                                        id="application_system_name"
-                                        type="hidden"
-                                        name="application_system_name"
-                                        value="{{ $oldApplicationSystemName }}"
-                                    >
+                                    <input id="application_system_name" type="hidden" name="application_system_name"
+                                        value="{{ $oldApplicationSystemName }}">
                                     <div class="srf-system-picker-box">
                                         <div id="application_system_name_chips" class="srf-system-picker-chips"></div>
-                                        <input
-                                            id="application_system_name_search"
-                                            type="text"
-                                            class="srf-system-picker-input"
-                                            autocomplete="off"
-                                            placeholder="Application / System Name"
-                                        >
+                                        <input id="application_system_name_search" type="text"
+                                            class="srf-system-picker-input" autocomplete="off"
+                                            placeholder="Application / System Name">
                                     </div>
-                                    <div
-                                        id="application_system_name_results"
-                                        class="srf-system-picker-results hidden"
-                                    ></div>
+                                    <div id="application_system_name_results" class="srf-system-picker-results hidden">
+                                    </div>
                                 </div>
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="expected_completion_date">
-                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion <span class="srf-required">*</span>
+                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion <span
+                                        class="srf-required">*</span>
                                 </label>
                                 <div style="display: flex; gap: 8px;">
-                                    <input id="expected_completion_date" type="date" name="expected_completion_date" value="{{ old('expected_completion_date') }}" class="srf-input" style="width: 180px;" required>
-                                    <input id="expected_completion_time" type="time" name="expected_completion_time" value="{{ old('expected_completion_time') }}" class="srf-input" style="width: 140px;" required>
+                                    <input id="expected_completion_date" type="date" name="expected_completion_date"
+                                        value="{{ old('expected_completion_date') }}" class="srf-input"
+                                        style="width: 180px;" required>
+                                    <input id="expected_completion_time" type="time" name="expected_completion_time"
+                                        value="{{ old('expected_completion_time') }}" class="srf-input"
+                                        style="width: 140px;" required>
                                 </div>
                             </div>
                         </div>
@@ -817,28 +906,43 @@
                         </p>
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
-                                <label class="srf-label" for="contact_last_name">Last Name <span class="srf-required">*</span></label>
-                                <input id="contact_last_name" name="contact_last_name" value="{{ old('contact_last_name') }}" class="srf-input" autocomplete="family-name" required maxlength="100">
+                                <label class="srf-label" for="contact_last_name">Last Name <span
+                                        class="srf-required">*</span></label>
+                                <input id="contact_last_name" name="contact_last_name"
+                                    value="{{ old('contact_last_name') }}" class="srf-input" autocomplete="family-name"
+                                    required maxlength="100">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="contact_first_name">First Name <span class="srf-required">*</span></label>
-                                <input id="contact_first_name" name="contact_first_name" value="{{ old('contact_first_name') }}" class="srf-input" autocomplete="given-name" required maxlength="100">
+                                <label class="srf-label" for="contact_first_name">First Name <span
+                                        class="srf-required">*</span></label>
+                                <input id="contact_first_name" name="contact_first_name"
+                                    value="{{ old('contact_first_name') }}" class="srf-input" autocomplete="given-name"
+                                    required maxlength="100">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_middle_name">Middle Name</label>
-                                <input id="contact_middle_name" name="contact_middle_name" value="{{ old('contact_middle_name') }}" class="srf-input" autocomplete="additional-name" maxlength="100">
+                                <input id="contact_middle_name" name="contact_middle_name"
+                                    value="{{ old('contact_middle_name') }}" class="srf-input"
+                                    autocomplete="additional-name" maxlength="100">
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="contact_suffix_name">Suffix</label>
                                 <select id="contact_suffix_name" name="contact_suffix_name" class="srf-input">
                                     <option value="">Select</option>
-                                    <option value="II" {{ old('contact_suffix_name') === 'II' ? 'selected' : '' }}>II</option>
-                                    <option value="III" {{ old('contact_suffix_name') === 'III' ? 'selected' : '' }}>III</option>
-                                    <option value="IV" {{ old('contact_suffix_name') === 'IV' ? 'selected' : '' }}>IV</option>
-                                    <option value="Jr." {{ old('contact_suffix_name') === 'Jr.' ? 'selected' : '' }}>Jr.</option>
-                                    <option value="N/A" {{ old('contact_suffix_name') === 'N/A' ? 'selected' : '' }}>N/A</option>
-                                    <option value="Sr." {{ old('contact_suffix_name') === 'Sr.' ? 'selected' : '' }}>Sr.</option>
-                                    <option value="V" {{ old('contact_suffix_name') === 'V' ? 'selected' : '' }}>V</option>
+                                    <option value="II" {{ old('contact_suffix_name') === 'II' ? 'selected' : '' }}>II
+                                    </option>
+                                    <option value="III" {{ old('contact_suffix_name') === 'III' ? 'selected' : '' }}>III
+                                    </option>
+                                    <option value="IV" {{ old('contact_suffix_name') === 'IV' ? 'selected' : '' }}>IV
+                                    </option>
+                                    <option value="Jr." {{ old('contact_suffix_name') === 'Jr.' ? 'selected' : '' }}>Jr.
+                                    </option>
+                                    <option value="N/A" {{ old('contact_suffix_name') === 'N/A' ? 'selected' : '' }}>N/A
+                                    </option>
+                                    <option value="Sr." {{ old('contact_suffix_name') === 'Sr.' ? 'selected' : '' }}>Sr.
+                                    </option>
+                                    <option value="V" {{ old('contact_suffix_name') === 'V' ? 'selected' : '' }}>V
+                                    </option>
                                 </select>
                             </div>
                         </div>
@@ -854,9 +958,11 @@
                             <div class="srf-field">
                                 <div class="srf-office-label-row">
                                     <label class="srf-label" for="office">
-                                        <span class="srf-number-badge">5</span> Office <span class="srf-required">*</span>
+                                        <span class="srf-number-badge">5</span> Office <span
+                                            class="srf-required">*</span>
                                     </label>
-                                    <select id="office_region_filter" name="office_region_filter" class="srf-input srf-office-region-filter">
+                                    <select id="office_region_filter" name="office_region_filter"
+                                        class="srf-input srf-office-region-filter">
                                         <option value="">All regions</option>
                                         @foreach (($parentOfficeOptions ?? []) as $parentOfficeOption)
                                             <option value="{{ $parentOfficeOption }}" {{ old('office_region_filter') === $parentOfficeOption ? 'selected' : '' }}>
@@ -877,13 +983,8 @@
                                     <input type="hidden" id="office" name="office" value="{{ old('office', '') }}">
                                     <div class="srf-system-picker-box">
                                         <div id="office_chips" class="srf-system-picker-chips"></div>
-                                        <input
-                                            id="office_search"
-                                            type="text"
-                                            class="srf-system-picker-input"
-                                            placeholder="Search and select an office..."
-                                            autocomplete="off"
-                                        >
+                                        <input id="office_search" type="text" class="srf-system-picker-input"
+                                            placeholder="Search and select an office..." autocomplete="off">
                                     </div>
                                     <div id="office_results" class="srf-system-picker-results hidden"></div>
                                 </div>
@@ -893,29 +994,38 @@
                                 <label class="srf-label" for="address">
                                     <span class="srf-number-badge">6</span> Address <span class="srf-required">*</span>
                                 </label>
-                                <input id="address" name="address" value="{{ old('address') }}" class="srf-input" autocomplete="street-address" required>
+                                <input id="address" name="address" value="{{ old('address') }}" class="srf-input"
+                                    autocomplete="street-address" required>
                             </div>
                         </div>
 
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
-                                <label class="srf-label" for="landline"><span class="srf-number-badge">7</span> Landline</label>
+                                <label class="srf-label" for="landline"><span class="srf-number-badge">7</span>
+                                    Landline</label>
                                 <input id="landline" name="landline" value="{{ old('landline') }}" inputmode="tel"
-                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" autocomplete="tel" maxlength="20">
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
+                                    autocomplete="tel" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="fax_no"><span class="srf-number-badge">8</span> Fax No</label>
+                                <label class="srf-label" for="fax_no"><span class="srf-number-badge">8</span> Fax
+                                    No</label>
                                 <input id="fax_no" name="fax_no" value="{{ old('fax_no') }}" inputmode="tel"
-                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" maxlength="20">
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
+                                    maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile No</label>
+                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile
+                                    No</label>
                                 <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="tel"
-                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input" autocomplete="tel-national" maxlength="20">
+                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
+                                    autocomplete="tel-national" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span> Email Address <span class="srf-required">*</span></label>
-                                <input id="email_address" type="email" name="email_address" value="{{ old('email_address') }}" class="srf-input" autocomplete="email" required>
+                                <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span>
+                                    Email Address <span class="srf-required">*</span></label>
+                                <input id="email_address" type="email" name="email_address"
+                                    value="{{ old('email_address') }}" class="srf-input" autocomplete="email" required>
                             </div>
                         </div>
                     </div>
@@ -925,24 +1035,30 @@
                     {{-- Section: Description --}}
                     <div class="srf-section" style="padding-bottom: 16px;">
                         <p class="srf-section-label">
-                            <span class="srf-number-badge">11</span> Description of Request <span class="srf-required">*</span>
+                            <span class="srf-number-badge">11</span> Description of Request <span
+                                class="srf-required">*</span>
                         </p>
                         <div class="srf-desc-box">
                             <div class="srf-desc-header">
                                 Please clearly write down the details of the request.
                             </div>
                             <div class="srf-desc-body">
-                                <textarea name="description_request" class="srf-textarea" maxlength="5000" required>{{ old('description_request') }}</textarea>
-                                <p class="mt-1 text-[11px] text-slate-500" data-description-char-count>0/5000 characters</p>
+                                <textarea name="description_request" class="srf-textarea" maxlength="5000"
+                                    required>{{ old('description_request') }}</textarea>
+                                <p class="mt-1 text-[11px] text-slate-500" data-description-char-count>0/5000 characters
+                                </p>
                                 <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
 
                                 <div class="srf-upload-wrap">
                                     <span class="srf-upload-label">Attach Photos (1 to 3)</span>
                                     <input id="description_photos" name="description_photos[]" type="file"
                                         accept="image/*" multiple class="srf-file-input">
-                                    <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 images, 5MB each. You can choose files multiple times.</p>
-                                    <p id="description-photos-selected" style="font-size:11px; color:#0f766e; margin: 4px 0 0;"></p>
-                                    <button type="button" id="description-photos-clear" class="srf-btn-clear" style="margin-top:6px;" hidden>Clear photos</button>
+                                    <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 images, 5MB each.
+                                        You can choose files multiple times.</p>
+                                    <p id="description-photos-selected"
+                                        style="font-size:11px; color:#0f766e; margin: 4px 0 0;"></p>
+                                    <button type="button" id="description-photos-clear" class="srf-btn-clear"
+                                        style="margin-top:6px;" hidden>Clear photos</button>
                                     <x-input-error :messages="$errors->get('description_photos')" class="mt-1" />
                                     <x-input-error :messages="$errors->get('description_photos.*')" class="mt-1" />
                                 </div>
@@ -974,10 +1090,13 @@
                                                 <canvas id="create-signature-canvas" class="srf-sig-canvas"
                                                     style="width:100%;"></canvas>
                                                 <input type="hidden" name="approved_by_signature_drawn"
-                                                    id="create-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
-                                                <button type="button" id="create-signature-clear" class="srf-sig-clear">Clear</button>
+                                                    id="create-signature-drawn"
+                                                    value="{{ old('approved_by_signature_drawn') }}">
+                                                <button type="button" id="create-signature-clear"
+                                                    class="srf-sig-clear">Clear</button>
                                             </div>
-                                            <x-input-error :messages="$errors->get('approved_by_signature_drawn')" class="mt-1" />
+                                            <x-input-error :messages="$errors->get('approved_by_signature_drawn')"
+                                                class="mt-1" />
                                         </div>
 
                                         <div class="srf-field-underline">
@@ -993,8 +1112,7 @@
                                         </div>
 
                                         <div class="srf-field-underline">
-                                            <input name="approved_date" type="date"
-                                                value="{{ old('approved_date') }}"
+                                            <input name="approved_date" type="date" value="{{ old('approved_date') }}"
                                                 id="create-approved-date" class="srf-input-underline" required>
                                             <p class="srf-sublabel">Date Signed</p>
                                         </div>
@@ -1015,14 +1133,18 @@
             </div>
         </section>
         <button type="button" class="srf-scroll-top" id="srf-scroll-top" aria-label="Scroll to top">
-            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V5"></path><path d="M5 9l5-5 5 5"></path></svg>
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M10 15V5"></path>
+                <path d="M5 9l5-5 5 5"></path>
+            </svg>
         </button>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('input[type="file"]').forEach(function(input) {
-                input.addEventListener('change', function() {
+            document.querySelectorAll('input[type="file"]').forEach(function (input) {
+                input.addEventListener('change', function () {
                     if (this.files && this.files[0] && this.files[0].size > 5 * 1024 * 1024) {
                         alert('File size must be 5MB or less.');
                         this.value = '';

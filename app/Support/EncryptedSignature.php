@@ -9,6 +9,8 @@ use Illuminate\Support\Str;
 class EncryptedSignature
 {
     private const DIRECTORY = 'service-request-signatures/';
+    private const DISK = 'local';
+    private const LEGACY_DISK = 'public';
     private const FORMAT_PREFIX = 'v2|';
     private const MAX_IMAGE_DIMENSION = 1000;
     private const JPEG_QUALITY = 82;
@@ -26,8 +28,8 @@ class EncryptedSignature
 
         $path = self::DIRECTORY . Str::uuid()->toString() . '.encsig';
 
-        // Compact encrypted payload for new signatures (keeps backward compatibility in read path).
-        Storage::disk('public')->put($path, Crypt::encryptString(self::FORMAT_PREFIX . $binary));
+        // Compact encrypted payload for new signatures. Store privately; read path keeps legacy public support.
+        Storage::disk(self::DISK)->put($path, Crypt::encryptString(self::FORMAT_PREFIX . $binary));
 
         return $path;
     }
@@ -35,11 +37,13 @@ class EncryptedSignature
     public static function readBinaryFromPath(?string $signaturePath): ?array
     {
         $path = trim((string) $signaturePath);
-        if ($path === '' || ! Storage::disk('public')->exists($path)) {
+        $diskName = self::diskContaining($path);
+        if ($diskName === null) {
             return null;
         }
 
-        $raw = (string) Storage::disk('public')->get($path);
+        $disk = Storage::disk($diskName);
+        $raw = (string) $disk->get($path);
 
         if (str_ends_with(strtolower($path), '.encsig')) {
             try {
@@ -75,12 +79,28 @@ class EncryptedSignature
             }
         }
 
-        $mime = Storage::disk('public')->mimeType($path) ?: 'image/png';
+        $mime = $disk->mimeType($path) ?: 'image/png';
 
         return [
             'mime' => $mime,
             'binary' => $raw,
         ];
+    }
+
+    public static function deletePath(?string $signaturePath): void
+    {
+        $path = trim((string) $signaturePath);
+
+        if (! self::isSignaturePath($path)) {
+            return;
+        }
+
+        foreach ([self::DISK, self::LEGACY_DISK] as $diskName) {
+            $disk = Storage::disk($diskName);
+            if ($disk->exists($path)) {
+                $disk->delete($path);
+            }
+        }
     }
 
     public static function dataUriFromPath(?string $signaturePath): string
@@ -124,6 +144,28 @@ class EncryptedSignature
         }
 
         return 'image/png';
+    }
+
+    private static function diskContaining(string $path): ?string
+    {
+        if (! self::isSignaturePath($path)) {
+            return null;
+        }
+
+        foreach ([self::DISK, self::LEGACY_DISK] as $diskName) {
+            if (Storage::disk($diskName)->exists($path)) {
+                return $diskName;
+            }
+        }
+
+        return null;
+    }
+
+    private static function isSignaturePath(string $path): bool
+    {
+        return $path !== ''
+            && str_starts_with($path, self::DIRECTORY)
+            && ! str_contains($path, '..');
     }
 
     public static function optimizeImageBinary(

@@ -11,7 +11,6 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Redirect;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ProfileController extends Controller
@@ -280,12 +279,6 @@ class ProfileController extends Controller
 
     private function deleteProfileSignatureFile(?string $signaturePath): void
     {
-        $path = trim((string) $signaturePath);
-
-        if ($path === '' || ! str_starts_with($path, 'service-request-signatures/')) {
-            return;
-        }
-
-        Storage::disk('public')->delete($path);
+        EncryptedSignature::deletePath($signaturePath);
     }
 }

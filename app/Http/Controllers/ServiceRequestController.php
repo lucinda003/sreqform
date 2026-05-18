@@ -34,6 +34,13 @@ class ServiceRequestController extends Controller
         $chatRequestFilter = trim((string) $request->query('chat_request'));
         $assignedFilter = trim((string) $request->query('assigned'));
         $receivedFilter = trim((string) $request->query('received'));
+        $receiversFilter = trim((string) $request->query('receivers'));
+        $isSuperAdmin = strtolower(trim((string) Auth::user()?->role)) === 'super admin';
+        $isReceiversView = $receiversFilter === 'all';
+
+        if ($isReceiversView && !$isSuperAdmin) {
+            abort(403);
+        }
 
         $serviceRequestsQuery = $this->scopeForUser(ServiceRequest::query())
             ->with(['assignedByUser', 'assignedUser'])
@@ -94,6 +101,44 @@ class ServiceRequestController extends Controller
             ->orderBy('name')
             ->get();
 
+        $receiverStats = collect();
+        if ($isSuperAdmin) {
+            $receiverStatsQuery = User::query()
+                ->select(['id', 'name', 'role', 'department'])
+                ->whereHas('receivedRequests')
+                ->withCount([
+                    'receivedRequests as received_open_count' => function (Builder $query): void {
+                        $query->whereIn('status', ['pending', 'checking']);
+                    },
+                ])
+                ->withMax([
+                    'receivedRequests as last_received_at'
+                ], 'received_at')
+                ->withMax([
+                    'receivedRequests as last_action_taken_at' => function (Builder $query): void {
+                        $query->where('status', 'approved');
+                    }
+                ], 'approved_at')
+                ->withMax([
+                    'assignedRequests as last_assigned_at'
+                ], 'updated_at')
+                ->orderByDesc('received_open_count')
+                ->orderBy('name');
+
+            if ($isReceiversView && $search !== '') {
+                $receiverStatsQuery->where(function (Builder $builder) use ($search): void {
+                    $like = '%' . $search . '%';
+
+                    $builder
+                        ->where('name', 'like', $like)
+                        ->orWhere('role', 'like', $like)
+                        ->orWhere('department', 'like', $like);
+                });
+            }
+
+            $receiverStats = $receiverStatsQuery->get();
+        }
+
         return view('service-requests.index', [
             'serviceRequests' => $serviceRequests,
             'statusFilter' => $statusFilter,
@@ -101,7 +146,10 @@ class ServiceRequestController extends Controller
             'chatRequestFilter' => $chatRequestFilter,
             'assignedFilter' => $assignedFilter,
             'receivedFilter' => $receivedFilter,
+            'receiversFilter' => $receiversFilter,
             'assignableUsers' => $assignableUsers,
+            'isSuperAdmin' => $isSuperAdmin,
+            'receiverStats' => $receiverStats,
         ]);
     }
 
@@ -112,6 +160,13 @@ class ServiceRequestController extends Controller
         $chatRequestFilter = trim((string) $request->query('chat_request'));
         $assignedFilter = trim((string) $request->query('assigned'));
         $receivedFilter = trim((string) $request->query('received'));
+        $receiversFilter = trim((string) $request->query('receivers'));
+        $isSuperAdmin = strtolower(trim((string) Auth::user()?->role)) === 'super admin';
+        $isReceiversView = $receiversFilter === 'all';
+
+        if ($isReceiversView && !$isSuperAdmin) {
+            abort(403);
+        }
 
         $serviceRequestsQuery = $this->scopeForUser(ServiceRequest::query())
             ->with(['assignedByUser', 'assignedUser'])
@@ -172,6 +227,44 @@ class ServiceRequestController extends Controller
             ->orderBy('name')
             ->get();
 
+        $receiverStats = collect();
+        if ($isSuperAdmin) {
+            $receiverStatsQuery = User::query()
+                ->select(['id', 'name', 'role', 'department'])
+                ->whereHas('receivedRequests')
+                ->withCount([
+                    'receivedRequests as received_open_count' => function (Builder $query): void {
+                        $query->whereIn('status', ['pending', 'checking']);
+                    },
+                ])
+                ->withMax([
+                    'receivedRequests as last_received_at'
+                ], 'received_at')
+                ->withMax([
+                    'receivedRequests as last_action_taken_at' => function (Builder $query): void {
+                        $query->where('status', 'approved');
+                    }
+                ], 'approved_at')
+                ->withMax([
+                    'assignedRequests as last_assigned_at'
+                ], 'updated_at')
+                ->orderByDesc('received_open_count')
+                ->orderBy('name');
+
+            if ($isReceiversView && $search !== '') {
+                $receiverStatsQuery->where(function (Builder $builder) use ($search): void {
+                    $like = '%' . $search . '%';
+
+                    $builder
+                        ->where('name', 'like', $like)
+                        ->orWhere('role', 'like', $like)
+                        ->orWhere('department', 'like', $like);
+                });
+            }
+
+            $receiverStats = $receiverStatsQuery->get();
+        }
+
         $html = view('service-requests.index-content', [
             'serviceRequests' => $serviceRequests,
             'statusFilter' => $statusFilter,
@@ -179,7 +272,10 @@ class ServiceRequestController extends Controller
             'chatRequestFilter' => $chatRequestFilter,
             'assignedFilter' => $assignedFilter,
             'receivedFilter' => $receivedFilter,
+            'receiversFilter' => $receiversFilter,
             'assignableUsers' => $assignableUsers,
+            'isSuperAdmin' => $isSuperAdmin,
+            'receiverStats' => $receiverStats,
         ])->render();
 
         return response()->json(['html' => $html]);
@@ -454,7 +550,7 @@ class ServiceRequestController extends Controller
                         $office->province,
                         $office->region,
                     ])
-                        ->map(fn ($value): string => trim((string) $value))
+                        ->map(fn($value): string => trim((string) $value))
                         ->filter()
                         ->unique()
                         ->implode(', ');
@@ -543,7 +639,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if (! $this->requiresTrackVerification($serviceRequest)) {
+        if (!$this->requiresTrackVerification($serviceRequest)) {
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ]);
@@ -560,8 +656,8 @@ class ServiceRequestController extends Controller
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'Too many invalid attempts. Please request again after 15 minutes.',
-            ]);
+                        'code' => 'Too many invalid attempts. Please request again after 15 minutes.',
+                    ]);
         }
 
         $cooldownKey = $this->trackAccessCooldownCacheKey($normalizedReferenceCode);
@@ -576,8 +672,8 @@ class ServiceRequestController extends Controller
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'No email is linked to this request yet. Please contact support to verify ownership and add an email address.',
-            ]);
+                        'code' => 'No email is linked to this request yet. Please contact support to verify ownership and add an email address.',
+                    ]);
         }
 
         $verificationCode = str_pad((string) random_int(0, 999999), 6, '0', STR_PAD_LEFT);
@@ -605,8 +701,8 @@ class ServiceRequestController extends Controller
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'Unable to send verification code right now. Please try again later.',
-            ]);
+                        'code' => 'Unable to send verification code right now. Please try again later.',
+                    ]);
         }
 
         return redirect()->route('service-requests.track', [
@@ -621,7 +717,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if (! $this->requiresTrackVerification($serviceRequest)) {
+        if (!$this->requiresTrackVerification($serviceRequest)) {
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ]);
@@ -644,17 +740,17 @@ class ServiceRequestController extends Controller
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'Too many invalid attempts. Please request a new code later.',
-            ]);
+                        'code' => 'Too many invalid attempts. Please request a new code later.',
+                    ]);
         }
 
         $payload = Cache::get($codeKey);
-        if (! is_array($payload)) {
+        if (!is_array($payload)) {
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'Verification code is invalid or expired. Please request a new code.',
-            ]);
+                        'code' => 'Verification code is invalid or expired. Please request a new code.',
+                    ]);
         }
 
         $expiresAt = (int) ($payload['expires_at'] ?? 0);
@@ -664,8 +760,8 @@ class ServiceRequestController extends Controller
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'Verification code is invalid or expired. Please request a new code.',
-            ]);
+                        'code' => 'Verification code is invalid or expired. Please request a new code.',
+                    ]);
         }
 
         $codeMatches = hash_equals(
@@ -673,7 +769,7 @@ class ServiceRequestController extends Controller
             $this->hashTrackAccessCode((string) $validated['code'])
         );
 
-        if (! $codeMatches) {
+        if (!$codeMatches) {
             $attempts = ((int) ($payload['attempts'] ?? 0)) + 1;
 
             if ($attempts >= 5) {
@@ -683,8 +779,8 @@ class ServiceRequestController extends Controller
                 return redirect()->route('service-requests.track', [
                     'reference_code' => $serviceRequest->reference_code,
                 ])->withErrors([
-                    'code' => 'Too many invalid attempts. Please request a new code after 15 minutes.',
-                ]);
+                            'code' => 'Too many invalid attempts. Please request a new code after 15 minutes.',
+                        ]);
             }
 
             $payload['attempts'] = $attempts;
@@ -693,8 +789,8 @@ class ServiceRequestController extends Controller
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'code' => 'Verification code is invalid or expired. Please try again.',
-            ]);
+                        'code' => 'Verification code is invalid or expired. Please try again.',
+                    ]);
         }
 
         Cache::forget($codeKey);
@@ -714,7 +810,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+        if ($this->requiresTrackVerification($serviceRequest) && !$this->hasTrackAccess($request, $serviceRequest)) {
             return redirect()
                 ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
                 ->with('status', 'Please verify your email code first before requesting an edit link.');
@@ -761,7 +857,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+        if ($this->requiresTrackVerification($serviceRequest) && !$this->hasTrackAccess($request, $serviceRequest)) {
             $statusMessage = 'Please verify your email code first before requesting chat access.';
 
             if ($request->expectsJson()) {
@@ -823,7 +919,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+        if ($this->requiresTrackVerification($serviceRequest) && !$this->hasTrackAccess($request, $serviceRequest)) {
             $errorMessage = 'Please verify your email code first before sending messages.';
 
             if ($request->expectsJson()) {
@@ -851,7 +947,7 @@ class ServiceRequestController extends Controller
                 ->with('status', $errorMessage);
         }
 
-        if (! $this->isChatAccepted($serviceRequest)) {
+        if (!$this->isChatAccepted($serviceRequest)) {
             $errorMessage = 'Chat is hidden until admin accepts your request.';
 
             if ($request->expectsJson()) {
@@ -911,7 +1007,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+        if ($this->requiresTrackVerification($serviceRequest) && !$this->hasTrackAccess($request, $serviceRequest)) {
             return response()->json([
                 'message' => 'Please verify your email code first before accessing chat.',
             ], 403);
@@ -941,7 +1037,7 @@ class ServiceRequestController extends Controller
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
-        if (! $this->isChatAccepted($serviceRequest)) {
+        if (!$this->isChatAccepted($serviceRequest)) {
             $chatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
             $errorMessage = $chatStatus === 'pending'
                 ? 'Chat request is pending. Accept it first before replying.'
@@ -1031,10 +1127,17 @@ class ServiceRequestController extends Controller
             'assigned_to_user_id' => ['required', 'exists:users,id'],
         ]);
 
-        $serviceRequest->update([
+        $assignee = User::query()->find((int) $validated['assigned_to_user_id']);
+        $updates = [
             'assigned_to_user_id' => $validated['assigned_to_user_id'],
             'assigned_by_user_id' => $userId,
-        ]);
+        ];
+
+        if ($this->isSupervisorUser($assignee) && blank($serviceRequest->noted_by_name)) {
+            $updates['noted_by_name'] = (string) $assignee->name;
+        }
+
+        $serviceRequest->update($updates);
 
         if ($request->expectsJson()) {
             return response()->json([
@@ -1052,12 +1155,43 @@ class ServiceRequestController extends Controller
         abort_unless(in_array((string) $serviceRequest->status, ['pending', 'checking'], true), 422);
         abort_if(filled($serviceRequest->received_by_user_id), 422);
 
-        $serviceRequest->update([
+        $now = now();
+        $updates = [
             'received_by_user_id' => Auth::id(),
-            'received_at' => now(),
+            'received_at' => $now,
             'assigned_to_user_id' => Auth::id(),
             'assigned_by_user_id' => null,
-        ]);
+        ];
+
+        if (blank($serviceRequest->time_received)) {
+            $updates['time_received'] = $now->format('H:i');
+        }
+
+        if (blank($serviceRequest->kmits_date)) {
+            $updates['kmits_date'] = $now->toDateString();
+        }
+
+        $actionLogs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
+        $firstLog = is_array($actionLogs[0] ?? null) ? $actionLogs[0] : [];
+
+        if (blank($firstLog['date'] ?? null)) {
+            $firstLog['date'] = $now->toDateString();
+        }
+
+        if (blank($firstLog['time'] ?? null)) {
+            $firstLog['time'] = $now->format('H:i');
+        }
+
+        if (filled($firstLog['date'] ?? null) || filled($firstLog['time'] ?? null)) {
+            $actionLogs[0] = $firstLog;
+            $updates['action_logs'] = $actionLogs;
+        }
+
+        if ($this->isSupervisorUser(Auth::user()) && blank($serviceRequest->noted_by_name)) {
+            $updates['noted_by_name'] = (string) Auth::user()?->name;
+        }
+
+        $serviceRequest->update($updates);
 
         return redirect()
             ->route('service-requests.index', ['received' => 'me'])
@@ -1122,7 +1256,7 @@ class ServiceRequestController extends Controller
 
         $notifications = collect($notifications)
             ->merge($assignedNotifications)
-            ->sortByDesc(fn (array $notification): int => (int) ($notification['requested_at_unix'] ?? 0))
+            ->sortByDesc(fn(array $notification): int => (int) ($notification['requested_at_unix'] ?? 0))
             ->take(25)
             ->values()
             ->all();
@@ -1220,7 +1354,7 @@ class ServiceRequestController extends Controller
             ->whereRaw('REPLACE(UPPER(reference_code), ?, ?) = ?', ['-', '', $normalizedReferenceCode])
             ->firstOrFail();
 
-        if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+        if ($this->requiresTrackVerification($serviceRequest) && !$this->hasTrackAccess($request, $serviceRequest)) {
             return redirect()
                 ->route('service-requests.track', ['reference_code' => $serviceRequest->reference_code])
                 ->with('status', 'Please verify your email code first before printing your request details.');
@@ -1314,7 +1448,7 @@ class ServiceRequestController extends Controller
         $submittedToken = trim((string) $request->input('submission_token'));
         $sessionToken = trim((string) $request->session()->pull('service_request_submission_token', ''));
 
-        if ($submittedToken === '' || $sessionToken === '' || ! hash_equals($sessionToken, $submittedToken)) {
+        if ($submittedToken === '' || $sessionToken === '' || !hash_equals($sessionToken, $submittedToken)) {
             return redirect()
                 ->route('service-requests.create')
                 ->withErrors(['form' => 'Duplicate or expired submission detected. Please submit once and wait for completion.'])
@@ -1340,7 +1474,7 @@ class ServiceRequestController extends Controller
         }
 
         $authUser = Auth::user();
-        if ($authUser && ! $this->isAdmin() && $authUser->department_status !== 'approved') {
+        if ($authUser && !$this->isAdmin() && $authUser->department_status !== 'approved') {
             return back()
                 ->withErrors(['department_code' => 'Your department is pending admin approval.'])
                 ->withInput();
@@ -1365,7 +1499,7 @@ class ServiceRequestController extends Controller
             ->whereNotNull('department')
             ->whereRaw('TRIM(department) <> ?', ['']);
 
-        if (! $this->isAdmin()) {
+        if (!$this->isAdmin()) {
             $authDepartment = trim((string) ($authUser?->department ?? ''));
 
             if ($authDepartment !== '') {
@@ -1377,7 +1511,7 @@ class ServiceRequestController extends Controller
 
         $selectedDepartmentUser = $selectedDepartmentUserQuery->orderBy('name')->first();
 
-        if (! $selectedDepartmentUser) {
+        if (!$selectedDepartmentUser) {
             return back()
                 ->withErrors(['department_code' => 'No approved personnel found in the selected department.'])
                 ->withInput();
@@ -1433,12 +1567,12 @@ class ServiceRequestController extends Controller
         $normalizedEmail = $this->normalizeTrackEmail((string) $validated['email_address']);
         $existingEmail = $this->normalizeTrackEmail((string) ($serviceRequest->email_address ?? ''));
 
-        if ($existingEmail !== '' && ! hash_equals($existingEmail, $normalizedEmail)) {
+        if ($existingEmail !== '' && !hash_equals($existingEmail, $normalizedEmail)) {
             return redirect()->route('service-requests.track', [
                 'reference_code' => $serviceRequest->reference_code,
             ])->withErrors([
-                'email_address' => 'A contact email is already linked to this request. Please contact support to update it.',
-            ]);
+                        'email_address' => 'A contact email is already linked to this request. Please contact support to update it.',
+                    ]);
         }
 
         if ($existingEmail !== '') {
@@ -1479,7 +1613,7 @@ class ServiceRequestController extends Controller
         $isReadOnly = $this->isAssignedToOtherUser($serviceRequest);
 
         if (
-            ! $isReadOnly
+            !$isReadOnly
             && $this->canManageStatus($serviceRequest)
             && $serviceRequest->status === 'pending'
             && $request->query('skip_auto_checking') !== '1'
@@ -1490,40 +1624,6 @@ class ServiceRequestController extends Controller
                 'pending_at' => $serviceRequest->pending_at ?? $serviceRequest->created_at,
             ]);
             $serviceRequest->refresh();
-        }
-
-        if (! $isReadOnly && $this->canManageStatus($serviceRequest)) {
-            $now = now();
-            $updates = [];
-
-            $actionLogs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
-            $firstLog = is_array($actionLogs[0] ?? null) ? $actionLogs[0] : [];
-
-            if (blank($firstLog['date'] ?? null)) {
-                $firstLog['date'] = $now->toDateString();
-            }
-
-            if (blank($firstLog['time'] ?? null)) {
-                $firstLog['time'] = $now->format('H:i');
-            }
-
-            if (filled($firstLog['date'] ?? null) || filled($firstLog['time'] ?? null)) {
-                $actionLogs[0] = $firstLog;
-                $updates['action_logs'] = $actionLogs;
-            }
-
-            if (blank($serviceRequest->time_received)) {
-                $updates['time_received'] = $now->format('H:i');
-            }
-
-            if (blank($serviceRequest->kmits_date)) {
-                $updates['kmits_date'] = $now->toDateString();
-            }
-
-            if ($updates !== []) {
-                $serviceRequest->update($updates);
-                $serviceRequest->refresh();
-            }
         }
 
         $currentDepartment = trim((string) Auth::user()?->department);
@@ -1556,7 +1656,7 @@ class ServiceRequestController extends Controller
         abort_unless($this->canAccess($serviceRequest), 403);
 
         $authUser = Auth::user();
-        if (! $this->isAdmin() && $authUser?->department_status !== 'approved') {
+        if (!$this->isAdmin() && $authUser?->department_status !== 'approved') {
             return back()
                 ->withErrors(['department_code' => 'Your department is pending admin approval.'])
                 ->withInput();
@@ -1581,7 +1681,7 @@ class ServiceRequestController extends Controller
             }
         }
 
-        if (! $isModerationEditor) {
+        if (!$isModerationEditor) {
             $validated['approved_by_signature'] = $this->storeApprovedSignature(
                 $request,
                 (string) ($serviceRequest->approved_by_signature ?? '')
@@ -1594,7 +1694,7 @@ class ServiceRequestController extends Controller
             }
         }
 
-        if ($isModerationEditor && ! $this->isSupervisorRole()) {
+        if ($isModerationEditor && !$this->isSupervisorRole()) {
             unset(
                 $validated['noted_by_name'],
                 $validated['noted_by_signature'],
@@ -1604,7 +1704,7 @@ class ServiceRequestController extends Controller
         }
 
         // Keep department stable for non-admin users so requests remain in their scoped view.
-        if (! $this->isAdmin()) {
+        if (!$this->isAdmin()) {
             $validated['department_code'] = (string) $serviceRequest->department_code;
         }
 
@@ -1637,7 +1737,7 @@ class ServiceRequestController extends Controller
 
             abort_if($providedReferenceCode === '' || $providedReferenceCode !== $expectedReferenceCode, 403);
 
-            if ($this->requiresTrackVerification($serviceRequest) && ! $this->hasTrackAccess($request, $serviceRequest)) {
+            if ($this->requiresTrackVerification($serviceRequest) && !$this->hasTrackAccess($request, $serviceRequest)) {
                 abort(403);
             }
         }
@@ -1645,7 +1745,7 @@ class ServiceRequestController extends Controller
         abort_unless($this->consumeSignatureViewToken($request, $serviceRequest), 403);
 
         $decoded = $this->decodeImageDataUri($signaturePath);
-        if (! is_array($decoded)) {
+        if (!is_array($decoded)) {
             $decoded = EncryptedSignature::readBinaryFromPath($signaturePath);
         }
         abort_unless(is_array($decoded), 404);
@@ -1696,7 +1796,7 @@ class ServiceRequestController extends Controller
             $target = 'action';
         }
 
-        if ($target === 'noted' && ! $this->isSupervisorRole()) {
+        if ($target === 'noted' && !$this->isSupervisorRole()) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Only supervisors can update the supervisor signature.',
@@ -1708,7 +1808,7 @@ class ServiceRequestController extends Controller
         $yRatio = $validated['yRatio'] ?? null;
         $scale = $validated['scale'] ?? null;
 
-        if (! $clearRequested && $signatureData === '') {
+        if (!$clearRequested && $signatureData === '') {
             return response()->json([
                 'ok' => false,
                 'message' => 'Signature data is required.',
@@ -1726,12 +1826,14 @@ class ServiceRequestController extends Controller
             'signature' => null,
         ];
 
-        $actionRowOwnerId = (int) ($selectedRow['action_user_id'] ?? 0);
-        if ($actionRowOwnerId === 0 && $this->actionLogRowHasValues($selectedRow)) {
-            $actionRowOwnerId = (int) ($serviceRequest->received_by_user_id ?? 0);
-        }
+        // A row's SIGNATURE slot is locked only when someone has already placed
+        // their signature on it (signature_user_id is set). The text-field author
+        // (action_user_id) does NOT restrict who can place a signature — that
+        // would block the handler from signing row 2, 3, etc. whose text was
+        // filled in first by someone else (or by them in a previous save cycle).
+        $existingSignatureUserId = (int) ($selectedRow['signature_user_id'] ?? 0);
 
-        if ($target === 'action' && $actionRowOwnerId > 0 && $actionRowOwnerId !== (int) Auth::id()) {
+        if ($target === 'action' && $existingSignatureUserId > 0 && $existingSignatureUserId !== (int) Auth::id()) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Only the original handler can update this action log row.',
@@ -1779,7 +1881,8 @@ class ServiceRequestController extends Controller
 
             $selectedRow['signature'] = $this->storeAuxiliarySignature($signatureData, null, $existingSignature);
             $selectedRow['signature_user_id'] = Auth::id();
-            $selectedRow['action_user_id'] = $actionRowOwnerId > 0 ? $actionRowOwnerId : Auth::id();
+            $existingActionUserId = (int) ($selectedRow['action_user_id'] ?? 0);
+            $selectedRow['action_user_id'] = $existingActionUserId > 0 ? $existingActionUserId : Auth::id();
 
             if (blank($selectedRow['date'])) {
                 $baseDate = $serviceRequest->kmits_date ?? $serviceRequest->request_date;
@@ -1790,7 +1893,7 @@ class ServiceRequestController extends Controller
             if (blank($selectedRow['time'])) {
                 $selectedRow['time'] = trim((string) ($serviceRequest->time_received ?? now()->format('H:i')));
             }
-            
+
             $selectedRow['action_sig_x'] = $xRatio;
             $selectedRow['action_sig_y'] = $yRatio;
             $selectedRow['action_sig_scale'] = $scale;
@@ -1806,7 +1909,7 @@ class ServiceRequestController extends Controller
             ]);
         }
 
-        if (! $this->hasNotedBySignatureColumn()) {
+        if (!$this->hasNotedBySignatureColumn()) {
             return response()->json([
                 'ok' => false,
                 'message' => 'Supervisor signature column is not available.',
@@ -1857,7 +1960,7 @@ class ServiceRequestController extends Controller
         $firstRow['noted_sig_scale'] = $scale;
         $firstRow['noted_sig_user_id'] = Auth::id();
         $logs[0] = $firstRow;
-        
+
         $serviceRequest->update([
             'noted_by_signature' => $this->storeAuxiliarySignature($signatureData, null, $existingNotedSignature),
             'action_logs' => $logs,
@@ -2040,7 +2143,7 @@ class ServiceRequestController extends Controller
     private function maskedTrackEmail(string $email): string
     {
         $normalized = $this->normalizeTrackEmail($email);
-        if ($normalized === '' || ! str_contains($normalized, '@')) {
+        if ($normalized === '' || !str_contains($normalized, '@')) {
             return 'your registered email';
         }
 
@@ -2128,7 +2231,7 @@ class ServiceRequestController extends Controller
         $nowTimestamp = now()->timestamp;
         $activeAccess = array_filter(
             $accessMap,
-            static fn ($expiresAt): bool => (int) $expiresAt > $nowTimestamp
+            static fn($expiresAt): bool => (int) $expiresAt > $nowTimestamp
         );
 
         if ($activeAccess !== $accessMap) {
@@ -2183,7 +2286,7 @@ class ServiceRequestController extends Controller
         $tokenHash = hash_hmac('sha256', $token, (string) config('app.key'));
         $payload = $tokenMap[$tokenHash] ?? null;
 
-        if (! is_array($payload)) {
+        if (!is_array($payload)) {
             $request->session()->put($sessionKey, $tokenMap);
 
             return false;
@@ -2298,9 +2401,9 @@ class ServiceRequestController extends Controller
         $validated['approved_by_position'] = trim((string) ($validated['approved_by_position'] ?? ''));
 
         $dateRows = $validated['action_log_date'] ?? [];
-        $timeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_time'] ?? []);
+        $timeRows = array_map(fn($value): string => $this->normalizeActionLogTime($value), $validated['action_log_time'] ?? []);
         $actionDateRows = $validated['action_log_action_date'] ?? [];
-        $actionTimeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_action_time'] ?? []);
+        $actionTimeRows = array_map(fn($value): string => $this->normalizeActionLogTime($value), $validated['action_log_action_time'] ?? []);
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
         $signatureRows = $validated['action_log_signature_drawn'] ?? [];
@@ -2379,7 +2482,7 @@ class ServiceRequestController extends Controller
 
         if ($uploadedPhotos instanceof \Illuminate\Http\UploadedFile) {
             $uploadedPhotos = [$uploadedPhotos];
-        } elseif (! is_array($uploadedPhotos)) {
+        } elseif (!is_array($uploadedPhotos)) {
             $uploadedPhotos = [];
         }
 
@@ -2389,7 +2492,7 @@ class ServiceRequestController extends Controller
 
         $stored = [];
         foreach ($uploadedPhotos as $photo) {
-            if (! $photo instanceof \Illuminate\Http\UploadedFile) {
+            if (!$photo instanceof \Illuminate\Http\UploadedFile) {
                 continue;
             }
 
@@ -2414,8 +2517,8 @@ class ServiceRequestController extends Controller
     private function buildDescriptionPhotoMetadata(?array $photoPaths): ?array
     {
         $paths = array_values(array_filter(
-            array_map(static fn ($path): string => trim((string) $path), (array) $photoPaths),
-            static fn (string $path): bool => $path !== ''
+            array_map(static fn($path): string => trim((string) $path), (array) $photoPaths),
+            static fn(string $path): bool => $path !== ''
         ));
 
         if ($paths === []) {
@@ -2442,7 +2545,7 @@ class ServiceRequestController extends Controller
                 continue;
             }
 
-            if (! $disk->exists($path)) {
+            if (!$disk->exists($path)) {
                 $metadata[] = [
                     'path' => $path,
                     'exists' => false,
@@ -2533,7 +2636,7 @@ class ServiceRequestController extends Controller
         }
 
         $decoded = EncryptedSignature::readBinaryFromPath($path);
-        if (! is_array($decoded)) {
+        if (!is_array($decoded)) {
             return [
                 'path' => $path,
                 'exists' => false,
@@ -2561,22 +2664,14 @@ class ServiceRequestController extends Controller
 
     private function deleteSignatureFile(?string $signaturePath): void
     {
-        $path = trim((string) $signaturePath);
-
-        if ($path === '' || ! str_starts_with($path, 'service-request-signatures/')) {
-            return;
-        }
-
-        if (Storage::disk('public')->exists($path)) {
-            Storage::disk('public')->delete($path);
-        }
+        EncryptedSignature::deletePath($signaturePath);
     }
 
     private function deleteChatAttachmentFile(?string $attachmentPath): void
     {
         $path = trim((string) $attachmentPath);
 
-        if ($path === '' || ! str_starts_with($path, 'service-request-chat-attachments/')) {
+        if ($path === '' || !str_starts_with($path, 'service-request-chat-attachments/')) {
             return;
         }
 
@@ -2635,6 +2730,10 @@ class ServiceRequestController extends Controller
 
         unset($validated['description_photos']);
 
+        if (array_key_exists('time_received', $validated) && trim((string) $validated['time_received']) === '') {
+            $validated['time_received'] = null;
+        }
+
         $hasActionLogSubmission = $request->hasAny([
             'action_log_date',
             'action_log_time',
@@ -2649,9 +2748,9 @@ class ServiceRequestController extends Controller
         ]);
 
         $dateRows = $validated['action_log_date'] ?? [];
-        $timeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_time'] ?? []);
+        $timeRows = array_map(fn($value): string => $this->normalizeActionLogTime($value), $validated['action_log_time'] ?? []);
         $actionDateRows = $validated['action_log_action_date'] ?? [];
-        $actionTimeRows = array_map(fn ($value): string => $this->normalizeActionLogTime($value), $validated['action_log_action_time'] ?? []);
+        $actionTimeRows = array_map(fn($value): string => $this->normalizeActionLogTime($value), $validated['action_log_action_time'] ?? []);
         $actionRows = $validated['action_log_action_taken'] ?? [];
         $officerRows = $validated['action_log_action_officer'] ?? [];
         $signatureXRows = $validated['action_log_signature_x'] ?? [];
@@ -2660,13 +2759,22 @@ class ServiceRequestController extends Controller
         $signatureUploads = $request->file('action_log_signature_upload', []);
         $this->validateActionLogStepOrder($dateRows, $timeRows, $actionDateRows, $actionTimeRows, $actionRows, $officerRows);
 
+        // DEBUG
+        \Log::info('validatedKmitsData debug', [
+            'dateRows' => $dateRows,
+            'timeRows' => $timeRows,
+            'actionTaken' => $actionRows,
+            'raw_request_date' => $request->input('action_log_date'),
+            'raw_request_time' => $request->input('action_log_time'),
+        ]);
+
         // Get existing action logs from database to preserve signatures correctly
         $existingLogs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
 
         $actionLogs = [];
         $currentUserId = (int) (Auth::id() ?? 0);
 
-        if (! $hasActionLogSubmission) {
+        if (!$hasActionLogSubmission) {
             $actionLogs = $existingLogs;
         } else {
             for ($i = 0; $i < 5; $i++) {
@@ -2674,15 +2782,12 @@ class ServiceRequestController extends Controller
                 $existingRow = is_array($existingLogs[$i] ?? null) ? $existingLogs[$i] : [];
                 $existingRowHasValues = $this->actionLogRowHasValues($existingRow);
                 $rowOwnerId = (int) ($existingRow['action_user_id'] ?? 0);
+                $rowSignatureUserId = (int) ($existingRow['signature_user_id'] ?? 0);
 
-                if ($rowOwnerId === 0 && $existingRowHasValues) {
-                    $rowOwnerId = (int) ($serviceRequest->received_by_user_id ?? 0);
-                    if ($rowOwnerId === 0) {
-                        $rowOwnerId = (int) ($serviceRequest->assigned_by_user_id ?? 0);
-                    }
-                }
-
-                $rowLocked = $rowOwnerId > 0 && $rowOwnerId !== $currentUserId;
+                // Only lock based on explicit signature_user_id — a row is collaborative
+                // and open to editing by the assignee until someone actually signs it.
+                // This allows the assigner to start a row, and the assignee to finish/sign it.
+                $rowLocked = $rowSignatureUserId > 0 && $rowSignatureUserId !== $currentUserId;
 
                 if ($rowLocked) {
                     if ($existingRowHasValues) {
@@ -2699,25 +2804,19 @@ class ServiceRequestController extends Controller
                 // The hidden inputs are rendered at page-load time, so if the admin adds or moves
                 // a signature via print-preview auto-save AFTER the page loaded, those positions
                 // are only in the DB, not in the submitted form fields.
-                $posX     = array_key_exists('action_sig_x', $existingRow)     ? $existingRow['action_sig_x']     : ($signatureXRows[$i] ?? null);
-                $posY     = array_key_exists('action_sig_y', $existingRow)     ? $existingRow['action_sig_y']     : ($signatureYRows[$i] ?? null);
+                $posX = array_key_exists('action_sig_x', $existingRow) ? $existingRow['action_sig_x'] : ($signatureXRows[$i] ?? null);
+                $posY = array_key_exists('action_sig_y', $existingRow) ? $existingRow['action_sig_y'] : ($signatureYRows[$i] ?? null);
                 $posScale = array_key_exists('action_sig_scale', $existingRow) ? $existingRow['action_sig_scale'] : ($signatureScaleRows[$i] ?? null);
 
-                $preserveIfBlank = static function (mixed $submittedValue, array $existingRow, string $key): mixed {
-                    $submittedString = trim((string) ($submittedValue ?? ''));
-
-                    return $submittedString !== ''
-                        ? $submittedValue
-                        : ($existingRow[$key] ?? null);
-                };
-
                 $row = [
-                    'date' => $preserveIfBlank($dateRows[$i] ?? null, $existingRow, 'date'),
-                    'time' => $preserveIfBlank($timeRows[$i] ?? null, $existingRow, 'time'),
-                    'action_date' => $preserveIfBlank($actionDateRows[$i] ?? null, $existingRow, 'action_date'),
-                    'action_time' => $preserveIfBlank($actionTimeRows[$i] ?? null, $existingRow, 'action_time'),
-                    'action_taken' => $preserveIfBlank($actionRows[$i] ?? null, $existingRow, 'action_taken'),
-                    'action_officer' => $preserveIfBlank($officerRows[$i] ?? null, $existingRow, 'action_officer'),
+                    // Use submitted values directly (including empty strings from Clear button).
+                    // Empty values will be filtered out by actionLogRowHasValues() below.
+                    'date' => $dateRows[$i] ?? null,
+                    'time' => $timeRows[$i] ?? null,
+                    'action_date' => $actionDateRows[$i] ?? null,
+                    'action_time' => $actionTimeRows[$i] ?? null,
+                    'action_taken' => $actionRows[$i] ?? null,
+                    'action_officer' => $officerRows[$i] ?? null,
                     'signature' => $this->storeAuxiliarySignature(
                         $databaseSignature,
                         $actionSignatureUpload,
@@ -2726,18 +2825,26 @@ class ServiceRequestController extends Controller
                     'signature_user_id' => $existingRow['signature_user_id'] ?? null,
                     'action_user_id' => $rowOwnerId > 0 ? $rowOwnerId : null,
                     // Preserve action signature position from DB (never overwrite with stale form values)
-                    'action_sig_x'     => $posX,
-                    'action_sig_y'     => $posY,
+                    'action_sig_x' => $posX,
+                    'action_sig_y' => $posY,
                     'action_sig_scale' => $posScale,
                     // Preserve noted-by signature coords stored in action_logs[0]; these are only
                     // written by savePrintSignature() and must survive a Save/Update cycle.
-                    'noted_sig_x'     => $existingRow['noted_sig_x']     ?? null,
-                    'noted_sig_y'     => $existingRow['noted_sig_y']     ?? null,
+                    'noted_sig_x' => $existingRow['noted_sig_x'] ?? null,
+                    'noted_sig_y' => $existingRow['noted_sig_y'] ?? null,
                     'noted_sig_scale' => $existingRow['noted_sig_scale'] ?? null,
                     'noted_sig_user_id' => $existingRow['noted_sig_user_id'] ?? null,
                 ];
 
-                if ($this->actionLogRowHasValues($row)) {
+                if (blank($row['action_officer'] ?? null) && $this->actionLogRowHasWorkValues($row)) {
+                    $row['action_officer'] = (string) (Auth::user()?->name ?? '');
+                }
+
+                // A row is considered intentionally cleared when its Date field is empty.
+                $rowIsCleared = !filled($row['date'] ?? null);
+
+                // Only include rows that have actual values (filters out cleared rows)
+                if (!$rowIsCleared && $this->actionLogRowHasValues($row)) {
                     if ((int) ($row['action_user_id'] ?? 0) === 0) {
                         $row['action_user_id'] = $currentUserId;
                     }
@@ -2788,6 +2895,16 @@ class ServiceRequestController extends Controller
             || filled($row['signature'] ?? null);
     }
 
+    private function actionLogRowHasWorkValues(array $row): bool
+    {
+        return filled($row['date'] ?? null)
+            || filled($row['time'] ?? null)
+            || filled($row['action_date'] ?? null)
+            || filled($row['action_time'] ?? null)
+            || filled($row['action_taken'] ?? null)
+            || filled($row['signature'] ?? null);
+    }
+
     private function normalizeActionLogTime(mixed $value): string
     {
         $value = trim((string) ($value ?? ''));
@@ -2825,17 +2942,28 @@ class ServiceRequestController extends Controller
         for ($rowIndex = 0; $rowIndex < 5; $rowIndex++) {
             $previousIsFilled = true;
             $rowValues = array_map(
-                fn (array $column): string => trim((string) ($column['values'][$rowIndex] ?? '')),
+                fn(array $column): string => trim((string) ($column['values'][$rowIndex] ?? '')),
                 $columns
             );
-            $rowHasAnyValue = collect($rowValues)->contains(fn (string $value): bool => $value !== '');
+            $rowHasAnyValue = collect($rowValues)->contains(fn(string $value): bool => $value !== '');
 
-            if ($rowHasAnyValue && $rowIndex > 0) {
+            // If no field in this row has a value the user is clearing/leaving it empty —
+            // skip all sequential-order checks so clearing a row is always allowed.
+            if (!$rowHasAnyValue) {
+                continue;
+            }
+
+            $dateValue = trim((string) ($columns[0]['values'][$rowIndex] ?? ''));
+            if ($dateValue === '') {
+                continue; // Date cleared — treat whole row as cleared, skip validation
+            }
+
+            if ($rowIndex > 0) {
                 $previousRowIsComplete = collect($columns)->every(function (array $column) use ($rowIndex): bool {
                     return trim((string) ($column['values'][$rowIndex - 1] ?? '')) !== '';
                 });
 
-                if (! $previousRowIsComplete) {
+                if (!$previousRowIsComplete) {
                     $errors['action_log_date.' . $rowIndex] = sprintf(
                         'Complete action log row %d before starting row %d.',
                         $rowIndex,
@@ -2848,7 +2976,7 @@ class ServiceRequestController extends Controller
                 $value = trim((string) ($column['values'][$rowIndex] ?? ''));
                 $isFilled = $value !== '';
 
-                if ($isFilled && ! $previousIsFilled) {
+                if ($isFilled && !$previousIsFilled) {
                     $previousColumn = $columns[$columnIndex - 1];
                     $errors[$column['field'] . '.' . $rowIndex] = sprintf(
                         'Fill %s before %s on action log row %d.',
@@ -2936,7 +3064,7 @@ class ServiceRequestController extends Controller
         }
 
         $mime = strtolower(trim($mimeType));
-        if ($mime === '' || ! str_starts_with($mime, 'image/')) {
+        if ($mime === '' || !str_starts_with($mime, 'image/')) {
             $mime = 'image/png';
         }
 
@@ -3075,11 +3203,16 @@ class ServiceRequestController extends Controller
         return strtolower(trim((string) Auth::user()?->role)) === 'supervisor';
     }
 
+    private function isSupervisorUser(?User $user): bool
+    {
+        return strtolower(trim((string) $user?->role)) === 'supervisor';
+    }
+
     private function isAssignedToOtherUser(ServiceRequest $serviceRequest): bool
     {
         $assignedUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
         $currentUserId = (int) (Auth::id() ?? 0);
-        
+
         return $assignedUserId > 0 && $assignedUserId !== $currentUserId;
     }
 
@@ -3139,8 +3272,8 @@ class ServiceRequestController extends Controller
     {
         $managedDepartmentCodes = DepartmentCode::query()
             ->pluck('code')
-            ->map(fn (string $department): string => strtoupper(trim($department)))
-            ->filter(fn (string $department): bool => $department !== '')
+            ->map(fn(string $department): string => strtoupper(trim($department)))
+            ->filter(fn(string $department): bool => $department !== '')
             ->unique()
             ->values()
             ->all();
@@ -3149,8 +3282,8 @@ class ServiceRequestController extends Controller
             ->where('department_status', 'approved')
             ->whereNotNull('department')
             ->pluck('department')
-            ->map(fn (string $department): string => strtoupper(trim($department)))
-            ->filter(fn (string $department): bool => $department !== '')
+            ->map(fn(string $department): string => strtoupper(trim($department)))
+            ->filter(fn(string $department): bool => $department !== '')
             ->unique()
             ->sort()
             ->values()
@@ -3162,14 +3295,14 @@ class ServiceRequestController extends Controller
         if ($excludeAdmin) {
             $options = array_values(array_filter(
                 $options,
-                fn (string $department): bool => strtoupper($department) !== 'ADMIN'
+                fn(string $department): bool => strtoupper($department) !== 'ADMIN'
             ));
         }
 
         if ($excludeDepartment !== null && $excludeDepartment !== '') {
             $options = array_values(array_filter(
                 $options,
-                fn (string $department): bool => $department !== $excludeDepartment
+                fn(string $department): bool => $department !== $excludeDepartment
             ));
         }
 
@@ -3189,7 +3322,7 @@ class ServiceRequestController extends Controller
             ->whereNotNull('department')
             ->whereRaw('TRIM(department) <> ?', ['']);
 
-        if (! $this->isAdmin() && $authUser) {
+        if (!$this->isAdmin() && $authUser) {
             $authDepartment = trim((string) ($authUser?->department ?? ''));
 
             if ($authDepartment !== '') {
@@ -3209,7 +3342,7 @@ class ServiceRequestController extends Controller
                     'department' => trim((string) $user->department),
                 ];
             })
-            ->filter(fn (array $entry): bool => $entry['name'] !== '')
+            ->filter(fn(array $entry): bool => $entry['name'] !== '')
             ->values()
             ->all();
     }

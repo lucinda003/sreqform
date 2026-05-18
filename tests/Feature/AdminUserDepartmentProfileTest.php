@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\DepartmentCode;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -16,15 +17,15 @@ class AdminUserDepartmentProfileTest extends TestCase
             'department' => 'ADMIN',
             'department_status' => 'approved',
         ]);
+        DepartmentCode::create(['code' => 'KMITS']);
 
         $response = $this
             ->actingAs($admin)
             ->post('/admin/users', [
                 'name' => 'KMITS Staff',
                 'email' => 'kmits.staff@example.com',
-                'password' => 'password123',
+                'role' => 'admin',
                 'department_code' => 'KMITS',
-                'department_status' => 'approved',
             ]);
 
         $response
@@ -35,6 +36,7 @@ class AdminUserDepartmentProfileTest extends TestCase
 
         $this->assertNotNull($createdUser);
         $this->assertSame('KMITS', $createdUser->department);
+        $createdUser->forceFill(['password_changed_at' => now()])->save();
 
         $profileResponse = $this
             ->actingAs($createdUser)
@@ -52,15 +54,15 @@ class AdminUserDepartmentProfileTest extends TestCase
             'department' => 'ADMIN',
             'department_status' => 'approved',
         ]);
+        DepartmentCode::create(['code' => 'MOTION']);
 
         $response = $this
             ->actingAs($admin)
             ->post('/admin/users', [
                 'name' => 'Pending Staff',
                 'email' => 'pending.staff@example.com',
-                'password' => 'password123',
+                'role' => 'technical support',
                 'department_code' => 'MOTION',
-                'department_status' => 'pending',
             ]);
 
         $response

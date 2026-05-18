@@ -4,6 +4,7 @@
         $isAdmin = strtoupper((string) auth()->user()?->department) === 'ADMIN';
         $isKmits = strtoupper((string) auth()->user()?->department) === 'KMITS';
         $canModerateChat = auth()->check();
+        $canSetPending = strtolower(trim((string) auth()->user()?->role)) === 'super admin';
         $canPersonnelChat = auth()->check();
         $isReadOnlyForm = auth()->check();
         $canEditSupervisorFields = strtolower(trim((string) auth()->user()?->role)) === 'supervisor';
@@ -825,7 +826,7 @@
             border: 1px solid #cbd5e1;
             border-radius: 12px;
             background: #fff;
-            box-shadow: 0 18px 36px rgba(15,23,42,0.25);
+            box-shadow: 0 18px 36px rgba(15, 23, 42, 0.25);
             overflow: hidden;
             z-index: 85;
         }
@@ -1087,6 +1088,7 @@
                 transform: translateY(-8px);
                 opacity: 0;
             }
+
             to {
                 transform: translateY(0);
                 opacity: 1;
@@ -1115,8 +1117,15 @@
         }
 
         @keyframes srf-sticky-slide-in {
-            from { transform: translateY(-100%); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
+            from {
+                transform: translateY(-100%);
+                opacity: 0;
+            }
+
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
 
         .srf-sticky-ref {
@@ -1187,779 +1196,1047 @@
 
     <div class="srf-root">
 
-    <header class="auth-login-topbar">
-        <div class="auth-login-brand">
-            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
-            <div>
-                <h1 class="auth-login-brand-title">KMITS</h1>
-                <p class="auth-login-brand-subtitle">Knowledge Management and Information Technology Service</p>
+        <header class="auth-login-topbar">
+            <div class="auth-login-brand">
+                <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
+                <div>
+                    <h1 class="auth-login-brand-title">KMITS</h1>
+                    <p class="auth-login-brand-subtitle">Knowledge Management and Information Technology Service</p>
+                </div>
             </div>
-        </div>
 
-        <div class="auth-login-top-actions">
-            @if ($canModerateChat)
-                <div class="srf-notif-wrap" id="admin-chat-notif-wrap">
-                    <button type="button" class="srf-notif-btn" id="admin-chat-notif-toggle" aria-label="View notifications">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
-                            <path d="M10 2a5.5 5.5 0 00-5.5 5.5v2.8L3 12.5h14l-1.5-2.2V7.5A5.5 5.5 0 0010 2z"></path>
-                            <path d="M8.5 15.8a1.5 1.5 0 003 0"></path>
-                        </svg>
-                        <span class="srf-notif-count hidden" id="admin-chat-notif-count">0</span>
-                    </button>
+            <div class="auth-login-top-actions">
+                @if ($canModerateChat)
+                    <div class="srf-notif-wrap" id="admin-chat-notif-wrap">
+                        <button type="button" class="srf-notif-btn" id="admin-chat-notif-toggle"
+                            aria-label="View notifications">
+                            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"
+                                aria-hidden="true">
+                                <path d="M10 2a5.5 5.5 0 00-5.5 5.5v2.8L3 12.5h14l-1.5-2.2V7.5A5.5 5.5 0 0010 2z"></path>
+                                <path d="M8.5 15.8a1.5 1.5 0 003 0"></path>
+                            </svg>
+                            <span class="srf-notif-count hidden" id="admin-chat-notif-count">0</span>
+                        </button>
 
-                    <div class="srf-notif-panel hidden" id="admin-chat-notif-panel">
-                        <div class="srf-notif-panel-head">Notifications</div>
-                        <div class="srf-notif-search-wrap">
-                            <input id="admin-chat-notif-search" name="notification_search" type="text" class="srf-notif-search" placeholder="Search notifications..." autocomplete="off">
-                        </div>
-                        <div class="srf-notif-list" id="admin-chat-notif-list">
-                            <p class="srf-notif-empty" id="admin-chat-notif-empty">No notifications yet.</p>
+                        <div class="srf-notif-panel hidden" id="admin-chat-notif-panel">
+                            <div class="srf-notif-panel-head">Notifications</div>
+                            <div class="srf-notif-search-wrap">
+                                <input id="admin-chat-notif-search" name="notification_search" type="text"
+                                    class="srf-notif-search" placeholder="Search notifications..." autocomplete="off">
+                            </div>
+                            <div class="srf-notif-list" id="admin-chat-notif-list">
+                                <p class="srf-notif-empty" id="admin-chat-notif-empty">No notifications yet.</p>
+                            </div>
                         </div>
                     </div>
+                @endif
+            </div>
+        </header>
+
+        <section style="max-width: 1300px; margin: 1.5rem auto; padding: 0 1rem 2rem;">
+            @if (session('status'))
+                <div
+                    class="mb-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
+                    {{ session('status') }}
                 </div>
             @endif
-        </div>
-    </header>
 
-    <section style="max-width: 1300px; margin: 1.5rem auto; padding: 0 1rem 2rem;">
-    @if (session('status'))
-        <div class="mb-3 rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-700">
-            {{ session('status') }}
-        </div>
-    @endif
+            <div class="mb-3 hidden rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800"
+                data-admin-live-notice></div>
 
-    <div class="mb-3 hidden rounded-xl border border-sky-300 bg-sky-50 px-3 py-2 text-sm font-semibold text-sky-800" data-admin-live-notice></div>
-
-    <div class="srf-card">
-        <div class="srf-form-header">
-            <a href="{{ $backToRequestsUrl }}" class="srf-header-back" aria-label="Back to Service Requests list">&larr; Back</a>
-            <span class="srf-form-header-text">Service Request Form</span>
-            <div class="srf-form-header-line"></div>
-        </div>
-
-        <div class="srf-section srf-status-block">
-            <div class="flex flex-wrap items-center gap-3">
-                <p class="text-sm font-semibold text-slate-700">Status :</p>
-                @php
-                    $currentStatusValue = strtolower((string) $serviceRequest->status);
-                    $showDecisionButtons = ! ($isReadOnly ?? false) && in_array($currentStatusValue, ['pending', 'checking'], true);
-                    $statusClasses = match ($serviceRequest->status) {
-                        'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
-                        'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
-                        'completed', 'closed' => 'border-teal-300 bg-teal-100 text-teal-800',
-                        default => 'border-amber-300 bg-amber-100 text-amber-800',
-                    };
-                @endphp
-                <span class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase {{ $statusClasses }}">
-                    {{ $serviceRequest->status }}
-                </span>
-
-                @if ($canModerateChat && ! ($isReadOnly ?? false))
-                    <div class="ms-auto flex flex-wrap items-center gap-2">
-                        <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
-                        <form method="POST" action="{{ route('service-requests.update-status', $editRouteParams) }}" class="flex flex-wrap items-center gap-2" data-status-action-form>
-                            @csrf
-                            @method('PATCH')
-                            <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
-                            @if ($showDecisionButtons)
-                                <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Action Taken</button>
-                            @endif
-                        </form>
-                    </div>
-                @endif
-            </div>
-
-            @php
-                $resolvedStatus = strtolower((string) $serviceRequest->status);
-                if (in_array($resolvedStatus, ['completed', 'closed'], true)) {
-                    $resolvedStatus = filled($serviceRequest->approved_at)
-                        ? 'approved'
-                        : 'checking';
-                }
-
-                $timelineSteps = [
-                    [
-                        'key' => 'pending',
-                        'label' => 'Pending',
-                        'at' => $serviceRequest->pending_at ?? $serviceRequest->created_at,
-                    ],
-                    [
-                        'key' => 'checking',
-                        'label' => 'Checking',
-                        'at' => $serviceRequest->checking_at,
-                    ],
-                ];
-
-                $timelineSteps[] = [
-                    'key' => 'approved',
-                    'label' => 'Action Taken',
-                    'at' => $serviceRequest->approved_at,
-                ];
-
-                $isStepReached = static function (string $stepKey) use ($serviceRequest, $resolvedStatus): bool {
-                    return match ($stepKey) {
-                        'pending' => true,
-                        'checking' => filled($serviceRequest->checking_at) || in_array($resolvedStatus, ['checking', 'approved'], true),
-                        'approved' => filled($serviceRequest->approved_at) || $resolvedStatus === 'approved',
-                        default => false,
-                    };
-                };
-            @endphp
-
-            <div class="srf-timeline" aria-label="Request status timeline">
-                <div class="srf-timeline-track">
-                    @foreach ($timelineSteps as $index => $step)
-                        @php
-                            $stepReached = $isStepReached($step['key']);
-                            $stepCurrent = $resolvedStatus === $step['key'];
-                            $stepTimeLabel = filled($step['at'])
-                                ? \Illuminate\Support\Carbon::parse($step['at'])->format('M d, Y h:i A')
-                                : '--';
-
-                            $nextStep = $timelineSteps[$index + 1] ?? null;
-                            $linkActive = $nextStep ? $isStepReached($nextStep['key']) : false;
-                        @endphp
-
-                        <div class="srf-timeline-step">
-                            <div class="srf-timeline-node-row">
-                                <span class="srf-timeline-node {{ $stepReached ? 'reached' : '' }} {{ $stepCurrent ? 'current' : '' }}"></span>
-                                @if ($nextStep)
-                                    <span class="srf-timeline-link {{ $linkActive ? 'active' : '' }}"></span>
-                                @endif
-                            </div>
-                            <p class="srf-timeline-label">{{ $step['label'] }}</p>
-                            <p class="srf-timeline-time">{{ $stepTimeLabel }}</p>
-                        </div>
-                    @endforeach
-                </div>
-            </div>
-        </div>
-
-        <div class="overflow-x-auto bg-white">
-            <form method="POST" action="{{ route('service-requests.update', $editRouteParams) }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0" data-service-request-id="{{ $serviceRequest->id }}">
-                @csrf
-                @method('PUT')
-
-                <fieldset @if ($isReadOnlyForm || ($isReadOnly ?? false)) disabled @endif>
-
-                <div class="px-4 pb-3">
-                    <p class="srf-section-label">Request Information</p>
-                    <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1 font-semibold">Reference Code :
-                                <span class="inline-block min-w-64 border-b border-slate-400 px-1 py-0.5 text-center">{{ $serviceRequest->reference_code }}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">Department for Reference :
-                                @php
-                                    $displayDepartmentCode = trim((string) old('department_code', $serviceRequest->department_code));
-                                @endphp
-                                <span class="inline-block min-w-40 border-b border-slate-400 px-1 py-0.5 text-center">{{ $displayDepartmentCode !== '' ? $displayDepartmentCode : 'N/A' }}</span>
-                                <input type="hidden" id="department_code" name="department_code" value="{{ old('department_code', $serviceRequest->department_code) }}">
-                                <x-input-error :messages="$errors->get('department_code')" class="mt-1" />
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">1) Date/Time of Request (mm/dd/yyyy h:m:s) :
-                                <div class="ms-2 inline-flex items-center gap-2 align-middle">
-                                    <input id="request_date" name="request_date" type="date" class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-400 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0" value="{{ old('request_date', $serviceRequest->request_date->toDateString()) }}" required>
-                                    <input name="time_received" type="time" value="{{ old('time_received', $serviceRequest->time_received) }}" class="inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-400 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                                </div>
-                                <x-input-error :messages="$errors->get('request_date')" class="mt-1" />
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="px-4 pb-3">
-                    <p class="srf-section-label">Requester Details</p>
-                    <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="border border-slate-500 px-2 py-1">2) Request Category :
-                                <select id="request_category" name="request_category" class="auth-input !inline-block align-middle !min-h-0 !w-[260px] !rounded-none !border-0 border-b border-slate-200 !bg-transparent px-0 py-0 text-[12px]">
-                                    <option value="Technical Assistance" @selected(old('request_category', $serviceRequest->request_category) === 'Technical Assistance')>Technical Assistance</option>
-                                    <option value="System Access" @selected(old('request_category', $serviceRequest->request_category) === 'System Access')>System Access</option>
-                                    <option value="Network/Internet" @selected(old('request_category', $serviceRequest->request_category) === 'Network/Internet')>Network/Internet</option>
-                                    <option value="Hardware Support" @selected(old('request_category', $serviceRequest->request_category) === 'Hardware Support')>Hardware Support</option>
-                                    <option value="Software Installation" @selected(old('request_category', $serviceRequest->request_category) === 'Software Installation')>Software Installation</option>
-                                    <option value="Data Request" @selected(old('request_category', $serviceRequest->request_category) === 'Data Request')>Data Request</option>
-                                    <option value="Others" @selected(old('request_category', $serviceRequest->request_category) === 'Others')>Others</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">3) Application System Name : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" maxlength="255"></td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of Completion * :
-                                <input type="date" name="expected_completion_date" value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}" class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0" required>
-                                <input type="time" name="expected_completion_time" value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}" class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0" required>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 p-0">
-                                <table class="w-full border-collapse table-fixed text-[12px]">
-                                    <tr>
-                                        <td class="border-0 px-2 py-1" style="width:32%;">5) Name of Contact Person :</td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_last_name" value="{{ old('contact_last_name', $serviceRequest->contact_last_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="family-name" required maxlength="100">
-                                        </td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_first_name" value="{{ old('contact_first_name', $serviceRequest->contact_first_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="given-name" required maxlength="100">
-                                        </td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_middle_name" value="{{ old('contact_middle_name', $serviceRequest->contact_middle_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="additional-name" maxlength="100">
-                                        </td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input type="text" name="contact_suffix_name" value="{{ old('contact_suffix_name', $serviceRequest->contact_suffix_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" autocomplete="honorific-suffix" maxlength="100">
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="border-0 px-2 py-1"></td>
-                                        <td class="border-0 px-1 py-1 text-center">Last Name</td>
-                                        <td class="border-0 px-1 py-1 text-center">First Name</td>
-                                        <td class="border-0 px-1 py-1 text-center">Middle Name</td>
-                                        <td class="border-0 px-1 py-1 text-center">Suffix Name</td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">6) Office :
-                                <div data-office-picker style="display: inline-block; vertical-align: top; width: calc(100% - 85px);">
-                                    <input type="hidden" id="office" name="office" value="{{ old('office', $serviceRequest->office) }}">
-                                    <div style="display: flex; align-items: center; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding: 0 2px; background: transparent; min-height: 22px;">
-                                        <div id="office_chips" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0;"></div>
-                                        <input type="search" id="office_search" placeholder="Office..." autocomplete="off" style="border: none; outline: none; padding: 0 4px; flex: 1; min-width: 140px; font-size: 12px; background: transparent;">
-                                    </div>
-                                    <div id="office_results" style="display: none; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; background: white; margin-top: 2px; font-size: 12px;"></div>
-                                </div>
-                                <p id="office-regcode-display" class="mt-1 text-[11px] text-slate-500"></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">7) Address :
-                                <input id="address" name="address" value="{{ old('address', $serviceRequest->address) }}" class="auth-input !inline-block !min-h-0 !rounded-none !border-0 !border-b !border-slate-200 !bg-transparent px-1 py-0 text-[12px]" style="width: calc(100% - 85px);" autocomplete="street-address" required>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 p-0">
-                                <table class="w-full border-collapse table-fixed text-[12px]">
-                                    <tr>
-                                        <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">8) Landline :
-                                            <input name="landline" value="{{ old('landline', $serviceRequest->landline) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel" maxlength="20">
-                                        </td>
-                                        <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">9) Fax No :
-                                            <input name="fax_no" value="{{ old('fax_no', $serviceRequest->fax_no) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" maxlength="20">
-                                        </td>
-                                        <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">10) Mobile No :
-                                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel-national" maxlength="20">
-                                        </td>
-                                        <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address * :
-                                            <input type="email" name="email_address" value="{{ old('email_address', $serviceRequest->email_address) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="email" required>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="px-4 pb-3">
-                    <p class="srf-section-label">Description of Request</p>
-                    <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
-                        <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
-                            <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required maxlength="5000">{{ old('description_request', $serviceRequest->description_request) }}</textarea>
-
-                            @if ($canModerateChat)
-                                <div class="mt-3 border-t border-slate-300 pt-2">
-                                    <p class="text-[12px] font-semibold text-slate-700">Uploaded Photos</p>
-
-                                    <div id="uploaded-photos-content" class="mt-2">
-                                        @if (is_array($serviceRequest->description_photos) && count($serviceRequest->description_photos) > 0)
-                                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
-                                                @foreach ($serviceRequest->description_photos as $photoPath)
-                                                    @php
-                                                        $photoSource = str_starts_with((string) $photoPath, 'data:image/')
-                                                            ? (string) $photoPath
-                                                            : \Illuminate\Support\Facades\Storage::url((string) $photoPath);
-                                                    @endphp
-                                                    <a
-                                                        href="{{ $photoSource }}"
-                                                        class="block overflow-hidden rounded-lg border border-slate-300 bg-white"
-                                                        data-uploaded-photo-trigger
-                                                        data-photo-src="{{ $photoSource }}"
-                                                        data-photo-alt="Service Request Photo"
-                                                    >
-                                                        <img src="{{ $photoSource }}" alt="Service Request Photo" class="h-32 w-full object-cover">
-                                                    </a>
-                                                @endforeach
-                                            </div>
-                                        @else
-                                            <p class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">No uploaded photos for this request yet.</p>
-                                        @endif
-                                    </div>
-                                </div>
-                            @endif
-                    </div>
-                    <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
-                </div>
-
-                <div class="px-4 pb-3">
-                    <p class="srf-section-label">Approved By</p>
-                    <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="w-48 border border-slate-400 px-2 py-1 font-semibold">13) APPROVED BY :</td>
-                            <td class="border border-slate-400 px-2 py-1">
-                                <div class="grid grid-cols-10 gap-3">
-                                    <div class="col-span-6">
-                                        @php
-                                            $approvedSignatureUrl = trim((string) ($serviceRequest->approved_by_signature ?? '')) !== ''
-                                                ? route('service-requests.signature.approved', [
-                                                    'serviceRequest' => $serviceRequest,
-                                                    'token' => (string) ($signatureViewToken ?? ''),
-                                                ])
-                                                : '';
-                                        @endphp
-
-                                        @if (! $isReadOnlyForm)
-                                            <div class="mb-0 rounded-md border border-slate-300 bg-slate-50 p-1 pb-0">
-                                                <div class="mb-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-700">
-                                                    <label class="inline-flex items-center gap-1">
-                                                        <input type="radio" name="approved_by_signature_mode" value="draw" @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
-                                                        Draw Signature
-                                                    </label>
-                                                    <label class="inline-flex items-center gap-1">
-                                                        <input type="radio" name="approved_by_signature_mode" value="upload" @checked(old('approved_by_signature_mode') === 'upload')>
-                                                        Upload Signature
-                                                    </label>
-                                                </div>
-
-                                                @if ($approvedSignatureUrl !== '' && old('approved_by_signature_drawn') === null)
-                                                    <div class="mb-2">
-                                                        <p class="mb-1 text-[11px] text-slate-600">Current Signature</p>
-                                                        <div class="srf-signature-watermark-wrap">
-                                                            <img src="{{ $approvedSignatureUrl }}" alt="Current Signature" draggable="false" class="h-16 rounded border border-slate-300 bg-white px-2 py-1" style="user-select:none; -webkit-user-drag:none;">
-                                                        </div>
-                                                    </div>
-                                                @endif
-
-                                                <div id="edit-signature-draw-wrap" class="space-y-1">
-                                                    <canvas id="edit-signature-canvas" class="h-24 w-full rounded border border-slate-300 bg-white"></canvas>
-                                                    <input type="hidden" name="approved_by_signature_drawn" id="edit-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
-                                                    <input type="hidden" name="approved_by_signature_clear" id="edit-signature-clear-flag" value="0">
-                                                    <button type="button" id="edit-signature-clear" class="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">Clear</button>
-                                                </div>
-
-                                                <div id="edit-signature-upload-wrap" class="hidden">
-                                                    <input type="file" name="approved_by_signature_upload" accept="image/*" class="block w-full text-[11px] text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-[11px] file:font-medium file:text-white">
-                                                </div>
-
-                                                <x-input-error :messages="$errors->get('approved_by_signature_upload')" class="mt-1" />
-                                                <x-input-error :messages="$errors->get('approved_by_signature_drawn')" class="mt-1" />
-                                            </div>
-                                        @else
-                                            <div class="mb-1 rounded-md border border-slate-300 bg-slate-50 p-2">
-                                                <p class="text-[11px] font-semibold text-slate-700">Requester Signature (Read Only)</p>
-                                                @if ($approvedSignatureUrl !== '')
-                                                    <p class="mt-1 text-[11px] text-slate-500">Signature hidden in this edit view. Use Print Status Report to see the signature.</p>
-                                                @else
-                                                    <p class="mt-1 text-[11px] text-slate-500">No signature provided.</p>
-                                                @endif
-                                            </div>
-                                        @endif
-
-                                        <input name="approved_by_name" value="{{ old('approved_by_name', $serviceRequest->approved_by_name) }}" class="auth-input !-mt-2 !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
-                                        <p class="text-center">Name &amp; Signature of Head of Office</p>
-
-                                        <input name="approved_by_position" value="{{ old('approved_by_position', $serviceRequest->approved_by_position) }}" class="mt-2 auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
-                                        <p class="text-center">Position</p>
-                                    </div>
-                                    <div class="col-span-4">
-                                        <input name="approved_date" type="date" value="{{ old('approved_date', $serviceRequest->approved_date->toDateString()) }}" class="auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
-                                        <p class="text-center">Date Signed</p>
-                                    </div>
-                                </div>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-                </fieldset>
-
-                @if ($canModerateChat)
-                    @php
-                        $existingLogs = $serviceRequest->action_logs ?? [];
-                        $logDates = old('action_log_date', collect($existingLogs)->pluck('date')->pad(5, '')->values()->all());
-                        $logTimes = old('action_log_time', collect($existingLogs)->pluck('time')->pad(5, '')->values()->all());
-                        $logActionDates = old('action_log_action_date', collect($existingLogs)->pluck('action_date')->pad(5, '')->values()->all());
-                        $logActionTimes = old('action_log_action_time', collect($existingLogs)->pluck('action_time')->pad(5, '')->values()->all());
-                        $logActions = old('action_log_action_taken', collect($existingLogs)->pluck('action_taken')->pad(5, '')->values()->all());
-                        $logOfficers = old('action_log_action_officer', collect($existingLogs)->pluck('action_officer')->pad(5, '')->values()->all());
-                        $logSignatures = old('action_log_signature_drawn', collect($existingLogs)->pluck('signature')->pad(5, '')->values()->all());
-                    @endphp
-
-                    <div class="px-4 pb-3">
-                        <div class="rounded-xl border border-slate-300 bg-slate-50 p-3">
-                            <fieldset @if ($isReadOnly ?? false) disabled @endif>
-                            <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For knowledge management and information technology service only</h3>
-
-                            <div class="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white">
-                                <table class="min-w-full border-collapse text-[12px] text-slate-800">
-                                    <thead class="bg-slate-100">
-                                        <tr>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Date (a) Received</th>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Time (b) Received</th>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Date (c) Accomplish</th>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Time (d) Accomplish</th>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Action Taken</th>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Action Officer</th>
-                                            <th class="border border-slate-300 px-2 py-1 text-left">Signature</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        @for ($i = 0; $i < 5; $i++)
-                                            @php
-                                                $rowSignature = (string) ($logSignatures[$i] ?? '');
-                                                $rowOwnerId = (int) data_get($existingLogs, $i . '.action_user_id', 0);
-                                                $rowHasValues = trim((string) ($logDates[$i] ?? '')) !== ''
-                                                    || trim((string) ($logTimes[$i] ?? '')) !== ''
-                                                    || trim((string) ($logActionDates[$i] ?? '')) !== ''
-                                                    || trim((string) ($logActionTimes[$i] ?? '')) !== ''
-                                                    || trim((string) ($logActions[$i] ?? '')) !== ''
-                                                    || trim((string) ($logOfficers[$i] ?? '')) !== ''
-                                                    || $rowSignature !== '';
-
-                                                if ($rowOwnerId === 0 && $rowHasValues) {
-                                                    $rowOwnerId = (int) ($serviceRequest->received_by_user_id ?? 0);
-                                                    if ($rowOwnerId === 0) {
-                                                        $rowOwnerId = (int) ($serviceRequest->assigned_by_user_id ?? 0);
-                                                    }
-                                                }
-
-                                                $rowLocked = $rowOwnerId > 0 && $rowOwnerId !== (int) auth()->id();
-                                            @endphp
-                                            <tr data-action-log-row>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="date" name="action_log_date[]" value="{{ $logDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="0" @if ($rowLocked) readonly aria-disabled="true" @endif>
-                                                </td>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="time" name="action_log_time[]" value="{{ $logTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="1" @if ($rowLocked) readonly aria-disabled="true" @endif>
-                                                </td>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="date" name="action_log_action_date[]" value="{{ $logActionDates[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="2" @if ($rowLocked) readonly aria-disabled="true" @endif>
-                                                </td>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="time" name="action_log_action_time[]" value="{{ $logActionTimes[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="3" @if ($rowLocked) readonly aria-disabled="true" @endif>
-                                                </td>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="text" name="action_log_action_taken[]" value="{{ $logActions[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="4" @if ($rowLocked) readonly aria-disabled="true" @endif>
-                                                </td>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="text" name="action_log_action_officer[]" value="{{ $logOfficers[$i] ?? '' }}" class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}" data-action-log-step="5" @if ($rowLocked) readonly aria-disabled="true" @endif>
-                                                </td>
-                                                <td class="border border-slate-300 px-2 py-1">
-                                                    <input type="hidden" name="action_log_signature_drawn[]" value="{{ $rowSignature }}">
-                                                    <input type="hidden" name="action_log_signature_x[]" value="{{ $existingLogs[$i]['action_sig_x'] ?? '' }}">
-                                                    <input type="hidden" name="action_log_signature_y[]" value="{{ $existingLogs[$i]['action_sig_y'] ?? '' }}">
-                                                    <input type="hidden" name="action_log_signature_scale[]" value="{{ $existingLogs[$i]['action_sig_scale'] ?? '' }}">
-                                                    <span class="text-[11px] text-slate-500">Manage signature in print preview.</span>
-                                                </td>
-                                            </tr>
-                                        @endfor
-                                    </tbody>
-                                </table>
-                            </div>
-                            </fieldset>
-
-                            <fieldset @if (! $canEditSupervisorFields) disabled @endif>
-                            <div class="mt-4 grid gap-3 md:grid-cols-2">
-                                @php
-                                    $notedBySignatureValue = (string) old('noted_by_signature_drawn', $serviceRequest->noted_by_signature);
-                                @endphp
-                                <label class="block text-[12px] text-slate-700 md:col-span-2">
-                                    <span class="font-semibold">13. Noted by (Name of Supervisor)</span>
-                                    <input type="text" name="noted_by_name" value="{{ old('noted_by_name', $serviceRequest->noted_by_name) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                                </label>
-
-                                <label class="block text-[12px] text-slate-700 md:col-span-2">
-                                    <span class="font-semibold">Supervisor Signature</span>
-                                    <input type="hidden" name="noted_by_signature_drawn" value="{{ $notedBySignatureValue }}">
-                                    <p class="mt-1 text-[11px] text-slate-500">Manage signature in print preview.</p>
-                                </label>
-
-                                <label class="block text-[12px] text-slate-700">
-                                    <span class="font-semibold">14. Position</span>
-                                    <input type="text" name="noted_by_position" value="{{ old('noted_by_position', $serviceRequest->noted_by_position) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                                </label>
-
-                                <label class="block text-[12px] text-slate-700">
-                                    <span class="font-semibold">15. Date Signed</span>
-                                    <input type="date" name="noted_by_date_signed" value="{{ old('noted_by_date_signed', optional($serviceRequest->noted_by_date_signed)->toDateString()) }}" class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
-                                </label>
-                            </div>
-
-                            <x-input-error :messages="$errors->get('action_log_date')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_time')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_action_date')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_action_time')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_action_taken')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_action_officer')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_signature_drawn')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('action_log_signature_upload')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('noted_by_name')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('noted_by_signature_drawn')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('noted_by_signature_upload')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
-                            </fieldset>
-                        </div>
-                    </div>
-                @else
-                    <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
-                @endif
-
-                <div class="srf-footer">
-                    <a href="{{ $backToRequestsUrl }}" class="srf-btn-back">
-                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                            <path d="M12 4L6 10L12 16"></path>
-                        </svg>
-                        Back
-                    </a>
-                    @if (! ($isReadOnly ?? false) || $canEditSupervisorFields)
-                        <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
-                    @endif
-                </div>
-            </form>
-        </div>
-    </div>
-    </section>
-
-    @if ($canPersonnelChat && ! ($isReadOnly ?? false))
-        <section style="max-width: 1300px; margin: -0.7rem auto 1.8rem; padding: 0 1rem;">
             <div class="srf-card">
                 <div class="srf-form-header">
-                    <span class="srf-form-header-text">Requestor and Personnel Chat</span>
+                    <a href="{{ $backToRequestsUrl }}" class="srf-header-back"
+                        aria-label="Back to Service Requests list">&larr; Back</a>
+                    <span class="srf-form-header-text">Service Request Form</span>
                     <div class="srf-form-header-line"></div>
                 </div>
 
-                @php
-                    $adminChatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
-                    $isChatPending = $adminChatStatus === 'pending';
-                    $isChatAccepted = $adminChatStatus === 'accepted';
-                @endphp
+                <div class="srf-section srf-status-block">
+                    <div class="flex flex-wrap items-center gap-3">
+                        <p class="text-sm font-semibold text-slate-700">Status :</p>
+                        @php
+                            $currentStatusValue = strtolower((string) $serviceRequest->status);
+                            $showDecisionButtons = !($isReadOnly ?? false) && in_array($currentStatusValue, ['pending', 'checking'], true);
+                            $statusClasses = match ($serviceRequest->status) {
+                                'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
+                                'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
+                                'completed', 'closed' => 'border-teal-300 bg-teal-100 text-teal-800',
+                                default => 'border-amber-300 bg-amber-100 text-amber-800',
+                            };
+                        @endphp
+                        <span
+                            class="inline-flex rounded-full border px-3 py-1 text-xs font-semibold uppercase {{ $statusClasses }}">
+                            {{ $serviceRequest->status }}
+                        </span>
 
-                <div class="p-4" data-admin-chat-panel data-admin-chat-status="{{ $adminChatStatus !== '' ? $adminChatStatus : 'none' }}" data-admin-chat-poll-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}" data-admin-reference-code="{{ $serviceRequest->reference_code }}">
-                    <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 {{ $isChatPending ? '' : 'hidden' }}" data-admin-chat-state="pending">
-                            <p class="font-semibold">Pending chat request from requestor.</p>
-                            <p class="mt-1 text-xs">Turn chat on to unlock messaging.</p>
-
-                            <form method="POST" action="{{ route('service-requests.chat-request.decision', $serviceRequest) }}" class="mt-3 flex flex-wrap gap-2">
-                                @csrf
-                                <button type="submit" name="decision" value="accepted" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn Chat On</button>
-                            </form>
+                        @if ($canModerateChat || $canSetPending)
+                            <div class="ms-auto flex flex-wrap items-center gap-2">
+                                @if (!($isReadOnly ?? false) || $canSetPending)
+                                    <a id="admin-print-button" href="{{ route('service-requests.print', $serviceRequest) }}"
+                                        class="rounded-xl border border-slate-300 bg-slate-50 px-5 py-2.5 text-sm font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print
+                                        Preview</a>
+                                @endif
+                                <form method="POST" action="{{ route('service-requests.update-status', $editRouteParams) }}"
+                                    class="flex flex-wrap items-center gap-2" data-status-action-form>
+                                    @csrf
+                                    @method('PATCH')
+                                    @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking'], true))
+                                        <button type="submit" formmethod="PATCH" formaction="{{ route('service-requests.receive', $serviceRequest) }}" formenctype="application/x-www-form-urlencoded"
+                                            class="rounded-xl border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase text-blue-800 transition hover:bg-blue-100">Receive</button>
+                                    @endif
+                                    @if ($canSetPending)
+                                        <button type="submit" name="status" value="pending" data-status-target="pending"
+                                            class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set
+                                            Pending</button>
+                                    @endif
+                                    @if ($showDecisionButtons)
+                                        <button type="submit" name="status" value="approved" data-status-target="approved"
+                                            class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Action
+                                            Taken</button>
+                                    @endif
+                                </form>
+                            </div>
+                        @endif
                     </div>
 
-                    <div class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 {{ $adminChatStatus === 'rejected' ? '' : 'hidden' }}" data-admin-chat-state="rejected">
-                        <p>Last chat request was declined. Wait for the requestor to send a new chat request.</p>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}">
-                                @csrf
-                                <input type="hidden" name="enabled" value="1">
-                                <button type="submit" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn Chat On</button>
-                            </form>
-                        </div>
-                    </div>
+                    @php
+                        $resolvedStatus = strtolower((string) $serviceRequest->status);
+                        if (in_array($resolvedStatus, ['completed', 'closed'], true)) {
+                            $resolvedStatus = filled($serviceRequest->approved_at)
+                                ? 'approved'
+                                : 'checking';
+                        }
 
-                    <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 {{ (! $isChatAccepted && $adminChatStatus !== 'rejected' && ! $isChatPending) ? '' : 'hidden' }}" data-admin-chat-state="none">
-                        <p>No chat request yet. Wait for the requestor to send a chat request.</p>
-                        <div class="mt-3 flex flex-wrap gap-2">
-                            <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}">
-                                @csrf
-                                <input type="hidden" name="enabled" value="1">
-                                <button type="submit" class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn Chat On</button>
-                            </form>
-                        </div>
-                    </div>
+                        $timelineSteps = [
+                            [
+                                'key' => 'pending',
+                                'label' => 'Pending',
+                                'at' => $serviceRequest->pending_at ?? $serviceRequest->created_at,
+                            ],
+                            [
+                                'key' => 'checking',
+                                'label' => 'Checking',
+                                'at' => $serviceRequest->checking_at,
+                            ],
+                        ];
 
-                    <div data-admin-chat-state="accepted" class="{{ $isChatAccepted ? '' : 'hidden' }}">
-                        <div class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-emerald-700" data-admin-chat-accepted-banner>
-                            Chat request accepted
-                        </div>
+                        $timelineSteps[] = [
+                            'key' => 'approved',
+                            'label' => 'Action Taken',
+                            'at' => $serviceRequest->approved_at,
+                        ];
 
-                        <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}" class="mb-3 flex justify-end">
-                            @csrf
-                            <input type="hidden" name="enabled" value="0">
-                            <button type="submit" class="rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-rose-700">Turn Chat Off</button>
-                        </form>
+                        $isStepReached = static function (string $stepKey) use ($serviceRequest, $resolvedStatus): bool {
+                            return match ($stepKey) {
+                                'pending' => true,
+                                'checking' => filled($serviceRequest->checking_at) || in_array($resolvedStatus, ['checking', 'approved'], true),
+                                'approved' => filled($serviceRequest->approved_at) || $resolvedStatus === 'approved',
+                                default => false,
+                            };
+                        };
+                    @endphp
 
-                        <div class="srf-chat-list" data-chat-list data-chat-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}">
-                            @forelse ($chatMessages as $chatMessage)
+                    <div class="srf-timeline" aria-label="Request status timeline">
+                        <div class="srf-timeline-track">
+                            @foreach ($timelineSteps as $index => $step)
                                 @php
-                                    $isAdminMessage = strtolower((string) $chatMessage->sender_type) === 'admin';
-                                    $senderLabel = $isAdminMessage
-                                        ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
-                                        : 'Requestor';
+                                    $stepReached = $isStepReached($step['key']);
+                                    $stepCurrent = $resolvedStatus === $step['key'];
+                                    $stepTimeLabel = filled($step['at'])
+                                        ? \Illuminate\Support\Carbon::parse($step['at'])->format('M d, Y h:i A')
+                                        : '--';
+
+                                    $nextStep = $timelineSteps[$index + 1] ?? null;
+                                    $linkActive = $nextStep ? $isStepReached($nextStep['key']) : false;
                                 @endphp
 
-                                <div class="srf-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
-                                    <div class="srf-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
-                                        <p class="srf-chat-meta">{{ $senderLabel }} • {{ $chatMessage->created_at?->format('M j, Y g:i A') }}</p>
-                                        @if (filled($chatMessage->message))
-                                            <p class="srf-chat-text">{{ $chatMessage->message }}</p>
-                                        @endif
-                                        @if (filled($chatMessage->attachment_path))
-                                            <button type="button" class="srf-chat-attachment" data-chat-image-open data-chat-image-src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}" aria-label="View chat image">
-                                                <img src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}" alt="Chat attachment" loading="lazy">
-                                            </button>
+                                <div class="srf-timeline-step">
+                                    <div class="srf-timeline-node-row">
+                                        <span
+                                            class="srf-timeline-node {{ $stepReached ? 'reached' : '' }} {{ $stepCurrent ? 'current' : '' }}"></span>
+                                        @if ($nextStep)
+                                            <span class="srf-timeline-link {{ $linkActive ? 'active' : '' }}"></span>
                                         @endif
                                     </div>
+                                    <p class="srf-timeline-label">{{ $step['label'] }}</p>
+                                    <p class="srf-timeline-time">{{ $stepTimeLabel }}</p>
                                 </div>
-                            @empty
-                                <p class="text-sm text-slate-500">No chat messages yet.</p>
-                            @endforelse
+                            @endforeach
                         </div>
-
-                        <form method="POST" action="{{ route('service-requests.messages.store', $serviceRequest) }}" class="mt-3" data-chat-enter-form enctype="multipart/form-data">
-                            @csrf
-                            <label for="admin_chat_message" class="block text-xs font-semibold uppercase tracking-[0.06em] text-slate-600">Reply as Personnel</label>
-                            <textarea id="admin_chat_message" name="message" class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-teal-600 focus:ring-teal-600" rows="3" maxlength="1000">{{ old('message') }}</textarea>
-                            <div class="mt-2 flex flex-wrap items-center gap-2">
-                                <input type="file" name="attachment" accept="image/*" class="block min-w-[220px] grow text-xs text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white">
-                                <button type="submit" class="rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:opacity-90" style="background:#0f766e; min-width:88px;">Send</button>
-                            </div>
-                            <p class="mt-1 hidden text-[11px] text-slate-500" data-chat-attachment-name></p>
-                            <x-input-error :messages="$errors->get('message')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('attachment')" class="mt-1" />
-                            <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
-                            <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new line.</p>
-                        </form>
                     </div>
+                </div>
+
+                <div class="overflow-x-auto bg-white">
+                    <form method="POST" action="{{ route('service-requests.update', $editRouteParams) }}"
+                        enctype="multipart/form-data" class="min-w-[1040px] space-y-0"
+                        data-service-request-id="{{ $serviceRequest->id }}">
+                        @csrf
+                        @method('PUT')
+
+                        <fieldset @if ($isReadOnlyForm || ($isReadOnly ?? false)) disabled @endif>
+
+                            <div class="px-4 pb-3">
+                                <p class="srf-section-label">Request Information</p>
+                                <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1 font-semibold">Reference Code :
+                                            <span
+                                                class="inline-block min-w-64 border-b border-slate-400 px-1 py-0.5 text-center">{{ $serviceRequest->reference_code }}</span>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1">Department for Reference :
+                                            @php
+                                                $displayDepartmentCode = trim((string) old('department_code', $serviceRequest->department_code));
+                                            @endphp
+                                            <span
+                                                class="inline-block min-w-40 border-b border-slate-400 px-1 py-0.5 text-center">{{ $displayDepartmentCode !== '' ? $displayDepartmentCode : 'N/A' }}</span>
+                                            <input type="hidden" id="department_code" name="department_code"
+                                                value="{{ old('department_code', $serviceRequest->department_code) }}">
+                                            <x-input-error :messages="$errors->get('department_code')" class="mt-1" />
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1">1) Date/Time of Request
+                                            (mm/dd/yyyy h:m:s) :
+                                            <div class="ms-2 inline-flex items-center gap-2 align-middle">
+                                                <input id="request_date" name="request_date" type="date"
+                                                    class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-400 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0"
+                                                    value="{{ old('request_date', $serviceRequest->request_date->toDateString()) }}"
+                                                    required>
+                                                <input name="time_received" type="time"
+                                                    value="{{ old('time_received', $serviceRequest->time_received) }}"
+                                                    class="inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-400 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
+                                            </div>
+                                            <x-input-error :messages="$errors->get('request_date')" class="mt-1" />
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="px-4 pb-3">
+                                <p class="srf-section-label">Requester Details</p>
+                                <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
+                                    <tr>
+                                        <td class="border border-slate-500 px-2 py-1">2) Request Category :
+                                            <select id="request_category" name="request_category"
+                                                class="auth-input !inline-block align-middle !min-h-0 !w-[260px] !rounded-none !border-0 border-b border-slate-200 !bg-transparent px-0 py-0 text-[12px]">
+                                                <option value="Technical Assistance" @selected(old('request_category', $serviceRequest->request_category) === 'Technical Assistance')>
+                                                    Technical Assistance</option>
+                                                <option value="System Access" @selected(old('request_category', $serviceRequest->request_category) === 'System Access')>System Access
+                                                </option>
+                                                <option value="Network/Internet" @selected(old('request_category', $serviceRequest->request_category) === 'Network/Internet')>
+                                                    Network/Internet</option>
+                                                <option value="Hardware Support" @selected(old('request_category', $serviceRequest->request_category) === 'Hardware Support')>Hardware
+                                                    Support</option>
+                                                <option value="Software Installation" @selected(old('request_category', $serviceRequest->request_category) === 'Software Installation')>
+                                                    Software Installation</option>
+                                                <option value="Data Request" @selected(old('request_category', $serviceRequest->request_category) === 'Data Request')>Data Request
+                                                </option>
+                                                <option value="Others" @selected(old('request_category', $serviceRequest->request_category) === 'Others')>Others</option>
+                                            </select>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1">3) Application System Name :
+                                            <input type="text" name="application_system_name"
+                                                value="{{ old('application_system_name', $serviceRequest->application_system_name) }}"
+                                                class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]"
+                                                maxlength="255">
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of
+                                            Completion * :
+                                            <input type="date" name="expected_completion_date"
+                                                value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}"
+                                                class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0"
+                                                required>
+                                            <input type="time" name="expected_completion_time"
+                                                value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}"
+                                                class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0"
+                                                required>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 p-0">
+                                            <table class="w-full border-collapse table-fixed text-[12px]">
+                                                <tr>
+                                                    <td class="border-0 px-2 py-1" style="width:32%;">5) Name of Contact
+                                                        Person :</td>
+                                                    <td class="border-0 border-b border-slate-400 px-1 py-1"
+                                                        style="width:17%;">
+                                                        <input name="contact_last_name"
+                                                            value="{{ old('contact_last_name', $serviceRequest->contact_last_name) }}"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]"
+                                                            autocomplete="family-name" required maxlength="100">
+                                                    </td>
+                                                    <td class="border-0 border-b border-slate-400 px-1 py-1"
+                                                        style="width:17%;">
+                                                        <input name="contact_first_name"
+                                                            value="{{ old('contact_first_name', $serviceRequest->contact_first_name) }}"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]"
+                                                            autocomplete="given-name" required maxlength="100">
+                                                    </td>
+                                                    <td class="border-0 border-b border-slate-400 px-1 py-1"
+                                                        style="width:17%;">
+                                                        <input name="contact_middle_name"
+                                                            value="{{ old('contact_middle_name', $serviceRequest->contact_middle_name) }}"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]"
+                                                            autocomplete="additional-name" maxlength="100">
+                                                    </td>
+                                                    <td class="border-0 border-b border-slate-400 px-1 py-1"
+                                                        style="width:17%;">
+                                                        <input type="text" name="contact_suffix_name"
+                                                            value="{{ old('contact_suffix_name', $serviceRequest->contact_suffix_name) }}"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]"
+                                                            autocomplete="honorific-suffix" maxlength="100">
+                                                    </td>
+                                                </tr>
+                                                <tr>
+                                                    <td class="border-0 px-2 py-1"></td>
+                                                    <td class="border-0 px-1 py-1 text-center">Last Name</td>
+                                                    <td class="border-0 px-1 py-1 text-center">First Name</td>
+                                                    <td class="border-0 px-1 py-1 text-center">Middle Name</td>
+                                                    <td class="border-0 px-1 py-1 text-center">Suffix Name</td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1">6) Office :
+                                            <div data-office-picker
+                                                style="display: inline-block; vertical-align: top; width: calc(100% - 85px);">
+                                                <input type="hidden" id="office" name="office"
+                                                    value="{{ old('office', $serviceRequest->office) }}">
+                                                <div
+                                                    style="display: flex; align-items: center; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding: 0 2px; background: transparent; min-height: 22px;">
+                                                    <div id="office_chips"
+                                                        style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0;">
+                                                    </div>
+                                                    <input type="search" id="office_search" placeholder="Office..."
+                                                        autocomplete="off"
+                                                        style="border: none; outline: none; padding: 0 4px; flex: 1; min-width: 140px; font-size: 12px; background: transparent;">
+                                                </div>
+                                                <div id="office_results"
+                                                    style="display: none; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; background: white; margin-top: 2px; font-size: 12px;">
+                                                </div>
+                                            </div>
+                                            <p id="office-regcode-display" class="mt-1 text-[11px] text-slate-500"></p>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 px-2 py-1">7) Address :
+                                            <input id="address" name="address"
+                                                value="{{ old('address', $serviceRequest->address) }}"
+                                                class="auth-input !inline-block !min-h-0 !rounded-none !border-0 !border-b !border-slate-200 !bg-transparent px-1 py-0 text-[12px]"
+                                                style="width: calc(100% - 85px);" autocomplete="street-address"
+                                                required>
+                                        </td>
+                                    </tr>
+                                    <tr>
+                                        <td class="border border-slate-400 p-0">
+                                            <table class="w-full border-collapse table-fixed text-[12px]">
+                                                <tr>
+                                                    <td class="border-0 border-r border-slate-400 px-2 py-1"
+                                                        style="width:23%;">8) Landline :
+                                                        <input name="landline"
+                                                            value="{{ old('landline', $serviceRequest->landline) }}"
+                                                            inputmode="tel"
+                                                            oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
+                                                            autocomplete="tel" maxlength="20">
+                                                    </td>
+                                                    <td class="border-0 border-r border-slate-400 px-2 py-1"
+                                                        style="width:23%;">9) Fax No :
+                                                        <input name="fax_no"
+                                                            value="{{ old('fax_no', $serviceRequest->fax_no) }}"
+                                                            inputmode="tel"
+                                                            oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
+                                                            maxlength="20">
+                                                    </td>
+                                                    <td class="border-0 border-r border-slate-400 px-2 py-1"
+                                                        style="width:23%;">10) Mobile No :
+                                                        <input name="mobile_no"
+                                                            value="{{ old('mobile_no', $serviceRequest->mobile_no) }}"
+                                                            inputmode="tel"
+                                                            oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
+                                                            autocomplete="tel-national" maxlength="20">
+                                                    </td>
+                                                    <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address
+                                                        * :
+                                                        <input type="email" name="email_address"
+                                                            value="{{ old('email_address', $serviceRequest->email_address) }}"
+                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
+                                                            autocomplete="email" required>
+                                                    </td>
+                                                </tr>
+                                            </table>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+
+                            <div class="px-4 pb-3">
+                                <p class="srf-section-label">Description of Request</p>
+                                <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12)
+                                    DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down
+                                        the details of the request.)</span></div>
+                                <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
+                                    <textarea name="description_request" style="height: 240px; min-height: 240px;"
+                                        class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
+                                        required
+                                        maxlength="5000">{{ old('description_request', $serviceRequest->description_request) }}</textarea>
+
+                                    @if ($canModerateChat)
+                                        <div class="mt-3 border-t border-slate-300 pt-2">
+                                            <p class="text-[12px] font-semibold text-slate-700">Uploaded Photos</p>
+
+                                            <div id="uploaded-photos-content" class="mt-2">
+                                                @if (is_array($serviceRequest->description_photos) && count($serviceRequest->description_photos) > 0)
+                                                    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
+                                                        @foreach ($serviceRequest->description_photos as $photoPath)
+                                                            @php
+                                                                $photoSource = str_starts_with((string) $photoPath, 'data:image/')
+                                                                    ? (string) $photoPath
+                                                                    : \Illuminate\Support\Facades\Storage::url((string) $photoPath);
+                                                            @endphp
+                                                            <a href="{{ $photoSource }}"
+                                                                class="block overflow-hidden rounded-lg border border-slate-300 bg-white"
+                                                                data-uploaded-photo-trigger data-photo-src="{{ $photoSource }}"
+                                                                data-photo-alt="Service Request Photo">
+                                                                <img src="{{ $photoSource }}" alt="Service Request Photo"
+                                                                    class="h-32 w-full object-cover">
+                                                            </a>
+                                                        @endforeach
+                                                    </div>
+                                                @else
+                                                    <p
+                                                        class="rounded-md border border-slate-200 bg-slate-50 px-3 py-2 text-[12px] text-slate-600">
+                                                        No uploaded photos for this request yet.</p>
+                                                @endif
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                                <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
+                            </div>
+
+                            <div class="px-4 pb-3">
+                                <p class="srf-section-label">Approved By</p>
+                                <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
+                                    <tr>
+                                        <td class="w-48 border border-slate-400 px-2 py-1 font-semibold">13) APPROVED BY
+                                            :</td>
+                                        <td class="border border-slate-400 px-2 py-1">
+                                            <div class="grid grid-cols-10 gap-3">
+                                                <div class="col-span-6">
+                                                    @php
+                                                        $approvedSignatureUrl = trim((string) ($serviceRequest->approved_by_signature ?? '')) !== ''
+                                                            ? route('service-requests.signature.approved', [
+                                                                'serviceRequest' => $serviceRequest,
+                                                                'token' => (string) ($signatureViewToken ?? ''),
+                                                            ])
+                                                            : '';
+                                                    @endphp
+
+                                                    @if (!$isReadOnlyForm)
+                                                        <div
+                                                            class="mb-0 rounded-md border border-slate-300 bg-slate-50 p-1 pb-0">
+                                                            <div
+                                                                class="mb-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-700">
+                                                                <label class="inline-flex items-center gap-1">
+                                                                    <input type="radio" name="approved_by_signature_mode"
+                                                                        value="draw"
+                                                                        @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
+                                                                    Draw Signature
+                                                                </label>
+                                                                <label class="inline-flex items-center gap-1">
+                                                                    <input type="radio" name="approved_by_signature_mode"
+                                                                        value="upload"
+                                                                        @checked(old('approved_by_signature_mode') === 'upload')>
+                                                                    Upload Signature
+                                                                </label>
+                                                            </div>
+
+                                                            @if ($approvedSignatureUrl !== '' && old('approved_by_signature_drawn') === null)
+                                                                <div class="mb-2">
+                                                                    <p class="mb-1 text-[11px] text-slate-600">Current Signature
+                                                                    </p>
+                                                                    <div class="srf-signature-watermark-wrap">
+                                                                        <img src="{{ $approvedSignatureUrl }}"
+                                                                            alt="Current Signature" draggable="false"
+                                                                            class="h-16 rounded border border-slate-300 bg-white px-2 py-1"
+                                                                            style="user-select:none; -webkit-user-drag:none;">
+                                                                    </div>
+                                                                </div>
+                                                            @endif
+
+                                                            <div id="edit-signature-draw-wrap" class="space-y-1">
+                                                                <canvas id="edit-signature-canvas"
+                                                                    class="h-24 w-full rounded border border-slate-300 bg-white"></canvas>
+                                                                <input type="hidden" name="approved_by_signature_drawn"
+                                                                    id="edit-signature-drawn"
+                                                                    value="{{ old('approved_by_signature_drawn') }}">
+                                                                <input type="hidden" name="approved_by_signature_clear"
+                                                                    id="edit-signature-clear-flag" value="0">
+                                                                <button type="button" id="edit-signature-clear"
+                                                                    class="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">Clear</button>
+                                                            </div>
+
+                                                            <div id="edit-signature-upload-wrap" class="hidden">
+                                                                <input type="file" name="approved_by_signature_upload"
+                                                                    accept="image/*"
+                                                                    class="block w-full text-[11px] text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-[11px] file:font-medium file:text-white">
+                                                            </div>
+
+                                                            <x-input-error
+                                                                :messages="$errors->get('approved_by_signature_upload')"
+                                                                class="mt-1" />
+                                                            <x-input-error
+                                                                :messages="$errors->get('approved_by_signature_drawn')"
+                                                                class="mt-1" />
+                                                        </div>
+                                                    @else
+                                                        <div
+                                                            class="mb-1 rounded-md border border-slate-300 bg-slate-50 p-2">
+                                                            <p class="text-[11px] font-semibold text-slate-700">Requester
+                                                                Signature (Read Only)</p>
+                                                            @if ($approvedSignatureUrl !== '')
+                                                                <p class="mt-1 text-[11px] text-slate-500">Signature hidden in
+                                                                    this edit view. Use Print Status Report to see the
+                                                                    signature.</p>
+                                                            @else
+                                                                <p class="mt-1 text-[11px] text-slate-500">No signature
+                                                                    provided.</p>
+                                                            @endif
+                                                        </div>
+                                                    @endif
+
+                                                    <input name="approved_by_name"
+                                                        value="{{ old('approved_by_name', $serviceRequest->approved_by_name) }}"
+                                                        class="auth-input !-mt-2 !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]"
+                                                        required>
+                                                    <p class="text-center">Name &amp; Signature of Head of Office</p>
+
+                                                    <input name="approved_by_position"
+                                                        value="{{ old('approved_by_position', $serviceRequest->approved_by_position) }}"
+                                                        class="mt-2 auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]"
+                                                        required>
+                                                    <p class="text-center">Position</p>
+                                                </div>
+                                                <div class="col-span-4">
+                                                    <input name="approved_date" type="date"
+                                                        value="{{ old('approved_date', $serviceRequest->approved_date->toDateString()) }}"
+                                                        class="auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]"
+                                                        required>
+                                                    <p class="text-center">Date Signed</p>
+                                                </div>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </table>
+                            </div>
+                        </fieldset>
+
+                        @if ($canModerateChat)
+                            @php
+                                $existingLogs = $serviceRequest->action_logs ?? [];
+                                $logDates = old('action_log_date', collect($existingLogs)->pluck('date')->pad(5, '')->values()->all());
+                                $logTimes = old('action_log_time', collect($existingLogs)->pluck('time')->pad(5, '')->values()->all());
+                                $logActionDates = old('action_log_action_date', collect($existingLogs)->pluck('action_date')->pad(5, '')->values()->all());
+                                $logActionTimes = old('action_log_action_time', collect($existingLogs)->pluck('action_time')->pad(5, '')->values()->all());
+                                $logActions = old('action_log_action_taken', collect($existingLogs)->pluck('action_taken')->pad(5, '')->values()->all());
+                                $logOfficers = old('action_log_action_officer', collect($existingLogs)->pluck('action_officer')->pad(5, '')->values()->all());
+                                $logSignatures = old('action_log_signature_drawn', collect($existingLogs)->pluck('signature')->pad(5, '')->values()->all());
+                            @endphp
+
+                            <div class="px-4 pb-3">
+                                <div class="rounded-xl border border-slate-300 bg-slate-50 p-3">
+                                    <fieldset @if ($isReadOnly ?? false) disabled @endif>
+                                        <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For
+                                            knowledge management and information technology service only</h3>
+
+                                        <div class="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white">
+                                            <table class="min-w-full border-collapse text-[12px] text-slate-800">
+                                                <thead class="bg-slate-100">
+                                                    <tr>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Date (a)
+                                                            Received</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Time (b)
+                                                            Received</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Date (c)
+                                                            Accomplish</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Time (d)
+                                                            Accomplish</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Action Taken
+                                                        </th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Action
+                                                            Officer</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">Signature
+                                                        </th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @for ($i = 0; $i < 5; $i++)
+                                                        @php
+                                                            $rowSignature = (string) ($logSignatures[$i] ?? '');
+                                                            $rowHasValues = trim((string) ($logDates[$i] ?? '')) !== ''
+                                                                || trim((string) ($logTimes[$i] ?? '')) !== ''
+                                                                || trim((string) ($logActionDates[$i] ?? '')) !== ''
+                                                                || trim((string) ($logActionTimes[$i] ?? '')) !== ''
+                                                                || trim((string) ($logActions[$i] ?? '')) !== ''
+                                                                || trim((string) ($logOfficers[$i] ?? '')) !== ''
+                                                                || $rowSignature !== '';
+
+                                                            // Only lock a row when it has an EXPLICIT signature_user_id that belongs
+                                                            // to a different user. Do NOT lock based on action_user_id, because
+                                                            // rows are collaborative (Assigner writes instruction, Assignee signs).
+                                                            $rowSignatureUserId = (int) data_get($existingLogs, $i . '.signature_user_id', 0);
+                                                            $rowLocked = $rowSignatureUserId > 0 && $rowSignatureUserId !== (int) auth()->id();
+                                                            $displayActionOfficer = (string) ($logOfficers[$i] ?? '');
+                                                            if (!$rowLocked && $displayActionOfficer === '' && $rowHasValues) {
+                                                                $displayActionOfficer = (string) auth()->user()?->name;
+                                                            }
+                                                        @endphp
+                                                        <tr data-action-log-row>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="date" name="action_log_date[]"
+                                                                    value="{{ $logDates[$i] ?? '' }}"
+                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                                    data-action-log-step="0" @if ($rowLocked) readonly
+                                                                    aria-disabled="true" @endif>
+                                                            </td>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="time" name="action_log_time[]"
+                                                                    value="{{ $logTimes[$i] ?? '' }}"
+                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                                    data-action-log-step="1" @if ($rowLocked) readonly
+                                                                    aria-disabled="true" @endif>
+                                                            </td>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="date" name="action_log_action_date[]"
+                                                                    value="{{ $logActionDates[$i] ?? '' }}"
+                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                                    data-action-log-step="2" @if ($rowLocked) readonly
+                                                                    aria-disabled="true" @endif>
+                                                            </td>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="time" name="action_log_action_time[]"
+                                                                    value="{{ $logActionTimes[$i] ?? '' }}"
+                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                                    data-action-log-step="3" @if ($rowLocked) readonly
+                                                                    aria-disabled="true" @endif>
+                                                            </td>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="text" name="action_log_action_taken[]"
+                                                                    value="{{ $logActions[$i] ?? '' }}"
+                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                                    data-action-log-step="4" @if ($rowLocked) readonly
+                                                                    aria-disabled="true" @endif>
+                                                            </td>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="text" name="action_log_action_officer[]"
+                                                                    value="{{ $displayActionOfficer }}"
+                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                                    data-action-log-step="5" data-action-officer-input
+                                                                    data-current-user-name="{{ auth()->user()?->name }}" @if ($rowLocked) readonly aria-disabled="true" @endif>
+                                                            </td>
+                                                            <td class="border border-slate-300 px-2 py-1">
+                                                                <input type="hidden" name="action_log_signature_drawn[]"
+                                                                    value="{{ $rowSignature }}">
+                                                                <input type="hidden" name="action_log_signature_x[]"
+                                                                    value="{{ $existingLogs[$i]['action_sig_x'] ?? '' }}">
+                                                                <input type="hidden" name="action_log_signature_y[]"
+                                                                    value="{{ $existingLogs[$i]['action_sig_y'] ?? '' }}">
+                                                                <input type="hidden" name="action_log_signature_scale[]"
+                                                                    value="{{ $existingLogs[$i]['action_sig_scale'] ?? '' }}">
+                                                                <span class="text-[11px] text-slate-500">Manage signature in
+                                                                    print preview.</span>
+                                                            </td>
+                                                        </tr>
+                                                    @endfor
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </fieldset>
+
+                                    <fieldset @if (!$canEditSupervisorFields) disabled @endif>
+                                        <div class="mt-4 grid gap-3 md:grid-cols-2">
+                                            @php
+                                                $notedBySignatureValue = (string) old('noted_by_signature_drawn', $serviceRequest->noted_by_signature);
+                                                $defaultNotedByName = (string) ($serviceRequest->noted_by_name ?? '');
+                                                if ($defaultNotedByName === '') {
+                                                    $assignedSupervisor = \App\Models\User::query()
+                                                        ->whereKey((int) ($serviceRequest->assigned_to_user_id ?? 0))
+                                                        ->where('role', 'supervisor')
+                                                        ->value('name');
+                                                    $receivedSupervisor = \App\Models\User::query()
+                                                        ->whereKey((int) ($serviceRequest->received_by_user_id ?? 0))
+                                                        ->where('role', 'supervisor')
+                                                        ->value('name');
+                                                    $defaultNotedByName = (string) ($assignedSupervisor ?: $receivedSupervisor ?: '');
+                                                }
+                                            @endphp
+                                            <label class="block text-[12px] text-slate-700 md:col-span-2">
+                                                <span class="font-semibold">13. Noted by (Name of Supervisor)</span>
+                                                <input type="text" name="noted_by_name"
+                                                    value="{{ old('noted_by_name', $defaultNotedByName) }}"
+                                                    class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                            </label>
+
+                                            <label class="block text-[12px] text-slate-700 md:col-span-2">
+                                                <span class="font-semibold">Supervisor Signature</span>
+                                                <input type="hidden" name="noted_by_signature_drawn"
+                                                    value="{{ $notedBySignatureValue }}">
+                                                <p class="mt-1 text-[11px] text-slate-500">Manage signature in print
+                                                    preview.</p>
+                                            </label>
+
+                                            <label class="block text-[12px] text-slate-700">
+                                                <span class="font-semibold">14. Position</span>
+                                                <input type="text" name="noted_by_position"
+                                                    value="{{ old('noted_by_position', $serviceRequest->noted_by_position) }}"
+                                                    class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                            </label>
+
+                                            <label class="block text-[12px] text-slate-700">
+                                                <span class="font-semibold">15. Date Signed</span>
+                                                <input type="date" name="noted_by_date_signed"
+                                                    value="{{ old('noted_by_date_signed', optional($serviceRequest->noted_by_date_signed)->toDateString()) }}"
+                                                    class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
+                                            </label>
+                                        </div>
+
+                                        <x-input-error :messages="$errors->get('action_log_date')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_time')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_action_date')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_action_time')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_action_taken')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_action_officer')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_signature_drawn')"
+                                            class="mt-1" />
+                                        <x-input-error :messages="$errors->get('action_log_signature_upload')"
+                                            class="mt-1" />
+                                        <x-input-error :messages="$errors->get('noted_by_name')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('noted_by_signature_drawn')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('noted_by_signature_upload')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('noted_by_position')" class="mt-1" />
+                                        <x-input-error :messages="$errors->get('noted_by_date_signed')" class="mt-1" />
+                                    </fieldset>
+                                </div>
+                            </div>
+                        @else
+                            <input type="hidden" name="kmits_date"
+                                value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
+                        @endif
+
+                        <div class="srf-footer">
+                            <a href="{{ $backToRequestsUrl }}" class="srf-btn-back">
+                                <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"
+                                    aria-hidden="true">
+                                    <path d="M12 4L6 10L12 16"></path>
+                                </svg>
+                                Back
+                            </a>
+                            @if (!($isReadOnly ?? false) || $canEditSupervisorFields)
+                                <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
+                            @endif
+                        </div>
+                    </form>
                 </div>
             </div>
         </section>
-    @endif
 
-    <div class="srf-image-modal" data-chat-image-modal>
-        <div class="srf-image-modal-content">
-            <button type="button" class="srf-image-modal-close" data-chat-image-close aria-label="Close image preview">×</button>
-            <img src="" alt="Chat image preview" data-chat-image-preview>
+        @if ($canPersonnelChat && !($isReadOnly ?? false))
+            <section style="max-width: 1300px; margin: -0.7rem auto 1.8rem; padding: 0 1rem;">
+                <div class="srf-card">
+                    <div class="srf-form-header">
+                        <span class="srf-form-header-text">Requestor and Personnel Chat</span>
+                        <div class="srf-form-header-line"></div>
+                    </div>
+
+                    @php
+                        $adminChatStatus = strtolower((string) ($serviceRequest->contact_chat_status ?? ''));
+                        $isChatPending = $adminChatStatus === 'pending';
+                        $isChatAccepted = $adminChatStatus === 'accepted';
+                    @endphp
+
+                    <div class="p-4" data-admin-chat-panel
+                        data-admin-chat-status="{{ $adminChatStatus !== '' ? $adminChatStatus : 'none' }}"
+                        data-admin-chat-poll-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}"
+                        data-admin-reference-code="{{ $serviceRequest->reference_code }}">
+                        <div class="rounded-lg border border-amber-200 bg-amber-50 px-3 py-3 text-sm text-amber-900 {{ $isChatPending ? '' : 'hidden' }}"
+                            data-admin-chat-state="pending">
+                            <p class="font-semibold">Pending chat request from requestor.</p>
+                            <p class="mt-1 text-xs">Turn chat on to unlock messaging.</p>
+
+                            <form method="POST"
+                                action="{{ route('service-requests.chat-request.decision', $serviceRequest) }}"
+                                class="mt-3 flex flex-wrap gap-2">
+                                @csrf
+                                <button type="submit" name="decision" value="accepted"
+                                    class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn
+                                    Chat On</button>
+                            </form>
+                        </div>
+
+                        <div class="rounded-lg border border-rose-200 bg-rose-50 px-3 py-3 text-sm text-rose-800 {{ $adminChatStatus === 'rejected' ? '' : 'hidden' }}"
+                            data-admin-chat-state="rejected">
+                            <p>Last chat request was declined. Wait for the requestor to send a new chat request.</p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}">
+                                    @csrf
+                                    <input type="hidden" name="enabled" value="1">
+                                    <button type="submit"
+                                        class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn
+                                        Chat On</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="rounded-lg border border-slate-200 bg-slate-50 px-3 py-3 text-sm text-slate-700 {{ (!$isChatAccepted && $adminChatStatus !== 'rejected' && !$isChatPending) ? '' : 'hidden' }}"
+                            data-admin-chat-state="none">
+                            <p>No chat request yet. Wait for the requestor to send a chat request.</p>
+                            <div class="mt-3 flex flex-wrap gap-2">
+                                <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}">
+                                    @csrf
+                                    <input type="hidden" name="enabled" value="1">
+                                    <button type="submit"
+                                        class="rounded-lg border border-emerald-300 bg-emerald-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-emerald-700">Turn
+                                        Chat On</button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div data-admin-chat-state="accepted" class="{{ $isChatAccepted ? '' : 'hidden' }}">
+                            <div class="mb-3 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold uppercase tracking-[0.04em] text-emerald-700"
+                                data-admin-chat-accepted-banner>
+                                Chat request accepted
+                            </div>
+
+                            <form method="POST" action="{{ route('service-requests.chat-toggle', $serviceRequest) }}"
+                                class="mb-3 flex justify-end">
+                                @csrf
+                                <input type="hidden" name="enabled" value="0">
+                                <button type="submit"
+                                    class="rounded-lg border border-rose-300 bg-rose-600 px-3 py-1.5 text-xs font-bold uppercase tracking-[0.05em] text-white transition hover:bg-rose-700">Turn
+                                    Chat Off</button>
+                            </form>
+
+                            <div class="srf-chat-list" data-chat-list
+                                data-chat-endpoint="{{ route('service-requests.messages.index', $serviceRequest) }}">
+                                @forelse ($chatMessages as $chatMessage)
+                                    @php
+                                        $isAdminMessage = strtolower((string) $chatMessage->sender_type) === 'admin';
+                                        $senderLabel = $isAdminMessage
+                                            ? ('Admin' . (filled($chatMessage->senderUser?->name) ? ' - ' . $chatMessage->senderUser->name : ''))
+                                            : 'Requestor';
+                                    @endphp
+
+                                    <div class="srf-chat-item {{ $isAdminMessage ? 'admin' : 'requestor' }}">
+                                        <div class="srf-chat-bubble {{ $isAdminMessage ? 'admin' : 'requestor' }}">
+                                            <p class="srf-chat-meta">{{ $senderLabel }} •
+                                                {{ $chatMessage->created_at?->format('M j, Y g:i A') }}
+                                            </p>
+                                            @if (filled($chatMessage->message))
+                                                <p class="srf-chat-text">{{ $chatMessage->message }}</p>
+                                            @endif
+                                            @if (filled($chatMessage->attachment_path))
+                                                <button type="button" class="srf-chat-attachment" data-chat-image-open
+                                                    data-chat-image-src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}"
+                                                    aria-label="View chat image">
+                                                    <img src="{{ '/storage/' . ltrim((string) $chatMessage->attachment_path, '/') }}"
+                                                        alt="Chat attachment" loading="lazy">
+                                                </button>
+                                            @endif
+                                        </div>
+                                    </div>
+                                @empty
+                                    <p class="text-sm text-slate-500">No chat messages yet.</p>
+                                @endforelse
+                            </div>
+
+                            <form method="POST" action="{{ route('service-requests.messages.store', $serviceRequest) }}"
+                                class="mt-3" data-chat-enter-form enctype="multipart/form-data">
+                                @csrf
+                                <label for="admin_chat_message"
+                                    class="block text-xs font-semibold uppercase tracking-[0.06em] text-slate-600">Reply as
+                                    Personnel</label>
+                                <textarea id="admin_chat_message" name="message"
+                                    class="mt-1 block w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-teal-600 focus:ring-teal-600"
+                                    rows="3" maxlength="1000">{{ old('message') }}</textarea>
+                                <div class="mt-2 flex flex-wrap items-center gap-2">
+                                    <input type="file" name="attachment" accept="image/*"
+                                        class="block min-w-[220px] grow text-xs text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-xs file:font-medium file:text-white">
+                                    <button type="submit"
+                                        class="rounded-lg px-4 py-2 text-xs font-bold uppercase tracking-[0.06em] text-white transition hover:opacity-90"
+                                        style="background:#0f766e; min-width:88px;">Send</button>
+                                </div>
+                                <p class="mt-1 hidden text-[11px] text-slate-500" data-chat-attachment-name></p>
+                                <x-input-error :messages="$errors->get('message')" class="mt-1" />
+                                <x-input-error :messages="$errors->get('attachment')" class="mt-1" />
+                                <p class="mt-1 hidden text-xs text-rose-600" data-chat-error></p>
+                                <p class="mt-1 text-[11px] text-slate-500">Press Enter to send. Use Shift+Enter for a new
+                                    line.</p>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        @endif
+
+        <div class="srf-image-modal" data-chat-image-modal>
+            <div class="srf-image-modal-content">
+                <button type="button" class="srf-image-modal-close" data-chat-image-close
+                    aria-label="Close image preview">×</button>
+                <img src="" alt="Chat image preview" data-chat-image-preview>
+            </div>
         </div>
-    </div>
 
-    <div class="srf-print-preview-backdrop" id="print-preview-modal" aria-hidden="true">
-        <div class="srf-print-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="print-preview-title">
-            <div class="srf-print-preview-head">
-                <h3 class="srf-print-preview-title" id="print-preview-title">Print Preview</h3>
-                <button type="button" class="srf-print-preview-close" id="print-preview-close" aria-label="Close print preview">×</button>
-            </div>
+        <div class="srf-print-preview-backdrop" id="print-preview-modal" aria-hidden="true">
+            <div class="srf-print-preview-dialog" role="dialog" aria-modal="true" aria-labelledby="print-preview-title">
+                <div class="srf-print-preview-head">
+                    <h3 class="srf-print-preview-title" id="print-preview-title">Print Preview</h3>
+                    <button type="button" class="srf-print-preview-close" id="print-preview-close"
+                        aria-label="Close print preview">×</button>
+                </div>
 
-            <iframe id="print-preview-frame" class="srf-print-preview-frame" title="Service Request Print Preview"></iframe>
+                <iframe id="print-preview-frame" class="srf-print-preview-frame"
+                    title="Service Request Print Preview"></iframe>
 
-            <div class="srf-print-preview-actions">
-                <a id="print-preview-open-full" href="#" target="_blank" rel="noopener" class="srf-print-preview-btn">Open Full View</a>
-                @if (filled(auth()->user()?->profile_signature))
-                    <button type="button" id="print-preview-profile-signature" class="srf-print-preview-btn">Use My Saved Signature</button>
-                @endif
-                <button type="button" id="print-preview-signature" class="srf-print-preview-btn">Add Signature</button>
-                <button type="button" id="print-preview-signature-smaller" class="srf-print-preview-btn">Signature -</button>
-                <button type="button" id="print-preview-signature-larger" class="srf-print-preview-btn">Signature +</button>
-                <button type="button" id="print-preview-save-signatures" class="srf-print-preview-btn">Save Signatures</button>
-                <button type="button" id="print-preview-trigger" class="srf-print-preview-btn primary">Print</button>
-                <span id="print-preview-save-status" class="srf-print-preview-status" aria-live="polite"></span>
-            </div>
-        </div>
-    </div>
-
-    <div class="srf-status-modal-backdrop" id="status-confirm-modal" aria-hidden="true">
-        <div class="srf-status-modal" role="dialog" aria-modal="true" aria-labelledby="status-confirm-title">
-            <div class="srf-status-modal-head">
-                <span class="srf-status-modal-icon pending" id="status-confirm-icon">!</span>
-                <h3 class="srf-status-modal-title" id="status-confirm-title">Confirm Action</h3>
-            </div>
-            <div class="srf-status-modal-body">
-                <p class="srf-status-modal-message" id="status-confirm-message">Do you want to continue?</p>
-            </div>
-            <div class="srf-status-modal-actions">
-                <button type="button" class="srf-status-modal-cancel" id="status-confirm-cancel">No</button>
-                <button type="button" class="srf-status-modal-confirm" id="status-confirm-accept">Yes</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="uploaded-photo-modal" class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/80 backdrop-blur-2xl px-4" aria-hidden="true">
-        <div class="relative w-full max-w-3xl">
-            <button
-                type="button"
-                id="uploaded-photo-modal-close"
-                class="absolute z-[121] inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-2xl font-bold leading-none text-slate-900 shadow-lg transition hover:bg-slate-100"
-                style="top: -18px; right: -18px;"
-                aria-label="Close photo preview"
-            >
-                ×
-            </button>
-            <div class="overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl">
-                <img id="uploaded-photo-modal-image" src="" alt="Uploaded photo preview" class="max-h-[65vh] w-full object-contain">
-                <div class="flex justify-end border-t border-white/15 bg-black/70 px-4 py-3">
-                    <button
-                        type="button"
-                        id="uploaded-photo-modal-cancel"
-                        class="rounded-lg border border-white/40 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/20"
-                    >
-                        Cancel
-                    </button>
+                <div class="srf-print-preview-actions">
+                    <a id="print-preview-open-full" href="#" target="_blank" rel="noopener"
+                        class="srf-print-preview-btn">Open Full View</a>
+                    @if (filled(auth()->user()?->profile_signature))
+                        <button type="button" id="print-preview-profile-signature" class="srf-print-preview-btn">Use My
+                            Saved Signature</button>
+                    @endif
+                    <button type="button" id="print-preview-signature" class="srf-print-preview-btn">Add
+                        Signature</button>
+                    <button type="button" id="print-preview-signature-smaller" class="srf-print-preview-btn">Signature
+                        -</button>
+                    <button type="button" id="print-preview-signature-larger" class="srf-print-preview-btn">Signature
+                        +</button>
+                    <button type="button" id="print-preview-save-signatures" class="srf-print-preview-btn">Save
+                        Signatures</button>
+                    <button type="button" id="print-preview-trigger"
+                        class="srf-print-preview-btn primary">Print</button>
+                    <span id="print-preview-save-status" class="srf-print-preview-status" aria-live="polite"></span>
                 </div>
             </div>
         </div>
-    </div>
 
-    <div class="srf-log-signature-modal" id="action-log-signature-modal" aria-hidden="true">
-        <div class="srf-log-signature-dialog" role="dialog" aria-modal="true" aria-labelledby="action-log-signature-title">
-            <div class="srf-log-signature-head">
-                <h3 class="srf-log-signature-title" id="action-log-signature-title">Draw Signature</h3>
-                <button type="button" class="srf-log-signature-close" id="action-log-signature-close" aria-label="Close signature modal">×</button>
-            </div>
-
-            <div class="srf-log-signature-canvas-wrap">
-                <canvas id="action-log-signature-canvas" class="srf-log-signature-canvas"></canvas>
-            </div>
-
-            <div class="srf-log-signature-actions">
-                <button type="button" class="srf-log-signature-btn" id="action-log-signature-clear">Clear</button>
-                <button type="button" class="srf-log-signature-btn" id="action-log-signature-cancel">Cancel</button>
-                <button type="button" class="srf-log-signature-btn primary" id="action-log-signature-apply">Use Signature</button>
+        <div class="srf-status-modal-backdrop" id="status-confirm-modal" aria-hidden="true">
+            <div class="srf-status-modal" role="dialog" aria-modal="true" aria-labelledby="status-confirm-title">
+                <div class="srf-status-modal-head">
+                    <span class="srf-status-modal-icon pending" id="status-confirm-icon">!</span>
+                    <h3 class="srf-status-modal-title" id="status-confirm-title">Confirm Action</h3>
+                </div>
+                <div class="srf-status-modal-body">
+                    <p class="srf-status-modal-message" id="status-confirm-message">Do you want to continue?</p>
+                </div>
+                <div class="srf-status-modal-actions">
+                    <button type="button" class="srf-status-modal-cancel" id="status-confirm-cancel">No</button>
+                    <button type="button" class="srf-status-modal-confirm" id="status-confirm-accept">Yes</button>
+                </div>
             </div>
         </div>
-    </div>
 
-    @if ($canModerateChat && ! ($isReadOnly ?? false))
-        <div class="srf-sticky-bar" id="srf-sticky-bar">
-            <span class="srf-sticky-ref">{{ $serviceRequest->reference_code }}</span>
-            <span class="srf-sticky-status {{ $statusClasses }}">{{ $serviceRequest->status }}</span>
-            <div class="srf-sticky-actions">
-                <a id="sticky-print-button" href="{{ route('service-requests.print', $serviceRequest) }}" class="rounded-xl border border-slate-300 bg-slate-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print</a>
-                <form method="POST" action="{{ route('service-requests.update-status', $editRouteParams) }}" class="flex items-center gap-2" data-status-action-form>
-                    @csrf
-                    @method('PATCH')
-                    <button type="submit" name="status" value="pending" data-status-target="pending" class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set Pending</button>
-                    @if ($showDecisionButtons)
-                        <button type="submit" name="status" value="approved" data-status-target="approved" class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Action Taken</button>
+        <div id="uploaded-photo-modal"
+            class="fixed inset-0 z-[120] hidden items-center justify-center bg-slate-950/80 backdrop-blur-2xl px-4"
+            aria-hidden="true">
+            <div class="relative w-full max-w-3xl">
+                <button type="button" id="uploaded-photo-modal-close"
+                    class="absolute z-[121] inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-2xl font-bold leading-none text-slate-900 shadow-lg transition hover:bg-slate-100"
+                    style="top: -18px; right: -18px;" aria-label="Close photo preview">
+                    ×
+                </button>
+                <div class="overflow-hidden rounded-2xl border border-white/20 bg-black shadow-2xl">
+                    <img id="uploaded-photo-modal-image" src="" alt="Uploaded photo preview"
+                        class="max-h-[65vh] w-full object-contain">
+                    <div class="flex justify-end border-t border-white/15 bg-black/70 px-4 py-3">
+                        <button type="button" id="uploaded-photo-modal-cancel"
+                            class="rounded-lg border border-white/40 bg-white/10 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-white/20">
+                            Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="srf-log-signature-modal" id="action-log-signature-modal" aria-hidden="true">
+            <div class="srf-log-signature-dialog" role="dialog" aria-modal="true"
+                aria-labelledby="action-log-signature-title">
+                <div class="srf-log-signature-head">
+                    <h3 class="srf-log-signature-title" id="action-log-signature-title">Draw Signature</h3>
+                    <button type="button" class="srf-log-signature-close" id="action-log-signature-close"
+                        aria-label="Close signature modal">×</button>
+                </div>
+
+                <div class="srf-log-signature-canvas-wrap">
+                    <canvas id="action-log-signature-canvas" class="srf-log-signature-canvas"></canvas>
+                </div>
+
+                <div class="srf-log-signature-actions">
+                    <button type="button" class="srf-log-signature-btn" id="action-log-signature-clear">Clear</button>
+                    <button type="button" class="srf-log-signature-btn" id="action-log-signature-cancel">Cancel</button>
+                    <button type="button" class="srf-log-signature-btn primary" id="action-log-signature-apply">Use
+                        Signature</button>
+                </div>
+            </div>
+        </div>
+
+        @if ($canModerateChat || $canSetPending)
+            <div class="srf-sticky-bar" id="srf-sticky-bar">
+                <span class="srf-sticky-ref">{{ $serviceRequest->reference_code }}</span>
+                <span class="srf-sticky-status {{ $statusClasses }}">{{ $serviceRequest->status }}</span>
+                <div class="srf-sticky-actions">
+                    @if (!($isReadOnly ?? false) || $canSetPending)
+                        <a id="sticky-print-button" href="{{ route('service-requests.print', $serviceRequest) }}"
+                            class="rounded-xl border border-slate-300 bg-slate-50 px-4 py-1.5 text-xs font-bold uppercase tracking-[0.06em] text-slate-800 transition hover:bg-slate-100">Print
+                            Preview</a>
                     @endif
-                </form>
+                    <form method="POST" action="{{ route('service-requests.update-status', $editRouteParams) }}"
+                        class="flex items-center gap-2" data-status-action-form>
+                        @csrf
+                        @method('PATCH')
+                        @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking'], true))
+                            <button type="submit" formmethod="PATCH" formaction="{{ route('service-requests.receive', $serviceRequest) }}" formenctype="application/x-www-form-urlencoded"
+                                class="rounded-xl border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase text-blue-800 transition hover:bg-blue-100">Receive</button>
+                        @endif
+                        @if ($canSetPending)
+                            <button type="submit" name="status" value="pending" data-status-target="pending"
+                                class="rounded-xl border border-amber-300 bg-amber-50 px-3 py-1.5 text-xs font-semibold uppercase text-amber-800 transition hover:bg-amber-100">Set
+                                Pending</button>
+                        @endif
+                        @if ($showDecisionButtons)
+                            <button type="submit" name="status" value="approved" data-status-target="approved"
+                                class="rounded-xl border border-emerald-300 bg-emerald-50 px-3 py-1.5 text-xs font-semibold uppercase text-emerald-800 transition hover:bg-emerald-100">Action
+                                Taken</button>
+                        @endif
+                    </form>
+                </div>
             </div>
-        </div>
-    @endif
+        @endif
 
-    <button type="button" class="srf-scroll-top" id="srf-scroll-top" aria-label="Scroll to top">
-        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10 15V5"></path><path d="M5 9l5-5 5 5"></path></svg>
-    </button>
+        <button type="button" class="srf-scroll-top" id="srf-scroll-top" aria-label="Scroll to top">
+            <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
+                stroke-linejoin="round">
+                <path d="M10 15V5"></path>
+                <path d="M5 9l5-5 5 5"></path>
+            </svg>
+        </button>
 
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('input[type="file"]').forEach(function(input) {
-                input.addEventListener('change', function() {
+            document.querySelectorAll('input[type="file"]').forEach(function (input) {
+                input.addEventListener('change', function () {
                     if (this.files && this.files[0] && this.files[0].size > 5 * 1024 * 1024) {
                         alert('File size must be 5MB or less.');
                         this.value = '';
@@ -2206,7 +2483,7 @@
             const officeRegcodeMap = {};
             const officeSearchEndpoint = @json(route('offices.search'));
             const currentOffice = @json(old('office', $serviceRequest->office ?? ''));
-            
+
             const officePicker = initChipSearchPicker({
                 hiddenId: 'office',
                 searchId: 'office_search',
@@ -2223,28 +2500,28 @@
             // Sync address and regcode when office changes
             const officeInput = document.getElementById('office');
             const addressInput = document.getElementById('address');
-            
+
             const syncOfficeDetails = function () {
                 const selectedOffice = officeInput.value.trim();
-                
+
                 if (selectedOffice && officeAddressMap[selectedOffice]) {
                     addressInput.value = officeAddressMap[selectedOffice];
                 }
-                
+
                 const regcodeDisplay = document.getElementById('office-regcode-display');
                 if (regcodeDisplay && selectedOffice && officeRegcodeMap[selectedOffice]) {
                     regcodeDisplay.textContent = 'Regional Hospital / Health Facility Code (for reference): ' + officeRegcodeMap[selectedOffice];
                 }
             };
-            
+
             // Observe changes to office input
             if (officeInput) {
                 const observer = new MutationObserver(syncOfficeDetails);
                 observer.observe(officeInput, { attributes: true, attributeFilter: ['value'] });
-                
+
                 officeInput.addEventListener('change', syncOfficeDetails);
             }
-            
+
             // Initial sync if there's an existing office
             if (currentOffice) {
                 syncOfficeDetails();
@@ -2975,7 +3252,7 @@
                 }
             };
 
-             const initStatusActionConfirm = function () {
+            const initStatusActionConfirm = function () {
                 const statusForm = document.querySelector('[data-status-action-form]');
                 if (!statusForm) {
                     return;
@@ -3092,7 +3369,7 @@
                         openModal(config, button);
                     });
                 });
-             };
+            };
 
             const initFloatingPrintPreview = function () {
                 const printButton = document.getElementById('admin-print-button');
@@ -3225,7 +3502,7 @@
                             // in print-preview propagates to the form on the next save.
                             const syncInputs = function (currentSelector, newSelector) {
                                 const currentInputs = document.querySelectorAll(currentSelector);
-                                const newInputs    = doc.querySelectorAll(newSelector);
+                                const newInputs = doc.querySelectorAll(newSelector);
                                 currentInputs.forEach(function (input, index) {
                                     // Use the fetched value if the element exists; if not, clear it
                                     // so a deleted signature doesn't linger in the hidden field.
@@ -3233,10 +3510,10 @@
                                 });
                             };
 
-                            syncInputs('input[name="action_log_signature_drawn[]"]',  'input[name="action_log_signature_drawn[]"]');
-                            syncInputs('input[name="action_log_signature_x[]"]',       'input[name="action_log_signature_x[]"]');
-                            syncInputs('input[name="action_log_signature_y[]"]',       'input[name="action_log_signature_y[]"]');
-                            syncInputs('input[name="action_log_signature_scale[]"]',   'input[name="action_log_signature_scale[]"]');
+                            syncInputs('input[name="action_log_signature_drawn[]"]', 'input[name="action_log_signature_drawn[]"]');
+                            syncInputs('input[name="action_log_signature_x[]"]', 'input[name="action_log_signature_x[]"]');
+                            syncInputs('input[name="action_log_signature_y[]"]', 'input[name="action_log_signature_y[]"]');
+                            syncInputs('input[name="action_log_signature_scale[]"]', 'input[name="action_log_signature_scale[]"]');
                         })
                         .catch(function () {
                             // Silently fail — positions will still be read correctly
@@ -3634,6 +3911,48 @@
                 });
             };
 
+            const initActionOfficerAutofill = function () {
+                const rows = Array.from(document.querySelectorAll('[data-action-log-row]'));
+
+                rows.forEach(function (row) {
+                    const officerInput = row.querySelector('[data-action-officer-input]');
+                    if (!officerInput || officerInput.readOnly || officerInput.disabled) {
+                        return;
+                    }
+
+                    const currentUserName = String(officerInput.getAttribute('data-current-user-name') || '').trim();
+                    if (currentUserName === '') {
+                        return;
+                    }
+
+                    const rowInputs = Array.from(row.querySelectorAll('[data-action-log-step]'))
+                        .filter(function (input) {
+                            return input !== officerInput;
+                        });
+
+                    const fillOfficerIfNeeded = function () {
+                        if (String(officerInput.value || '').trim() !== '') {
+                            return;
+                        }
+
+                        const hasRowWork = rowInputs.some(function (input) {
+                            return String(input.value || '').trim() !== '';
+                        });
+
+                        if (hasRowWork) {
+                            officerInput.value = currentUserName;
+                        }
+                    };
+
+                    rowInputs.forEach(function (input) {
+                        input.addEventListener('input', fillOfficerIfNeeded);
+                        input.addEventListener('change', fillOfficerIfNeeded);
+                    });
+
+                    fillOfficerIfNeeded();
+                });
+            };
+
             const initUploadedPhotoPreview = function () {
                 const triggers = document.querySelectorAll('[data-uploaded-photo-trigger]');
                 const modal = document.getElementById('uploaded-photo-modal');
@@ -3696,6 +4015,7 @@
             initChatEnterSubmit();
             initStatusActionConfirm();
             initUploadedPhotoPreview();
+            initActionOfficerAutofill();
 
             var stickyBar = document.getElementById('srf-sticky-bar');
             var scrollTopBtn = document.getElementById('srf-scroll-top');

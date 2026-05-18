@@ -6,12 +6,16 @@
         $statusFilterValue = trim((string) ($statusFilter ?? ''));
         $assignedFilterValue = trim((string) ($assignedFilter ?? ''));
         $receivedFilterValue = trim((string) ($receivedFilter ?? ''));
+        $receiversFilterValue = trim((string) ($receiversFilter ?? ''));
         $isExplicitStatusFilter = in_array($statusFilterValue, ['pending', 'checking', 'approved', 'archived'], true);
         $isArchiveView = in_array($statusFilterValue, ['archived', 'approved'], true);
         $isAssignedView = $assignedFilterValue === 'me';
         $isReceivedView = $receivedFilterValue === 'me';
+        $isReceiversView = $receiversFilterValue === 'all';
         $searchQuery = trim((string) ($search ?? ''));
         $chatFilter = trim((string) ($chatRequestFilter ?? ''));
+        $isSuperAdmin = (bool) ($isSuperAdmin ?? false);
+        $receiverStats = $receiverStats ?? collect();
 
         $activeParams = [];
         if ($searchQuery !== '') {
@@ -45,6 +49,11 @@
             $assignedParams['chat_request'] = $chatFilter;
         }
 
+        $receiversParams = ['receivers' => 'all'];
+        if ($searchQuery !== '') {
+            $receiversParams['q'] = $searchQuery;
+        }
+
         $clearParams = [];
         if ($isExplicitStatusFilter) {
             $clearParams['status'] = $statusFilterValue;
@@ -55,14 +64,27 @@
         if ($isAssignedView) {
             $clearParams['assigned'] = 'me';
         }
-        if ($chatFilter !== '') {
+        if ($isReceiversView) {
+            $clearParams['receivers'] = 'all';
+        }
+        if ($chatFilter !== '' && ! $isReceiversView) {
             $clearParams['chat_request'] = $chatFilter;
         }
+
+        $pageTitle = $isReceiversView
+            ? 'Receivers'
+            : ($isArchiveView ? 'Action Taken' : ($isReceivedView ? 'Receive' : ($isAssignedView ? 'Assigned' : 'Service Requests')));
+        $pageSubtitle = $isReceiversView
+            ? 'Users currently receiving active service requests.'
+            : ($isArchiveView ? 'Approved request records with completed action.' : ($isReceivedView ? 'Requests you have received.' : ($isAssignedView ? 'Requests assigned to you.' : 'Track submitted DOH service request forms.')));
+        $searchPlaceholder = $isReceiversView
+            ? 'Search name, role, or department'
+            : 'Search reference, name, office, or system';
     @endphp
 
     <x-db2-shell
-        :title="$isArchiveView ? 'Archive' : ($isReceivedView ? 'Receive' : ($isAssignedView ? 'Assigned' : 'Service Requests'))"
-        :subtitle="$isArchiveView ? 'Approved request records.' : ($isReceivedView ? 'Requests you have received.' : ($isAssignedView ? 'Requests assigned to you.' : 'Track submitted DOH service request forms.'))"
+        :title="$pageTitle"
+        :subtitle="$pageSubtitle"
     >
         @if (session('status'))
             <div class="mb-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
@@ -74,7 +96,7 @@
             <a
                 href="{{ route('service-requests.index', $activeParams) }}"
                 data-srf-section-link
-                class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ ! $isArchiveView && ! $isAssignedView && ! $isReceivedView ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
+                class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ ! $isArchiveView && ! $isAssignedView && ! $isReceivedView && ! $isReceiversView ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
             >
                 Active Requests
             </a>
@@ -92,12 +114,21 @@
             >
                 Assigned
             </a>
+            @if ($isSuperAdmin)
+                <a
+                    href="{{ route('service-requests.index', $receiversParams) }}"
+                    data-srf-section-link
+                    class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ $isReceiversView ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
+                >
+                    Receivers
+                </a>
+            @endif
             <a
                 href="{{ route('service-requests.index', $archiveParams) }}"
                 data-srf-section-link
                 class="rounded-lg px-3 py-1.5 text-sm font-semibold transition {{ $isArchiveView ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-700 hover:bg-slate-100' }}"
             >
-                Archive
+                Action Taken
             </a>
         </div>
 
@@ -111,14 +142,17 @@
             @if ($isAssignedView)
                 <input type="hidden" name="assigned" value="me">
             @endif
-            @if ($chatFilter !== '')
+            @if ($isReceiversView)
+                <input type="hidden" name="receivers" value="all">
+            @endif
+            @if ($chatFilter !== '' && ! $isReceiversView)
                 <input type="hidden" name="chat_request" value="{{ $chatFilter }}">
             @endif
             <input
                 type="text"
                 name="q"
                 value="{{ $searchQuery }}"
-                placeholder="Search reference, name, office, or system"
+                placeholder="{{ $searchPlaceholder }}"
                 class="w-full max-w-md rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
                 data-srf-auto-search-input
             >
@@ -135,140 +169,208 @@
             @endif
         </form>
 
-        @if ($chatFilter !== '')
+        @if ($chatFilter !== '' && ! $isReceiversView)
             <div class="mb-4 rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-xs font-semibold text-sky-800">
                 Filter active: Chat request = {{ strtoupper($chatFilter) }}
             </div>
         @endif
 
         <div data-srf-listing-content>
-            <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-                <div class="overflow-x-auto">
-                    <table class="min-w-full w-full text-sm">
-                        <thead class="bg-slate-100 text-xs uppercase tracking-[0.1em] text-slate-600">
-                            <tr>
-                                <th class="px-4 py-3 text-center">Reference</th>
-                                <th class="px-4 py-3 text-center">Contact Person</th>
-                                <th class="px-4 py-3 text-center">Office</th>
-                                <th class="px-4 py-3 text-center">Status</th>
-                                @if ($isReceivedView)
-                                    <th class="px-4 py-3 text-center">Assigned To</th>
-                                @endif
-                                @if ($isAssignedView)
-                                    <th class="px-4 py-3 text-center">Assigned By</th>
-                                @endif
-                                <th class="px-4 py-3 text-center">Request Date</th>
-                                <th class="px-4 py-3 text-center whitespace-nowrap">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            @forelse ($serviceRequests as $serviceRequest)
-                                <tr class="border-t border-slate-200 hover:bg-slate-50">
-                                    <td class="px-4 py-3 text-center font-semibold text-slate-900 break-all">{{ $serviceRequest->reference_code }}</td>
-                                    <td class="px-4 py-3 text-center text-slate-700 break-all">
-                                        {{ $serviceRequest->contact_last_name }}, {{ $serviceRequest->contact_first_name }} {{ $serviceRequest->contact_middle_name }}
-                                    </td>
-                                    <td class="px-4 py-3 text-center text-slate-700 break-all">{{ $serviceRequest->office }}</td>
-                                    <td class="px-4 py-3 text-center">
+            <div class="space-y-4">
+                @if ($isReceiversView)
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full w-full text-sm">
+                                <thead class="bg-slate-100 text-xs uppercase tracking-[0.1em] text-slate-600">
+                                    <tr>
+                                        <th class="px-4 py-3 text-center">Name</th>
+                                        <th class="px-4 py-3 text-center">Role</th>
+                                        <th class="px-4 py-3 text-center">Department</th>
+                                        <th class="px-4 py-3 text-center">Received Date</th>
+                                        <th class="px-4 py-3 text-center">Date Assigned</th>
+                                        <th class="px-4 py-3 text-center">Action Taken Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($receiverStats as $receiver)
                                         @php
-                                            $statusClasses = match ($serviceRequest->status) {
-                                                'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
-                                                'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
-                                                default => 'border-amber-300 bg-amber-100 text-amber-800',
-                                            };
+                                            $lastReceived = $receiver->last_received_at
+                                                ? \Illuminate\Support\Carbon::parse($receiver->last_received_at)
+                                                : null;
+                                            $lastAssigned = $receiver->last_assigned_at
+                                                ? \Illuminate\Support\Carbon::parse($receiver->last_assigned_at)
+                                                : null;
+                                            $lastActionTaken = $receiver->last_action_taken_at
+                                                ? \Illuminate\Support\Carbon::parse($receiver->last_action_taken_at)
+                                                : null;
                                         @endphp
-                                    <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase {{ $statusClasses }}">
-                                            {{ $serviceRequest->status }}
-                                        </span>
-                                    </td>
-                                    @if ($isReceivedView)
-                                        <td class="px-4 py-3 text-center text-slate-700">
-                                            @if ($serviceRequest->assignedUser && (int) ($serviceRequest->assigned_to_user_id ?? 0) !== (int) ($serviceRequest->received_by_user_id ?? 0))
-                                                <div class="font-semibold text-slate-900">{{ $serviceRequest->assignedUser->name }}</div>
-                                                <div class="text-xs uppercase tracking-wide text-slate-500">{{ $serviceRequest->assignedUser->role ?? 'No Role' }}</div>
-                                            @else
-                                                <span class="text-slate-400">N/A</span>
+                                        <tr class="border-t border-slate-200 hover:bg-slate-50">
+                                            <td class="px-4 py-3 text-center font-semibold text-slate-900">{{ $receiver->name }}</td>
+                                            <td class="px-4 py-3 text-center text-slate-700 uppercase">{{ $receiver->role ?? 'No Role' }}</td>
+                                            <td class="px-4 py-3 text-center text-slate-700 uppercase">{{ $receiver->department ?? 'N/A' }}</td>
+                                            <td class="px-4 py-3 text-center text-slate-700">
+                                                {{ $lastReceived ? $lastReceived->format('M d, g:i A') : 'N/A' }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center text-slate-700">
+                                                {{ $lastAssigned ? $lastAssigned->format('M d, g:i A') : 'N/A' }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center text-slate-700">
+                                                {{ $lastActionTaken ? $lastActionTaken->format('M d, g:i A') : 'N/A' }}
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="6" class="px-4 py-8 text-center text-slate-500">
+                                                No active receivers yet.
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                @else
+                    <div class="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full w-full text-sm">
+                                <thead class="bg-slate-100 text-xs uppercase tracking-[0.1em] text-slate-600">
+                                    <tr>
+                                        @if ($isSuperAdmin)
+                                            <th class="px-4 py-3 text-center">Action Taken By</th>
+                                        @endif
+                                        <th class="px-4 py-3 text-center">Reference</th>
+                                        <th class="px-4 py-3 text-center">Contact Person</th>
+                                        <th class="px-4 py-3 text-center">Office</th>
+                                        <th class="px-4 py-3 text-center">Status</th>
+                                        @if ($isReceivedView)
+                                            <th class="px-4 py-3 text-center">Assigned To</th>
+                                        @endif
+                                        @if ($isAssignedView)
+                                            <th class="px-4 py-3 text-center">Assigned By</th>
+                                        @endif
+                                        <th class="px-4 py-3 text-center">Request Date</th>
+                                        <th class="px-4 py-3 text-center whitespace-nowrap">Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @forelse ($serviceRequests as $serviceRequest)
+                                        <tr class="border-t border-slate-200 hover:bg-slate-50">
+                                            @if ($isSuperAdmin)
+                                                <td class="px-4 py-3 text-center text-slate-700 break-all">
+                                                    @if ($serviceRequest->approved_by_name && $serviceRequest->approved_date)
+                                                        {{ $serviceRequest->approved_by_name }} - {{ \Carbon\Carbon::parse($serviceRequest->approved_date)->format('M d, Y') }}
+                                                    @else
+                                                        <span class="text-slate-400">—</span>
+                                                    @endif
+                                                </td>
                                             @endif
-                                        </td>
-                                    @endif
-                                    @if ($isAssignedView)
-                                        <td class="px-4 py-3 text-center text-slate-700">
-                                            @if ($serviceRequest->assignedByUser)
-                                                <div class="font-semibold text-slate-900">{{ $serviceRequest->assignedByUser->name }}</div>
-                                                <div class="text-xs uppercase tracking-wide text-slate-500">{{ $serviceRequest->assignedByUser->role ?? 'No Role' }}</div>
-                                            @else
-                                                <span class="text-slate-400">N/A</span>
+                                            <td class="px-4 py-3 text-center font-semibold text-slate-900 break-all">{{ $serviceRequest->reference_code }}</td>
+                                            <td class="px-4 py-3 text-center text-slate-700 break-all">
+                                                {{ $serviceRequest->contact_last_name }}, {{ $serviceRequest->contact_first_name }} {{ $serviceRequest->contact_middle_name }}
+                                            </td>
+                                            <td class="px-4 py-3 text-center text-slate-700 break-all">{{ $serviceRequest->office }}</td>
+                                            <td class="px-4 py-3 text-center">
+                                                @php
+                                                    $statusClasses = match ($serviceRequest->status) {
+                                                        'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
+                                                        'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
+                                                        default => 'border-amber-300 bg-amber-100 text-amber-800',
+                                                    };
+                                                @endphp
+                                                <span class="inline-flex rounded-full border px-2.5 py-1 text-xs font-semibold uppercase {{ $statusClasses }}">
+                                                    {{ $serviceRequest->status }}
+                                                </span>
+                                            </td>
+                                            @if ($isReceivedView)
+                                                <td class="px-4 py-3 text-center text-slate-700">
+                                                    @if ($serviceRequest->assignedUser && (int) ($serviceRequest->assigned_to_user_id ?? 0) !== (int) ($serviceRequest->received_by_user_id ?? 0))
+                                                        <div class="font-semibold text-slate-900">{{ $serviceRequest->assignedUser->name }}</div>
+                                                        <div class="text-xs uppercase tracking-wide text-slate-500">{{ $serviceRequest->assignedUser->role ?? 'No Role' }}</div>
+                                                    @else
+                                                        <span class="text-slate-400">N/A</span>
+                                                    @endif
+                                                </td>
                                             @endif
-                                        </td>
-                                    @endif
-                                    <td class="px-4 py-3 text-center text-slate-700">{{ $serviceRequest->request_date->format('M d, Y') }}</td>
-                                    <td class="px-4 py-3 text-center whitespace-nowrap">
-                                        <div class="flex items-center justify-center gap-3">
-                                            @if ($isReceivedView || $isAssignedView || $isArchiveView)
-                                                <a href="{{ route('service-requests.show', ['serviceRequest' => $serviceRequest] + request()->only(['status', 'received', 'assigned', 'q', 'chat_request'])) }}" class="auth-link">Open</a>
-                                            @else
-                                                <button
-                                                    type="button"
-                                                    class="auth-link"
-                                                    onclick="openReceiveDialog('{{ route('service-requests.receive', $serviceRequest) }}', @js($serviceRequest->reference_code))"
-                                                >
-                                                    Receive
-                                                </button>
+                                            @if ($isAssignedView)
+                                                <td class="px-4 py-3 text-center text-slate-700">
+                                                    @if ($serviceRequest->assignedByUser)
+                                                        <div class="font-semibold text-slate-900">{{ $serviceRequest->assignedByUser->name }}</div>
+                                                        <div class="text-xs uppercase tracking-wide text-slate-500">{{ $serviceRequest->assignedByUser->role ?? 'No Role' }}</div>
+                                                    @else
+                                                        <span class="text-slate-400">N/A</span>
+                                                    @endif
+                                                </td>
                                             @endif
-                                            @php
-                                                $userRole = Auth::user()->role ?? '';
-                                                $currentUserId = (int) Auth::id();
-                                                $assignedToUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
-                                                $canAssign = ($isReceivedView || $isAssignedView)
-                                                    && in_array($userRole, ['admin', 'supervisor', 'technical support'], true)
-                                                    && (
-                                                        $assignedToUserId === $currentUserId
-                                                        || ($assignedToUserId === 0 && (int) ($serviceRequest->received_by_user_id ?? 0) === $currentUserId)
-                                                    );
-                                            @endphp
-                                            @if ($canAssign)
-                                                <button type="button" onclick="openAssignDialog({{ $serviceRequest->id }}, '{{ $serviceRequest->reference_code }}')" class="auth-link">Assign</button>
-                                            @endif
-                                        </div>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="{{ ($isAssignedView || $isReceivedView) ? 7 : 6 }}" class="px-4 py-8 text-center text-slate-500">
-                                        {{ $isArchiveView ? 'No archived requests yet.' : 'No service requests yet.' }}
-                                    </td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                                            <td class="px-4 py-3 text-center text-slate-700">{{ $serviceRequest->request_date->format('M d, Y') }}</td>
+                                            <td class="px-4 py-3 text-center whitespace-nowrap">
+                                                <div class="flex items-center justify-center gap-3">
+                                                    @if ($isReceivedView || $isAssignedView || $isArchiveView)
+                                                        <a href="{{ route('service-requests.show', ['serviceRequest' => $serviceRequest] + request()->only(['status', 'received', 'assigned', 'receivers', 'q', 'chat_request'])) }}" class="auth-link">Open</a>
+                                                    @else
+                                                        <button
+                                                            type="button"
+                                                            class="auth-link"
+                                                            onclick="openReceiveDialog('{{ route('service-requests.receive', $serviceRequest) }}', @js($serviceRequest->reference_code))"
+                                                        >
+                                                            Receive
+                                                        </button>
+                                                    @endif
+                                                    @php
+                                                        $userRole = Auth::user()->role ?? '';
+                                                        $currentUserId = (int) Auth::id();
+                                                        $assignedToUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
+                                                        $canAssign = ($isReceivedView || $isAssignedView)
+                                                            && in_array($userRole, ['admin', 'supervisor', 'technical support'], true)
+                                                            && (
+                                                                $assignedToUserId === $currentUserId
+                                                                || ($assignedToUserId === 0 && (int) ($serviceRequest->received_by_user_id ?? 0) === $currentUserId)
+                                                            );
+                                                    @endphp
+                                                    @if ($canAssign)
+                                                        <button type="button" onclick="openAssignDialog({{ $serviceRequest->id }}, '{{ $serviceRequest->reference_code }}')" class="auth-link">Assign</button>
+                                                    @endif
+                                                </div>
+                                            </td>
+                                        </tr>
+                                    @empty
+                                        <tr>
+                                            <td colspan="{{ 6 + ($isAssignedView ? 1 : 0) + ($isReceivedView ? 1 : 0) + ($isSuperAdmin ? 1 : 0) }}" class="px-4 py-8 text-center text-slate-500">
+                                                {{ $isArchiveView ? 'No action taken requests yet.' : 'No service requests yet.' }}
+                                            </td>
+                                        </tr>
+                                    @endforelse
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    @if ($serviceRequests->hasPages())
+                        <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
+                            <a
+                                href="{{ $serviceRequests->previousPageUrl() ?: '#' }}"
+                                data-srf-page-link
+                                class="rounded-lg border px-4 py-2 text-sm font-semibold {{ $serviceRequests->onFirstPage() ? 'cursor-not-allowed border-slate-200 text-slate-400' : 'border-slate-300 text-slate-700 hover:bg-slate-100' }}"
+                                {{ $serviceRequests->onFirstPage() ? 'aria-disabled=true' : '' }}
+                            >
+                                Previous
+                            </a>
+
+                            <p class="text-sm text-slate-600">
+                                Showing {{ $serviceRequests->firstItem() }} to {{ $serviceRequests->lastItem() }} of {{ $serviceRequests->total() }}
+                            </p>
+
+                            <a
+                                href="{{ $serviceRequests->nextPageUrl() ?: '#' }}"
+                                data-srf-page-link
+                                class="rounded-lg border px-4 py-2 text-sm font-semibold {{ $serviceRequests->hasMorePages() ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'cursor-not-allowed border-slate-200 text-slate-400' }}"
+                                {{ $serviceRequests->hasMorePages() ? '' : 'aria-disabled=true' }}
+                            >
+                                Next
+                            </a>
+                        </div>
+                    @endif
+                @endif
             </div>
-
-            @if ($serviceRequests->hasPages())
-                <div class="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-4 py-3">
-                    <a
-                        href="{{ $serviceRequests->previousPageUrl() ?: '#' }}"
-                        data-srf-page-link
-                        class="rounded-lg border px-4 py-2 text-sm font-semibold {{ $serviceRequests->onFirstPage() ? 'cursor-not-allowed border-slate-200 text-slate-400' : 'border-slate-300 text-slate-700 hover:bg-slate-100' }}"
-                        {{ $serviceRequests->onFirstPage() ? 'aria-disabled=true' : '' }}
-                    >
-                        Previous
-                    </a>
-
-                    <p class="text-sm text-slate-600">
-                        Showing {{ $serviceRequests->firstItem() }} to {{ $serviceRequests->lastItem() }} of {{ $serviceRequests->total() }}
-                    </p>
-
-                    <a
-                        href="{{ $serviceRequests->nextPageUrl() ?: '#' }}"
-                        data-srf-page-link
-                        class="rounded-lg border px-4 py-2 text-sm font-semibold {{ $serviceRequests->hasMorePages() ? 'border-slate-300 text-slate-700 hover:bg-slate-100' : 'cursor-not-allowed border-slate-200 text-slate-400' }}"
-                        {{ $serviceRequests->hasMorePages() ? '' : 'aria-disabled=true' }}
-                    >
-                        Next
-                    </a>
-                </div>
-            @endif
         </div>
 
         <script>
@@ -480,8 +582,8 @@
                                 <ul class="overflow-y-auto" style="max-height: 180px;">
                                     <template x-if="filteredUsers.length === 0">
                                         <li class="px-4 py-6 text-center text-sm text-slate-500">
-                                            <template x-if="search">No users match your search</template>
-                                            <template x-if="!search">No users available</template>
+                                            <template x-if="search"><span>No users match your search</span></template>
+                                            <template x-if="!search"><span>No users available</span></template>
                                         </li>
                                     </template>
 

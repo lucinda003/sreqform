@@ -160,9 +160,19 @@
 
                 <form method="POST" action="{{ route('admin.users.store') }}" class="mt-6 grid gap-5 sm:grid-cols-2">
                     @csrf
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="first_name">First Name</label>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="first_name" name="first_name" type="text" autocomplete="given-name" value="{{ old('first_name') }}" required>
+                    </div>
+
+                    <div>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="last_name">Last Name</label>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="last_name" name="last_name" type="text" autocomplete="family-name" value="{{ old('last_name') }}" required>
+                    </div>
+
                     <div class="sm:col-span-2">
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="name">Full Name</label>
-                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="name" name="name" type="text" autocomplete="name" required>
+                        <label class="auth-label block text-sm font-medium text-slate-700" for="middle_name">Middle Name (Optional)</label>
+                        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="middle_name" name="middle_name" type="text" autocomplete="additional-name" value="{{ old('middle_name') }}">
                     </div>
 
                     <div class="sm:col-span-2">

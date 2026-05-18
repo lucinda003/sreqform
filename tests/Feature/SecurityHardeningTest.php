@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Office;
 use App\Models\ServiceRequest;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -61,6 +62,64 @@ class SecurityHardeningTest extends TestCase
         }
 
         $this->get($uri)->assertStatus(429);
+    }
+
+    public function test_admin_management_routes_require_superadmin_department(): void
+    {
+        $regularAdmin = User::factory()->create([
+            'role' => 'admin',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $superAdmin = User::factory()->create([
+            'role' => 'super admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $this
+            ->actingAs($regularAdmin)
+            ->get(route('admin.management.index'))
+            ->assertForbidden();
+
+        $this
+            ->actingAs($regularAdmin)
+            ->get(route('admin.offices.index'))
+            ->assertForbidden();
+
+        $this
+            ->actingAs($regularAdmin)
+            ->get(route('admin.application-systems.index'))
+            ->assertForbidden();
+
+        $this
+            ->actingAs($superAdmin)
+            ->get(route('admin.management.index'))
+            ->assertOk();
+    }
+
+    public function test_public_office_search_endpoint_is_rate_limited(): void
+    {
+        Office::create([
+            'name' => 'Sample Health Facility',
+            'parent_name' => 'REGION X (NORTHERN MINDANAO)',
+            'region' => 'REGION X (NORTHERN MINDANAO)',
+            'address' => 'Sample Address',
+            'is_active' => true,
+        ]);
+
+        for ($i = 0; $i < 60; $i++) {
+            $this
+                ->withServerVariables(['REMOTE_ADDR' => '203.0.113.77'])
+                ->getJson(route('offices.search', ['q' => 'Sample']))
+                ->assertOk();
+        }
+
+        $this
+            ->withServerVariables(['REMOTE_ADDR' => '203.0.113.77'])
+            ->getJson(route('offices.search', ['q' => 'Sample']))
+            ->assertStatus(429);
     }
 
     public function test_capture_email_store_cannot_overwrite_existing_email(): void
@@ -303,6 +362,119 @@ class SecurityHardeningTest extends TestCase
             ->assertSee('Open');
     }
 
+    public function test_action_log_officer_defaults_to_current_user_name_when_row_has_work(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Current Action User',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($user, [
+            'status' => 'checking',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => [now()->toDateString()],
+                'action_log_time' => ['08:30'],
+                'action_log_action_date' => [now()->toDateString()],
+                'action_log_action_time' => ['09:00'],
+                'action_log_action_taken' => ['Checked network request.'],
+                'action_log_action_officer' => [''],
+            ])
+            ->assertRedirect(route('service-requests.edit', ['serviceRequest' => $serviceRequest]));
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('Current Action User', $serviceRequest->action_logs[0]['action_officer'] ?? null);
+        $this->assertSame($user->id, (int) ($serviceRequest->action_logs[0]['action_user_id'] ?? 0));
+    }
+
+    public function test_supervisor_receive_sets_noted_by_name_when_blank(): void
+    {
+        $supervisor = User::factory()->create([
+            'name' => 'Receiving Supervisor',
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($supervisor, [
+            'received_by_user_id' => null,
+            'assigned_to_user_id' => null,
+            'noted_by_name' => null,
+            'status' => 'pending',
+        ]);
+
+        $this
+            ->actingAs($supervisor)
+            ->patch(route('service-requests.receive', $serviceRequest))
+            ->assertRedirect(route('service-requests.index', ['received' => 'me']));
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('Receiving Supervisor', $serviceRequest->noted_by_name);
+    }
+
+    public function test_assigning_to_supervisor_sets_noted_by_name_without_overwriting_existing_value(): void
+    {
+        $handler = User::factory()->create([
+            'role' => 'technical support',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $supervisor = User::factory()->create([
+            'name' => 'Assigned Supervisor',
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($handler, [
+            'received_by_user_id' => $handler->id,
+            'assigned_to_user_id' => $handler->id,
+            'noted_by_name' => null,
+            'status' => 'checking',
+        ]);
+
+        $this
+            ->actingAs($handler)
+            ->patch(route('service-requests.assign', $serviceRequest), [
+                'assigned_to_user_id' => $supervisor->id,
+            ])
+            ->assertRedirect();
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('Assigned Supervisor', $serviceRequest->noted_by_name);
+
+        $otherSupervisor = User::factory()->create([
+            'name' => 'Other Supervisor',
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest->forceFill([
+            'received_by_user_id' => $supervisor->id,
+            'assigned_to_user_id' => $supervisor->id,
+            'noted_by_name' => 'Existing Supervisor',
+        ])->save();
+
+        $this
+            ->actingAs($supervisor)
+            ->patch(route('service-requests.assign', $serviceRequest), [
+                'assigned_to_user_id' => $otherSupervisor->id,
+            ])
+            ->assertRedirect();
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('Existing Supervisor', $serviceRequest->noted_by_name);
+    }
+
     private function createServiceRequest(User $owner, array $overrides = []): ServiceRequest
     {
         return ServiceRequest::query()->create(array_merge([
@@ -332,6 +504,7 @@ class SecurityHardeningTest extends TestCase
         return [
             'submission_token' => $submissionToken,
             'department_user_id' => (string) $departmentUser->id,
+            'department_code' => (string) ($departmentUser->department ?: 'KMITS'),
             'request_date' => now()->toDateString(),
             'request_category' => 'Technical Assistance',
             'application_system_name' => 'System Alpha',

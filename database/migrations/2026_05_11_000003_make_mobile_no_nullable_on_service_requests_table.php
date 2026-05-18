@@ -8,14 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        if (Schema::hasColumn('service_requests', 'mobile_no')) {
+        if (Schema::hasColumn('service_requests', 'mobile_no') && DB::getDriverName() !== 'sqlite') {
             DB::statement('ALTER TABLE service_requests MODIFY mobile_no VARCHAR(255) NULL');
         }
     }
 
     public function down(): void
     {
-        if (Schema::hasColumn('service_requests', 'mobile_no')) {
+        if (Schema::hasColumn('service_requests', 'mobile_no') && DB::getDriverName() !== 'sqlite') {
             DB::statement("UPDATE service_requests SET mobile_no = '' WHERE mobile_no IS NULL");
             DB::statement("ALTER TABLE service_requests MODIFY mobile_no VARCHAR(255) NOT NULL DEFAULT ''");
         }
