@@ -62,6 +62,17 @@ class ServiceRequestController extends Controller
                 ->whereIn('status', ['pending', 'checking']);
         } elseif ($statusFilter === 'archived') {
             $serviceRequestsQuery->whereIn('status', ['approved']);
+            if (!$isSuperAdmin) {
+                $serviceRequestsQuery->where(function (Builder $builder): void {
+                    $userId = (int) Auth::id();
+                    $builder
+                        ->where('assigned_to_user_id', $userId)
+                        ->orWhere('assigned_by_user_id', $userId)
+                        ->orWhere('received_by_user_id', $userId)
+                        ->orWhere('approved_by_user_id', $userId)
+                        ->orWhere('user_id', $userId);
+                });
+            }
         } elseif (in_array($statusFilter, ['pending', 'checking', 'approved'], true)) {
             $serviceRequestsQuery->where('status', $statusFilter);
         } else {
@@ -188,6 +199,17 @@ class ServiceRequestController extends Controller
                 ->whereIn('status', ['pending', 'checking']);
         } elseif ($statusFilter === 'archived') {
             $serviceRequestsQuery->whereIn('status', ['approved']);
+            if (!$isSuperAdmin) {
+                $serviceRequestsQuery->where(function (Builder $builder): void {
+                    $userId = (int) Auth::id();
+                    $builder
+                        ->where('assigned_to_user_id', $userId)
+                        ->orWhere('assigned_by_user_id', $userId)
+                        ->orWhere('received_by_user_id', $userId)
+                        ->orWhere('approved_by_user_id', $userId)
+                        ->orWhere('user_id', $userId);
+                });
+            }
         } elseif (in_array($statusFilter, ['pending', 'checking', 'approved'], true)) {
             $serviceRequestsQuery->where('status', $statusFilter);
         } else {
@@ -1608,7 +1630,7 @@ class ServiceRequestController extends Controller
 
     public function edit(Request $request, ServiceRequest $serviceRequest): View
     {
-        abort_unless($this->canAccess($serviceRequest), 403);
+        abort_unless($this->canAccess($serviceRequest), 403, 'UNAUTHORIZED ACCESS');
 
         $isReadOnly = $this->isAssignedToOtherUser($serviceRequest);
 
@@ -1719,7 +1741,7 @@ class ServiceRequestController extends Controller
 
     public function show(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        abort_unless($this->canAccess($serviceRequest), 403);
+        abort_unless($this->canAccess($serviceRequest), 403, 'UNAUTHORIZED...');
 
         return redirect()->route('service-requests.edit', ['serviceRequest' => $serviceRequest] + $this->listingContextFromRequest($request));
     }
@@ -3097,42 +3119,48 @@ class ServiceRequestController extends Controller
     {
         $user = Auth::user();
 
-        if ($this->isAdmin()) {
-            return $query;
-        }
-
         if ($user?->department_status !== 'approved') {
             return $query->whereRaw('1 = 0');
         }
 
+        $isSuperAdmin = strtolower(trim((string) $user?->role)) === 'super admin';
+        if ($isSuperAdmin) {
+            return $query;
+        }
+
         $userId = (int) ($user?->id ?? 0);
         $department = trim((string) ($user?->department ?? ''));
+        $isAdmin = $this->isAdmin();
 
-        return $query->where(function (Builder $builder) use ($userId, $department): void {
-            $builder
-                ->where(function (Builder $approvedBuilder) use ($userId): void {
-                    $approvedBuilder
-                        ->where('status', 'approved')
-                        ->where(function (Builder $ownerBuilder) use ($userId): void {
-                            $ownerBuilder
-                                ->where('approved_by_user_id', $userId)
-                                ->orWhere(function (Builder $legacyBuilder) use ($userId): void {
-                                    $legacyBuilder
-                                        ->whereNull('approved_by_user_id')
-                                        ->where('user_id', $userId);
-                                });
-                        });
-                })
-                ->orWhere(function (Builder $nonFinalBuilder) use ($userId, $department): void {
-                    $nonFinalBuilder
+        return $query->where(function (Builder $builder) use ($userId, $department, $isAdmin): void {
+            $builder->where(function (Builder $approvedBuilder) use ($userId): void {
+                $approvedBuilder
+                    ->where('status', 'approved')
+                    ->where(function (Builder $involvedBuilder) use ($userId): void {
+                        $involvedBuilder
+                            ->where('user_id', $userId)
+                            ->orWhere('assigned_to_user_id', $userId)
+                            ->orWhere('assigned_by_user_id', $userId)
+                            ->orWhere('received_by_user_id', $userId)
+                            ->orWhere('approved_by_user_id', $userId);
+                    });
+            })
+                ->orWhere(function (Builder $activeBuilder) use ($userId, $department, $isAdmin): void {
+                    $activeBuilder
                         ->where('status', '!=', 'approved')
-                        ->where(function (Builder $accessBuilder) use ($userId, $department): void {
+                        ->where(function (Builder $accessBuilder) use ($userId, $department, $isAdmin): void {
                             $accessBuilder
                                 ->where('user_id', $userId)
-                                ->orWhere('assigned_to_user_id', $userId);
+                                ->orWhere('assigned_to_user_id', $userId)
+                                ->orWhere('assigned_by_user_id', $userId)
+                                ->orWhere('received_by_user_id', $userId);
 
                             if ($department !== '') {
                                 $accessBuilder->orWhere('department_code', $department);
+                            }
+
+                            if ($isAdmin) {
+                                $accessBuilder->orWhereRaw('1 = 1');
                             }
                         });
                 });
@@ -3142,42 +3170,44 @@ class ServiceRequestController extends Controller
     private function canAccess(ServiceRequest $serviceRequest): bool
     {
         $user = Auth::user();
-        $userId = (int) ($user?->id ?? 0);
-
-        if ($this->isAdmin()) {
-            return true;
-        }
-
         if ($user?->department_status !== 'approved') {
             return false;
         }
 
-        if ((string) $serviceRequest->status === 'approved') {
-            $approvedByUserId = (int) ($serviceRequest->approved_by_user_id ?? 0);
-            if ($approvedByUserId > 0 && $approvedByUserId === $userId) {
-                return true;
-            }
-
-            $assignedUserId = (int) ($serviceRequest->user_id ?? 0);
-            if ($assignedUserId > 0 && $assignedUserId === $userId) {
-                return true;
-            }
-
-            $department = trim((string) ($user?->department ?? ''));
-            if ($department !== '' && (string) $serviceRequest->department_code === $department) {
-                return true;
-            }
-
-            return false;
-        }
-
-        $assignedUserId = (int) ($serviceRequest->user_id ?? 0);
-        if ($assignedUserId > 0 && $assignedUserId === $userId) {
+        $isSuperAdmin = strtolower(trim((string) $user?->role)) === 'super admin';
+        if ($isSuperAdmin) {
             return true;
         }
 
-        $currentAssigneeUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
-        if ($currentAssigneeUserId > 0 && $currentAssigneeUserId === $userId) {
+        $userId = (int) ($user?->id ?? 0);
+        $receivedBy = (int) ($serviceRequest->received_by_user_id ?? 0);
+        $assignedTo = (int) ($serviceRequest->assigned_to_user_id ?? 0);
+        $assignedBy = (int) ($serviceRequest->assigned_by_user_id ?? 0);
+        $requestorId = (int) ($serviceRequest->user_id ?? 0);
+        $approvedBy = (int) ($serviceRequest->approved_by_user_id ?? 0);
+
+        // If the ticket has been received/claimed, restrict access to the active handlers.
+        // This ensures uninvolved people (or requestors) don't view the internal edit page.
+        if ($receivedBy > 0) {
+            return $receivedBy === $userId
+                || ($assignedTo > 0 && $assignedTo === $userId)
+                || ($assignedBy > 0 && $assignedBy === $userId);
+        }
+
+        $isInvolved = ($requestorId > 0 && $requestorId === $userId)
+            || ($assignedTo > 0 && $assignedTo === $userId)
+            || ($assignedBy > 0 && $assignedBy === $userId)
+            || ($approvedBy > 0 && $approvedBy === $userId);
+
+        if ($isInvolved) {
+            return true;
+        }
+
+        if ((string) $serviceRequest->status === 'approved') {
+            return false;
+        }
+
+        if ($this->isAdmin()) {
             return true;
         }
 

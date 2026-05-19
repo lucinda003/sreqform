@@ -16,6 +16,18 @@
         $chatFilter = trim((string) ($chatRequestFilter ?? ''));
         $isSuperAdmin = (bool) ($isSuperAdmin ?? false);
         $receiverStats = $receiverStats ?? collect();
+        $roleValue = strtolower(trim((string) auth()->user()?->role));
+        $enableAutoRefresh = in_array($roleValue, ['admin', 'supervisor', 'technical support'], true);
+        $showAssignSummary = $enableAutoRefresh
+            && ! $isArchiveView
+            && ! $isAssignedView
+            && ! $isReceivedView
+            && ! $isReceiversView;
+        $emptyColspan = 6
+            + ($isSuperAdmin ? 1 : 0)
+            + ($isAssignedView ? 1 : 0)
+            + ($isReceivedView ? 1 : 0)
+            + ($showAssignSummary ? 2 : 0);
 
         $activeParams = [];
         if ($searchQuery !== '') {
@@ -242,6 +254,10 @@
                                         <th class="px-4 py-3 text-center">Contact Person</th>
                                         <th class="px-4 py-3 text-center">Office</th>
                                         <th class="px-4 py-3 text-center">Status</th>
+                                        @if ($showAssignSummary)
+                                            <th class="px-4 py-3 text-center">Assigned To</th>
+                                            <th class="px-4 py-3 text-center">Assigned By</th>
+                                        @endif
                                         @if ($isReceivedView)
                                             <th class="px-4 py-3 text-center">Assigned To</th>
                                         @endif
@@ -281,6 +297,24 @@
                                                     {{ $serviceRequest->status }}
                                                 </span>
                                             </td>
+                                            @if ($showAssignSummary)
+                                                <td class="px-4 py-3 text-center text-slate-700">
+                                                    @if ($serviceRequest->assignedUser)
+                                                        <div class="font-semibold text-slate-900">{{ $serviceRequest->assignedUser->name }}</div>
+                                                        <div class="text-xs uppercase tracking-wide text-slate-500">{{ $serviceRequest->assignedUser->role ?? 'No Role' }}</div>
+                                                    @else
+                                                        <span class="text-slate-400">N/A</span>
+                                                    @endif
+                                                </td>
+                                                <td class="px-4 py-3 text-center text-slate-700">
+                                                    @if ($serviceRequest->assignedByUser)
+                                                        <div class="font-semibold text-slate-900">{{ $serviceRequest->assignedByUser->name }}</div>
+                                                        <div class="text-xs uppercase tracking-wide text-slate-500">{{ $serviceRequest->assignedByUser->role ?? 'No Role' }}</div>
+                                                    @else
+                                                        <span class="text-slate-400">N/A</span>
+                                                    @endif
+                                                </td>
+                                            @endif
                                             @if ($isReceivedView)
                                                 <td class="px-4 py-3 text-center text-slate-700">
                                                     @if ($serviceRequest->assignedUser && (int) ($serviceRequest->assigned_to_user_id ?? 0) !== (int) ($serviceRequest->received_by_user_id ?? 0))
@@ -334,7 +368,7 @@
                                         </tr>
                                     @empty
                                         <tr>
-                                            <td colspan="{{ 6 + ($isAssignedView ? 1 : 0) + ($isReceivedView ? 1 : 0) + ($isSuperAdmin ? 1 : 0) }}" class="px-4 py-8 text-center text-slate-500">
+                                            <td colspan="{{ $emptyColspan }}" class="px-4 py-8 text-center text-slate-500">
                                                 {{ $isArchiveView ? 'No action taken requests yet.' : 'No service requests yet.' }}
                                             </td>
                                         </tr>
@@ -480,15 +514,18 @@
                     return fetchAndRender(window.location.href, { updateHistory: false });
                 };
 
-                window.clearInterval(window.srfServiceRequestListingPollId);
-                window.srfServiceRequestListingPollId = window.setInterval(function () {
-                    const assignDialog = document.getElementById('assign-request-dialog');
-                    if (assignDialog && assignDialog.open) {
-                        return;
-                    }
+                const enableRealtime = @js($enableAutoRefresh);
+                if (enableRealtime && window.Echo) {
+                    window.Echo.channel('service-requests')
+                        .listen('.service-request.updated', () => {
+                            const assignDialog = document.getElementById('assign-request-dialog');
+                            if (assignDialog && assignDialog.open) {
+                                return;
+                            }
 
-                    window.srfRefreshServiceRequestListing();
-                }, 4000);
+                            window.srfRefreshServiceRequestListing();
+                        });
+                }
             })();
         </script>
 

@@ -1864,7 +1864,7 @@
                                         </div>
                                     </fieldset>
 
-                                    <fieldset @if (!$canEditSupervisorFields) disabled @endif>
+                                    <fieldset @if (!$canEditSupervisorFields || ($isReadOnly ?? false)) disabled @endif>
                                         <div class="mt-4 grid gap-3 md:grid-cols-2">
                                             @php
                                                 $notedBySignatureValue = (string) old('noted_by_signature_drawn', $serviceRequest->noted_by_signature);
@@ -1942,7 +1942,7 @@
                                 </svg>
                                 Back
                             </a>
-                            @if (!($isReadOnly ?? false) || $canEditSupervisorFields)
+                            @if (!($isReadOnly ?? false))
                                 <button type="submit" class="srf-btn-submit">Save / Update Service Request</button>
                             @endif
                         </div>
