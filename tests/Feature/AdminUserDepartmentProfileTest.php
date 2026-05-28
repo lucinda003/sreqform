@@ -22,7 +22,8 @@ class AdminUserDepartmentProfileTest extends TestCase
         $response = $this
             ->actingAs($admin)
             ->post('/admin/users', [
-                'name' => 'KMITS Staff',
+                'first_name' => 'KMITS',
+                'last_name' => 'Staff',
                 'email' => 'kmits.staff@example.com',
                 'role' => 'admin',
                 'department_code' => 'KMITS',
@@ -59,7 +60,8 @@ class AdminUserDepartmentProfileTest extends TestCase
         $response = $this
             ->actingAs($admin)
             ->post('/admin/users', [
-                'name' => 'Pending Staff',
+                'first_name' => 'Pending',
+                'last_name' => 'Staff',
                 'email' => 'pending.staff@example.com',
                 'role' => 'technical support',
                 'department_code' => 'MOTION',

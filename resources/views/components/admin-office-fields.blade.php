@@ -17,7 +17,11 @@
 <div class="grid gap-4 sm:grid-cols-2">
     <div>
         <label class="auth-label block text-sm font-medium text-slate-700" for="{{ $fieldId('licensing_status') }}">Licensing Status</label>
-        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="{{ $fieldId('licensing_status') }}" name="licensing_status" type="text" value="{{ $fieldValue('licensing_status') }}">
+        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="{{ $fieldId('licensing_status') }}" name="licensing_status">
+            <option value="" @selected($fieldValue('licensing_status') === '')>Without License</option>
+            <option value="With License" @selected($fieldValue('licensing_status') === 'With License')>With License</option>
+            <option value="Ongoing License" @selected($fieldValue('licensing_status') === 'Ongoing License')>Ongoing License</option>
+        </select>
     </div>
 
     <div>
@@ -34,7 +38,11 @@
 
     <div>
         <label class="auth-label block text-sm font-medium text-slate-700" for="{{ $fieldId('classification') }}">Classification</label>
-        <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="{{ $fieldId('classification') }}" name="classification" type="text" value="{{ $fieldValue('classification') }}">
+        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="{{ $fieldId('classification') }}" name="classification">
+            <option value="" @selected($fieldValue('classification') === '')>Select classification</option>
+            <option value="Goverment" @selected($fieldValue('classification') === 'Goverment')>Goverment</option>
+            <option value="Private" @selected($fieldValue('classification') === 'Private')>Private</option>
+        </select>
     </div>
 </div>
 
@@ -80,6 +88,6 @@
 </div>
 
 <div>
-    <label class="auth-label block text-sm font-medium text-slate-700" for="{{ $fieldId('phone') }}">Phone</label>
+    <label class="auth-label block text-sm font-medium text-slate-700" for="{{ $fieldId('phone') }}">Landline Number</label>
     <input class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="{{ $fieldId('phone') }}" name="phone" type="text" value="{{ $fieldValue('phone') }}">
 </div>

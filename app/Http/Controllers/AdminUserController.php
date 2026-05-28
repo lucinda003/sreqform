@@ -145,11 +145,11 @@ class AdminUserController extends Controller
         }
 
         // Generate username from email (part before @)
-        $emailPrefix = explode('@', $validated['email'])[0];
+        $emailPrefix = preg_replace('/[^a-zA-Z0-9._-]/', '', explode('@', $validated['email'])[0]);
         $username = $emailPrefix;
         $counter = 1;
-        
-        // Ensure username uniqueness
+
+        // Ensure username uniqueness (loop as best-effort; DB unique constraint is the final guard)
         while (User::where('username', $username)->exists()) {
             $username = $emailPrefix . $counter;
             $counter++;
@@ -222,6 +222,7 @@ class AdminUserController extends Controller
 
         if (! empty($validated['password'])) {
             $user->password = Hash::make($validated['password']);
+            $user->password_changed_at = now();
         }
 
         $user->save();

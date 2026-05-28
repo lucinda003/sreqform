@@ -307,11 +307,24 @@ class ServiceRequestController extends Controller
     {
         $chatStatus = strtolower(trim((string) $request->query('chat_status', 'pending')));
         $search = trim((string) $request->query('q'));
+        $isSuperAdmin = strtolower(trim((string) Auth::user()?->role)) === 'super admin';
 
         $chatRequestsQuery = $this->scopeForUser(ServiceRequest::query())
             ->whereNotNull('contact_chat_status')
             ->latest('contact_chat_requested_at')
             ->latest();
+
+        if (!$isSuperAdmin) {
+            $userId = (int) Auth::id();
+            $chatRequestsQuery->where(function (Builder $builder) use ($userId): void {
+                $builder
+                    ->where('user_id', $userId)
+                    ->orWhere('assigned_to_user_id', $userId)
+                    ->orWhere('assigned_by_user_id', $userId)
+                    ->orWhere('received_by_user_id', $userId)
+                    ->orWhere('approved_by_user_id', $userId);
+            });
+        }
 
         if (in_array($chatStatus, ['pending', 'accepted', 'rejected'], true)) {
             $chatRequestsQuery->where('contact_chat_status', $chatStatus);
@@ -348,11 +361,24 @@ class ServiceRequestController extends Controller
     {
         $chatStatus = strtolower(trim((string) $request->query('chat_status', 'pending')));
         $search = trim((string) $request->query('q'));
+        $isSuperAdmin = strtolower(trim((string) Auth::user()?->role)) === 'super admin';
 
         $chatRequestsQuery = $this->scopeForUser(ServiceRequest::query())
             ->whereNotNull('contact_chat_status')
             ->latest('contact_chat_requested_at')
             ->latest();
+
+        if (!$isSuperAdmin) {
+            $userId = (int) Auth::id();
+            $chatRequestsQuery->where(function (Builder $builder) use ($userId): void {
+                $builder
+                    ->where('user_id', $userId)
+                    ->orWhere('assigned_to_user_id', $userId)
+                    ->orWhere('assigned_by_user_id', $userId)
+                    ->orWhere('received_by_user_id', $userId)
+                    ->orWhere('approved_by_user_id', $userId);
+            });
+        }
 
         if (in_array($chatStatus, ['pending', 'accepted', 'rejected'], true)) {
             $chatRequestsQuery->where('contact_chat_status', $chatStatus);
@@ -1222,11 +1248,26 @@ class ServiceRequestController extends Controller
 
     public function adminChatNotifications(): JsonResponse
     {
-        $pendingRequests = $this->scopeForUser(ServiceRequest::query())
+        $isSuperAdmin = strtolower(trim((string) Auth::user()?->role)) === 'super admin';
+        $pendingRequestsQuery = $this->scopeForUser(ServiceRequest::query())
             ->where('contact_chat_status', 'pending')
             ->orderByDesc('contact_chat_requested_at')
             ->orderByDesc('updated_at')
-            ->limit(25)
+            ->limit(25);
+
+        if (!$isSuperAdmin) {
+            $userId = (int) Auth::id();
+            $pendingRequestsQuery->where(function (Builder $builder) use ($userId): void {
+                $builder
+                    ->where('user_id', $userId)
+                    ->orWhere('assigned_to_user_id', $userId)
+                    ->orWhere('assigned_by_user_id', $userId)
+                    ->orWhere('received_by_user_id', $userId)
+                    ->orWhere('approved_by_user_id', $userId);
+            });
+        }
+
+        $pendingRequests = $pendingRequestsQuery
             ->get(['id', 'reference_code', 'contact_chat_requested_at', 'updated_at']);
 
         $notifications = $pendingRequests
@@ -1653,6 +1694,11 @@ class ServiceRequestController extends Controller
             ? $this->chatMessagesFor($serviceRequest, 150)
             : collect();
 
+        $assignableUsers = User::whereIn('role', ['admin', 'supervisor', 'technical support'])
+            ->where('id', '!=', Auth::id())
+            ->orderBy('name')
+            ->get();
+
         $officeData = $this->officeLookupData();
 
         return view('service-requests.edit', [
@@ -1662,6 +1708,7 @@ class ServiceRequestController extends Controller
             'signatureViewToken' => $this->issueSignatureViewToken($request, $serviceRequest),
             'isReadOnly' => $isReadOnly,
             'listingContext' => $this->listingContextFromRequest($request),
+            'assignableUsers' => $assignableUsers,
             'regions' => $officeData['regions'],
             'parentOfficeOptions' => $officeData['parentOfficeOptions'],
             'hospitalsByRegion' => $officeData['hospitalsByRegion'],

@@ -514,17 +514,17 @@
                     return fetchAndRender(window.location.href, { updateHistory: false });
                 };
 
-                const enableRealtime = @js($enableAutoRefresh);
-                if (enableRealtime && window.Echo) {
-                    window.Echo.channel('service-requests')
-                        .listen('.service-request.updated', () => {
-                            const assignDialog = document.getElementById('assign-request-dialog');
-                            if (assignDialog && assignDialog.open) {
-                                return;
-                            }
+                const shouldAutoRefresh = @js($enableAutoRefresh);
+                window.clearInterval(window.srfServiceRequestListingPollId);
+                if (shouldAutoRefresh) {
+                    window.srfServiceRequestListingPollId = window.setInterval(function () {
+                        const assignDialog = document.getElementById('assign-request-dialog');
+                        if (assignDialog && assignDialog.open) {
+                            return;
+                        }
 
-                            window.srfRefreshServiceRequestListing();
-                        });
+                        window.srfRefreshServiceRequestListing();
+                    }, 30000);
                 }
             })();
         </script>

@@ -130,7 +130,8 @@
 	}
 
 	.auth-login-register {
-		@apply rounded-2xl bg-white px-6 py-1.5 text-lg font-semibold text-teal-700 shadow-[0_4px_10px_rgba(15, 23, 42, 0.16)] transition hover:-translate-y-0.5;
+		@apply rounded-2xl bg-white px-6 py-1.5 text-lg font-semibold text-teal-700 transition hover:-translate-y-0.5;
+		box-shadow: 0 4px 10px rgba(15, 23, 42, 0.16);
 	}
 
 	.auth-login-top-actions {
@@ -295,7 +296,8 @@
 	}
 
 	.auth-login-card {
-		@apply rounded-3xl border p-8 shadow-[0_10px_22px_rgba(15, 23, 42, 0.2)] backdrop-blur-sm;
+		@apply rounded-3xl border p-8 backdrop-blur-sm;
+		box-shadow: 0 10px 22px rgba(15, 23, 42, 0.2);
 		border-color: rgba(147, 176, 173, 0.6);
 		background: rgba(207, 231, 228, 0.76);
 	}
@@ -387,7 +389,8 @@
 	}
 
 	.auth-login-button {
-		@apply mt-3 inline-flex w-full items-center justify-center rounded-[1.1rem] border border-teal-700 bg-teal-600 px-4 py-4 text-[2.3rem] font-semibold tracking-[0.02em] text-white shadow-[0_8px_16px_rgba(15, 118, 110, 0.35)] transition hover:bg-teal-700;
+		@apply mt-3 inline-flex w-full items-center justify-center rounded-[1.1rem] border border-teal-700 bg-teal-600 px-4 py-4 text-[2.3rem] font-semibold tracking-[0.02em] text-white transition hover:bg-teal-700;
+		box-shadow: 0 8px 16px rgba(15, 118, 110, 0.35);
 	}
 
 	.auth-login-secondary {

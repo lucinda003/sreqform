@@ -204,30 +204,6 @@
                         </select>
                     </div>
 
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="office_id">Office</label>
-                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="office_id" name="office_id">
-                            <option value="" @selected((string) old('office_id', '') === '')>Select office</option>
-                            @foreach ($offices ?? [] as $office)
-                                <option value="{{ $office->id }}" @selected((string) old('office_id') === (string) $office->id)>
-                                    {{ $office->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="auth-label block text-sm font-medium text-slate-700" for="application_system_id">Application/System</label>
-                        <select class="auth-input mt-1 block w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="application_system_id" name="application_system_id">
-                            <option value="" @selected((string) old('application_system_id', '') === '')>Select system</option>
-                            @foreach ($systems ?? [] as $system)
-                                <option value="{{ $system->id }}" @selected((string) old('application_system_id') === (string) $system->id)>
-                                    {{ $system->name }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
                     <div class="sm:col-span-2 mt-4 flex justify-end gap-3 border-t border-slate-100 pt-5">
                         <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" onclick="document.getElementById('create-account-dialog').close()">Cancel</button>
                         <button type="submit" class="rounded-lg bg-slate-900 px-5 py-2 text-sm font-semibold text-white shadow-sm hover:bg-slate-700 transition">Create Account</button>

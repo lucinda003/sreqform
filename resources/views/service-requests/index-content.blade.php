@@ -505,17 +505,17 @@
             return fetchAndRender(window.location.href, { updateHistory: false });
         };
 
-        const enableRealtime = @js($enableAutoRefresh);
-        if (enableRealtime && window.Echo) {
-            window.Echo.channel('service-requests')
-                .listen('.service-request.updated', () => {
-                    const assignDialog = document.getElementById('assign-request-dialog');
-                    if (assignDialog && assignDialog.open) {
-                        return;
-                    }
+        const shouldAutoRefresh = @js($enableAutoRefresh);
+        window.clearInterval(window.srfServiceRequestListingPollId);
+        if (shouldAutoRefresh) {
+            window.srfServiceRequestListingPollId = window.setInterval(function () {
+                const assignDialog = document.getElementById('assign-request-dialog');
+                if (assignDialog && assignDialog.open) {
+                    return;
+                }
 
-                    window.srfRefreshServiceRequestListing();
-                });
+                window.srfRefreshServiceRequestListing();
+            }, 30000);
         }
     })();
 </script>
@@ -550,7 +550,7 @@
 </dialog>
 
 <!-- Assign Dialog -->
-<dialog id="assign-request-dialog" class="w-full max-w-md rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40" style="overflow: hidden;">
+<dialog id="assign-request-dialog" class="w-full max-w-2xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40" style="overflow: hidden;">
     <div class="flex min-h-[420px] flex-col rounded-2xl bg-white p-6 sm:p-8">
         <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
             <div>
@@ -570,16 +570,48 @@
             @csrf
             @method('PATCH')
             
-            <div>
-                <label class="auth-label block text-sm font-medium text-slate-700" for="assign_to_user">Assign to User</label>
-                <select class="auth-input mt-1 block max-h-44 w-full overflow-y-auto rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm" id="assign_to_user" name="assigned_to_user_id" required>
-                    <option value="" disabled selected>Select user...</option>
-                    @forelse ($assignableUsers ?? [] as $user)
-                        <option value="{{ $user->id }}">{{ $user->name }} ({{ $user->role ?? 'No Role' }})</option>
-                    @empty
-                        <option value="" disabled>No users available</option>
-                    @endforelse
-                </select>
+            <div data-assign-user-picker>
+                <label class="auth-label block text-sm font-medium text-slate-700" for="assign_to_user_search">Assign to User</label>
+                <input type="hidden" name="assigned_to_user_id" data-assign-user-value>
+                <div class="mt-3">
+                    <button type="button" class="auth-input flex w-full items-center justify-between rounded-lg border-slate-300 bg-white text-left shadow-sm transition hover:bg-slate-50 focus:border-slate-500 focus:ring-slate-500 sm:text-sm" data-assign-user-toggle>
+                        <span class="text-slate-900" data-assign-user-label>Select user...</span>
+                        <svg class="h-5 w-5 text-slate-400 transition" data-assign-user-chevron viewBox="0 0 20 20" fill="currentColor">
+                            <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                        </svg>
+                    </button>
+
+                    <div class="mt-1 hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" data-assign-user-menu>
+                        <div class="border-b border-slate-100 p-2">
+                            <input
+                                id="assign_to_user_search"
+                                type="search"
+                                class="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
+                                placeholder="Search by name or role..."
+                                autocomplete="off"
+                                data-assign-user-search
+                            >
+                        </div>
+                        <ul class="max-h-48 overflow-y-auto" data-assign-user-list>
+                            @forelse ($assignableUsers ?? [] as $user)
+                                <li data-assign-user-item data-search-text="{{ strtolower($user->name . ' ' . ($user->role ?? 'No Role')) }}">
+                                    <button type="button" class="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left text-sm transition hover:bg-slate-50 last:border-b-0" data-assign-user-option data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}">
+                                        <span>
+                                            <span class="block font-medium text-slate-900">{{ $user->name }}</span>
+                                            <span class="block text-xs text-slate-500">{{ $user->role ?? 'No Role' }}</span>
+                                        </span>
+                                        <svg class="hidden h-5 w-5 text-teal-600" data-assign-user-check viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </button>
+                                </li>
+                            @empty
+                                <li class="px-4 py-6 text-center text-sm text-slate-500">No users available</li>
+                            @endforelse
+                            <li class="hidden px-4 py-6 text-center text-sm text-slate-500" data-assign-user-empty>No users match your search</li>
+                        </ul>
+                    </div>
+                </div>
             </div>
 
             <div class="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-5">
@@ -602,6 +634,35 @@
         document.getElementById('assign-request-ref').textContent = 'Reference: ' + referenceCode;
         const form = document.getElementById('assign-request-form');
         form.action = '/service-requests/' + requestId + '/assign';
+        const dialog = document.getElementById('assign-request-dialog');
+        const picker = dialog ? dialog.querySelector('[data-assign-user-picker]') : null;
+        const searchInput = picker ? picker.querySelector('[data-assign-user-search]') : null;
+        const valueInput = picker ? picker.querySelector('[data-assign-user-value]') : null;
+        const label = picker ? picker.querySelector('[data-assign-user-label]') : null;
+        const options = picker ? Array.from(picker.querySelectorAll('[data-assign-user-option]')) : [];
+        const items = picker ? Array.from(picker.querySelectorAll('[data-assign-user-item]')) : [];
+        const emptyState = picker ? picker.querySelector('[data-assign-user-empty]') : null;
+
+        if (valueInput) {
+            valueInput.value = '';
+        }
+        if (label) {
+            label.textContent = 'Select user...';
+        }
+        options.forEach(function (option) {
+            option.classList.remove('bg-slate-100');
+            const check = option.querySelector('[data-assign-user-check]');
+            if (check) check.classList.add('hidden');
+        });
+        if (searchInput) {
+            searchInput.value = '';
+        }
+        items.forEach(function (item) {
+            item.classList.remove('hidden');
+        });
+        if (emptyState) {
+            emptyState.classList.add('hidden');
+        }
         document.getElementById('assign-request-dialog').showModal();
     }
 
@@ -613,8 +674,91 @@
             return;
         }
 
+        const picker = dialog.querySelector('[data-assign-user-picker]');
+
+        if (picker) {
+            const toggle = picker.querySelector('[data-assign-user-toggle]');
+            const label = picker.querySelector('[data-assign-user-label]');
+            const menu = picker.querySelector('[data-assign-user-menu]');
+            const searchInput = picker.querySelector('[data-assign-user-search]');
+            const valueInput = picker.querySelector('[data-assign-user-value]');
+            const options = Array.from(picker.querySelectorAll('[data-assign-user-option]'));
+            const items = Array.from(picker.querySelectorAll('[data-assign-user-item]'));
+            const emptyState = picker.querySelector('[data-assign-user-empty]');
+            const chevron = picker.querySelector('[data-assign-user-chevron]');
+
+            const closeMenu = function () {
+                if (menu) menu.classList.add('hidden');
+                if (chevron) chevron.classList.remove('rotate-180');
+            };
+
+            const openMenu = function () {
+                if (menu) menu.classList.remove('hidden');
+                if (chevron) chevron.classList.add('rotate-180');
+                window.setTimeout(function () {
+                    if (searchInput) searchInput.focus();
+                }, 0);
+            };
+
+            const filterUsers = function () {
+                const query = String(searchInput.value || '').trim().toLowerCase();
+                let visibleCount = 0;
+                items.forEach(function (item) {
+                    const matches = query === '' || String(item.getAttribute('data-search-text') || '').includes(query);
+                    item.classList.toggle('hidden', !matches);
+                    if (matches) visibleCount++;
+                });
+                if (emptyState) emptyState.classList.toggle('hidden', visibleCount !== 0);
+            };
+
+            if (toggle) {
+                toggle.addEventListener('click', function () {
+                    if (menu && menu.classList.contains('hidden')) {
+                        openMenu();
+                    } else {
+                        closeMenu();
+                    }
+                });
+            }
+
+            if (searchInput) {
+                searchInput.addEventListener('input', filterUsers);
+            }
+
+            options.forEach(function (option) {
+                option.addEventListener('click', function () {
+                    const userId = String(option.getAttribute('data-user-id') || '');
+                    const userName = String(option.getAttribute('data-user-name') || 'Select user...');
+                    if (valueInput) valueInput.value = userId;
+                    if (label) label.textContent = userName;
+                    options.forEach(function (candidate) {
+                        candidate.classList.toggle('bg-slate-100', candidate === option);
+                        const check = candidate.querySelector('[data-assign-user-check]');
+                        if (check) check.classList.toggle('hidden', candidate !== option);
+                    });
+                    if (searchInput) {
+                        searchInput.value = '';
+                        filterUsers();
+                    }
+                    closeMenu();
+                });
+            });
+
+            document.addEventListener('click', function (event) {
+                if (!picker.contains(event.target)) {
+                    closeMenu();
+                }
+            });
+        }
+
         form.addEventListener('submit', async function (event) {
             event.preventDefault();
+            const valueInput = form.querySelector('[data-assign-user-value]');
+            if (valueInput && String(valueInput.value || '') === '') {
+                const toggle = form.querySelector('[data-assign-user-toggle]');
+                if (toggle) toggle.click();
+                return;
+            }
 
             const submitButton = form.querySelector('button[type="submit"]');
             if (submitButton) {
