@@ -107,6 +107,18 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Track Access Secret
+    |--------------------------------------------------------------------------
+    |
+    | This key is used for HMAC hashing of track request verification codes.
+    | It should be set to a random, 64 character string for security.
+    |
+    */
+
+    'track_access_secret' => env('TRACK_ACCESS_SECRET', env('APP_KEY')),
+
+    /*
+    |--------------------------------------------------------------------------
     | Maintenance Mode Driver
     |--------------------------------------------------------------------------
     |

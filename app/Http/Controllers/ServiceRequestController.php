@@ -16,6 +16,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
@@ -29,142 +30,20 @@ class ServiceRequestController extends Controller
 {
     public function index(Request $request): View
     {
-        $statusFilter = trim((string) $request->query('status'));
-        $search = trim((string) $request->query('q'));
-        $chatRequestFilter = trim((string) $request->query('chat_request'));
-        $assignedFilter = trim((string) $request->query('assigned'));
-        $receivedFilter = trim((string) $request->query('received'));
-        $receiversFilter = trim((string) $request->query('receivers'));
-        $isSuperAdmin = strtolower(trim((string) Auth::user()?->role)) === 'super admin';
-        $isReceiversView = $receiversFilter === 'all';
+        $data = $this->buildIndexData($request);
 
-        if ($isReceiversView && !$isSuperAdmin) {
-            abort(403);
-        }
-
-        $serviceRequestsQuery = $this->scopeForUser(ServiceRequest::query())
-            ->with(['assignedByUser', 'assignedUser'])
-            ->latest();
-
-        if ($receivedFilter === 'me') {
-            $serviceRequestsQuery
-                ->where('received_by_user_id', Auth::id())
-                ->whereIn('status', ['pending', 'checking']);
-        } elseif ($assignedFilter === 'me') {
-            $serviceRequestsQuery
-                ->where('assigned_to_user_id', Auth::id())
-                ->whereNotNull('assigned_by_user_id')
-                ->where(function (Builder $builder): void {
-                    $builder
-                        ->whereNull('received_by_user_id')
-                        ->orWhereColumn('assigned_to_user_id', '!=', 'received_by_user_id');
-                })
-                ->whereIn('status', ['pending', 'checking']);
-        } elseif ($statusFilter === 'archived') {
-            $serviceRequestsQuery->whereIn('status', ['approved']);
-            if (!$isSuperAdmin) {
-                $serviceRequestsQuery->where(function (Builder $builder): void {
-                    $userId = (int) Auth::id();
-                    $builder
-                        ->where('assigned_to_user_id', $userId)
-                        ->orWhere('assigned_by_user_id', $userId)
-                        ->orWhere('received_by_user_id', $userId)
-                        ->orWhere('approved_by_user_id', $userId)
-                        ->orWhere('user_id', $userId);
-                });
-            }
-        } elseif (in_array($statusFilter, ['pending', 'checking', 'approved'], true)) {
-            $serviceRequestsQuery->where('status', $statusFilter);
-        } else {
-            $statusFilter = '';
-            $serviceRequestsQuery
-                ->whereIn('status', ['pending', 'checking'])
-                ->whereNull('received_by_user_id');
-        }
-
-        if ($search !== '') {
-            $serviceRequestsQuery->where(function (Builder $builder) use ($search): void {
-                $like = '%' . $search . '%';
-
-                $builder
-                    ->where('reference_code', 'like', $like)
-                    ->orWhere('contact_last_name', 'like', $like)
-                    ->orWhere('contact_first_name', 'like', $like)
-                    ->orWhere('office', 'like', $like)
-                    ->orWhere('application_system_name', 'like', $like)
-                    ->orWhere('request_category', 'like', $like)
-                    ->orWhere('status', 'like', $like);
-            });
-        }
-
-        if (in_array($chatRequestFilter, ['pending', 'accepted', 'rejected'], true)) {
-            $serviceRequestsQuery->where('contact_chat_status', $chatRequestFilter);
-        } else {
-            $chatRequestFilter = '';
-        }
-
-        $serviceRequests = $serviceRequestsQuery
-            ->paginate(15)
-            ->withQueryString();
-
-        $assignableUsers = User::whereIn('role', ['admin', 'supervisor', 'technical support'])
-            ->where('id', '!=', Auth::id())
-            ->orderBy('name')
-            ->get();
-
-        $receiverStats = collect();
-        if ($isSuperAdmin) {
-            $receiverStatsQuery = User::query()
-                ->select(['id', 'name', 'role', 'department'])
-                ->whereHas('receivedRequests')
-                ->withCount([
-                    'receivedRequests as received_open_count' => function (Builder $query): void {
-                        $query->whereIn('status', ['pending', 'checking']);
-                    },
-                ])
-                ->withMax([
-                    'receivedRequests as last_received_at'
-                ], 'received_at')
-                ->withMax([
-                    'receivedRequests as last_action_taken_at' => function (Builder $query): void {
-                        $query->where('status', 'approved');
-                    }
-                ], 'approved_at')
-                ->withMax([
-                    'assignedRequests as last_assigned_at'
-                ], 'updated_at')
-                ->orderByDesc('received_open_count')
-                ->orderBy('name');
-
-            if ($isReceiversView && $search !== '') {
-                $receiverStatsQuery->where(function (Builder $builder) use ($search): void {
-                    $like = '%' . $search . '%';
-
-                    $builder
-                        ->where('name', 'like', $like)
-                        ->orWhere('role', 'like', $like)
-                        ->orWhere('department', 'like', $like);
-                });
-            }
-
-            $receiverStats = $receiverStatsQuery->get();
-        }
-
-        return view('service-requests.index', [
-            'serviceRequests' => $serviceRequests,
-            'statusFilter' => $statusFilter,
-            'search' => $search,
-            'chatRequestFilter' => $chatRequestFilter,
-            'assignedFilter' => $assignedFilter,
-            'receivedFilter' => $receivedFilter,
-            'receiversFilter' => $receiversFilter,
-            'assignableUsers' => $assignableUsers,
-            'isSuperAdmin' => $isSuperAdmin,
-            'receiverStats' => $receiverStats,
-        ]);
+        return view('service-requests.index', $data);
     }
 
     public function indexAjax(Request $request): JsonResponse
+    {
+        $data = $this->buildIndexData($request);
+        $html = view('service-requests.index-content', $data)->render();
+
+        return response()->json(['html' => $html]);
+    }
+
+    private function buildIndexData(Request $request): array
     {
         $statusFilter = trim((string) $request->query('status'));
         $search = trim((string) $request->query('q'));
@@ -221,7 +100,7 @@ class ServiceRequestController extends Controller
 
         if ($search !== '') {
             $serviceRequestsQuery->where(function (Builder $builder) use ($search): void {
-                $like = '%' . $search . '%';
+                $like = '%' . $this->escapeLikeSearch($search) . '%';
 
                 $builder
                     ->where('reference_code', 'like', $like)
@@ -275,7 +154,7 @@ class ServiceRequestController extends Controller
 
             if ($isReceiversView && $search !== '') {
                 $receiverStatsQuery->where(function (Builder $builder) use ($search): void {
-                    $like = '%' . $search . '%';
+                    $like = '%' . $this->escapeLikeSearch($search) . '%';
 
                     $builder
                         ->where('name', 'like', $like)
@@ -287,7 +166,7 @@ class ServiceRequestController extends Controller
             $receiverStats = $receiverStatsQuery->get();
         }
 
-        $html = view('service-requests.index-content', [
+        return [
             'serviceRequests' => $serviceRequests,
             'statusFilter' => $statusFilter,
             'search' => $search,
@@ -298,9 +177,7 @@ class ServiceRequestController extends Controller
             'assignableUsers' => $assignableUsers,
             'isSuperAdmin' => $isSuperAdmin,
             'receiverStats' => $receiverStats,
-        ])->render();
-
-        return response()->json(['html' => $html]);
+        ];
     }
 
     public function chatRequests(Request $request): View
@@ -334,7 +211,7 @@ class ServiceRequestController extends Controller
 
         if ($search !== '') {
             $chatRequestsQuery->where(function (Builder $builder) use ($search): void {
-                $like = '%' . $search . '%';
+                $like = '%' . $this->escapeLikeSearch($search) . '%';
 
                 $builder
                     ->where('reference_code', 'like', $like)
@@ -388,7 +265,7 @@ class ServiceRequestController extends Controller
 
         if ($search !== '') {
             $chatRequestsQuery->where(function (Builder $builder) use ($search): void {
-                $like = '%' . $search . '%';
+                $like = '%' . $this->escapeLikeSearch($search) . '%';
 
                 $builder
                     ->where('reference_code', 'like', $like)
@@ -507,7 +384,7 @@ class ServiceRequestController extends Controller
     {
         $search = trim((string) $request->query('q', ''));
         $parentName = trim((string) $request->query('parent_name', ''));
-        $escapedSearch = str_replace(['%', '_'], ['\%', '\_'], $search);
+        $escapedSearch = str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $search);
         $like = '%' . $escapedSearch . '%';
         $prefixLike = $escapedSearch . '%';
 
@@ -1582,15 +1459,19 @@ class ServiceRequestController extends Controller
 
         $validated['department_code'] = $selectedDepartment;
 
-        $validated['reference_code'] = $this->generateReferenceCode(
-            $validated['department_code'],
-            $validated['request_date']
-        );
-        $validated['status'] = 'pending';
-        $validated['pending_at'] = now();
-        $validated['user_id'] = (int) $selectedDepartmentUser->id;
+        $serviceRequest = DB::transaction(function () use ($validated, $selectedDepartmentUser): ServiceRequest {
+            $payload = $validated;
 
-        $serviceRequest = ServiceRequest::create($validated);
+            $payload['reference_code'] = $this->generateReferenceCode(
+                $payload['department_code'],
+                $payload['request_date']
+            );
+            $payload['status'] = 'pending';
+            $payload['pending_at'] = now();
+            $payload['user_id'] = (int) $selectedDepartmentUser->id;
+
+            return ServiceRequest::create($payload);
+        });
 
         if ($this->isAdmin()) {
             return redirect()
@@ -1671,12 +1552,23 @@ class ServiceRequestController extends Controller
 
     public function edit(Request $request, ServiceRequest $serviceRequest): View
     {
-        abort_unless($this->canAccess($serviceRequest), 403, 'UNAUTHORIZED ACCESS');
+        abort_unless($this->canAccess($serviceRequest), 403, 'Unauthorized access');
+
+        $authRole = strtolower(trim((string) Auth::user()?->role));
+        $isSuperAdmin = $authRole === 'super admin';
+
+        if (
+            blank($serviceRequest->received_by_user_id)
+            && !$isSuperAdmin
+        ) {
+            abort(403, 'Unauthorized access');
+        }
 
         $isReadOnly = $this->isAssignedToOtherUser($serviceRequest);
 
         if (
             !$isReadOnly
+            && !$isSuperAdmin
             && $this->canManageStatus($serviceRequest)
             && $serviceRequest->status === 'pending'
             && $request->query('skip_auto_checking') !== '1'
@@ -1724,6 +1616,13 @@ class ServiceRequestController extends Controller
     {
         abort_unless($this->canAccess($serviceRequest), 403);
 
+        if (
+            blank($serviceRequest->received_by_user_id)
+            && strtolower(trim((string) Auth::user()?->role)) !== 'super admin'
+        ) {
+            abort(403, 'Unauthorized access');
+        }
+
         $authUser = Auth::user();
         if (!$this->isAdmin() && $authUser?->department_status !== 'approved') {
             return back()
@@ -1731,7 +1630,8 @@ class ServiceRequestController extends Controller
                 ->withInput();
         }
 
-        $isModerationEditor = auth()->check();
+        $role = strtolower(trim((string) ($authUser?->role ?? '')));
+        $isModerationEditor = in_array($role, ['admin', 'supervisor', 'technical support'], true);
 
         $validated = $isModerationEditor
             ? $this->validatedKmitsData($request, $serviceRequest)
@@ -1788,7 +1688,7 @@ class ServiceRequestController extends Controller
 
     public function show(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        abort_unless($this->canAccess($serviceRequest), 403, 'UNAUTHORIZED...');
+        abort_unless($this->canAccess($serviceRequest), 403, 'Unauthorized access');
 
         return redirect()->route('service-requests.edit', ['serviceRequest' => $serviceRequest] + $this->listingContextFromRequest($request));
     }
@@ -2054,11 +1954,7 @@ class ServiceRequestController extends Controller
 
     public function updateStatus(Request $request, ServiceRequest $serviceRequest): RedirectResponse
     {
-        if ((string) $serviceRequest->status === 'approved') {
-            abort_unless($this->canAccess($serviceRequest) || Auth::check(), 403);
-        } else {
-            abort_unless($this->canManageStatus($serviceRequest), 403);
-        }
+        abort_unless($this->canManageStatus($serviceRequest), 403);
 
         $validated = $request->validate([
             'status' => ['required', 'in:pending,checking,approved'],
@@ -2157,7 +2053,28 @@ class ServiceRequestController extends Controller
     private function generateReferenceCode(string $departmentCode, string $requestDate): string
     {
         $datePart = date('dmY', strtotime($requestDate));
-        $sequence = ((int) ServiceRequest::query()->max('id')) + 1;
+        $counterName = 'service_requests';
+
+        DB::table('service_request_counters')->insertOrIgnore([
+            'name' => $counterName,
+            'next_sequence' => ((int) ServiceRequest::query()->max('id')) + 1,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $counter = DB::table('service_request_counters')
+            ->where('name', $counterName)
+            ->lockForUpdate()
+            ->first();
+
+        $sequence = max(1, (int) ($counter?->next_sequence ?? 1));
+
+        DB::table('service_request_counters')
+            ->where('name', $counterName)
+            ->update([
+                'next_sequence' => $sequence + 1,
+                'updated_at' => now(),
+            ]);
 
         return sprintf('SRF-%s-%05d', $datePart, $sequence);
     }
@@ -2204,8 +2121,14 @@ class ServiceRequestController extends Controller
         return strtolower(trim($email));
     }
 
+    private function escapeLikeSearch(string $value): string
+    {
+        return str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $value);
+    }
+
     private function requiresTrackVerification(ServiceRequest $serviceRequest): bool
     {
+        // All public tracking access must be verified by email.
         return true;
     }
 
@@ -2251,8 +2174,13 @@ class ServiceRequestController extends Controller
 
     private function hashTrackAccessCode(string $code): string
     {
-        return hash_hmac('sha256', $code, (string) config('app.key'));
+        $secret = config('app.track_access_secret');
+        if (!$secret || trim((string) $secret) === '') {
+            throw new \RuntimeException('Track access secret not configured. Set TRACK_ACCESS_SECRET in .env');
+        }
+        return hash_hmac('sha256', $code, (string) $secret);
     }
+
 
     private function hasTrackAccess(Request $request, ServiceRequest $serviceRequest): bool
     {
@@ -2322,7 +2250,11 @@ class ServiceRequestController extends Controller
         }
 
         $token = Str::random(64);
-        $tokenHash = hash_hmac('sha256', $token, (string) config('app.key'));
+        $secret = config('app.track_access_secret');
+        if (!$secret || trim((string) $secret) === '') {
+            throw new \RuntimeException('Track access secret not configured. Set TRACK_ACCESS_SECRET in .env');
+        }
+        $tokenHash = hash_hmac('sha256', $token, (string) $secret);
 
         $tokenMap[$tokenHash] = [
             'service_request_id' => (int) $serviceRequest->id,
@@ -2352,7 +2284,11 @@ class ServiceRequestController extends Controller
             }
         }
 
-        $tokenHash = hash_hmac('sha256', $token, (string) config('app.key'));
+        $secret = config('app.track_access_secret');
+        if (!$secret || trim((string) $secret) === '') {
+            throw new \RuntimeException('Track access secret not configured. Set TRACK_ACCESS_SECRET in .env');
+        }
+        $tokenHash = hash_hmac('sha256', $token, (string) $secret);
         $payload = $tokenMap[$tokenHash] ?? null;
 
         if (!is_array($payload)) {
@@ -2368,6 +2304,7 @@ class ServiceRequestController extends Controller
             return false;
         }
 
+        unset($tokenMap[$tokenHash]);
         $request->session()->put($sessionKey, $tokenMap);
 
         return true;
@@ -2418,8 +2355,8 @@ class ServiceRequestController extends Controller
             'department_code' => ['nullable', 'string', 'max:30'],
             'request_category' => ['nullable', 'string', 'max:100'],
             'application_system_name' => ['required', 'string', 'max:255'],
-            'expected_completion_date' => ['required', 'date'],
-            'expected_completion_time' => ['required', 'date_format:H:i'],
+            'expected_completion_date' => ['nullable', 'date'],
+            'expected_completion_time' => ['nullable', 'date_format:H:i'],
             'contact_last_name' => ['required', 'string', 'max:255'],
             'contact_first_name' => ['required', 'string', 'max:255'],
             'contact_middle_name' => ['nullable', 'string', 'max:255'],
@@ -2439,7 +2376,7 @@ class ServiceRequestController extends Controller
             'approved_by_signature_drawn' => ['nullable', 'string', 'max:8000000'],
             'approved_by_signature_upload' => ['nullable', 'image', 'max:5120'],
             'approved_by_position' => ['nullable', 'string', 'max:255'],
-            'approved_date' => ['required', 'date'],
+            'approved_date' => ['nullable', 'date'],
             'kmits_date' => ['required', 'date'],
             'time_received' => ['nullable', 'date_format:H:i'],
             'action_log_date' => ['nullable', 'array', 'max:5'],
@@ -2561,11 +2498,16 @@ class ServiceRequestController extends Controller
 
         $stored = [];
         foreach ($uploadedPhotos as $photo) {
-            if (!$photo instanceof \Illuminate\Http\UploadedFile) {
+            if (!$this->isValidImageUpload($photo)) {
                 continue;
             }
 
-            $rawBinary = (string) file_get_contents((string) $photo->getRealPath());
+            $realPath = $photo->getRealPath();
+            if ($realPath === false) {
+                continue;
+            }
+
+            $rawBinary = (string) file_get_contents($realPath);
             $rawMime = (string) ($photo->getMimeType() ?: 'image/png');
 
             if ($rawBinary === '') {
@@ -2614,7 +2556,18 @@ class ServiceRequestController extends Controller
                 continue;
             }
 
-            if (!$disk->exists($path)) {
+            $normalizedPath = trim(str_replace('\\', '/', $path));
+            if ($normalizedPath === '' || str_contains($normalizedPath, '..') || !str_starts_with($normalizedPath, 'service-request-')) {
+                $metadata[] = [
+                    'path' => $path,
+                    'exists' => false,
+                    'error' => 'Invalid or unsafe path',
+                ];
+
+                continue;
+            }
+
+            if (!$disk->exists($normalizedPath)) {
                 $metadata[] = [
                     'path' => $path,
                     'exists' => false,
@@ -2623,13 +2576,42 @@ class ServiceRequestController extends Controller
                 continue;
             }
 
-            $binary = (string) $disk->get($path);
+            $realPath = $disk->path($normalizedPath);
+            $realPathResolved = realpath($realPath);
+            if ($realPathResolved === false) {
+                $metadata[] = [
+                    'path' => $path,
+                    'exists' => false,
+                    'error' => 'Invalid path resolution',
+                ];
+                continue;
+            }
+
+            $storagePath = $disk->path('');
+            $storagePathResolved = realpath($storagePath);
+            if ($storagePathResolved === false || !str_starts_with($realPathResolved, $storagePathResolved)) {
+                $metadata[] = [
+                    'path' => $path,
+                    'exists' => false,
+                    'error' => 'Path outside allowed directory',
+                ];
+                continue;
+            }
+
+            $binary = (string) $disk->get($normalizedPath);
+            
+            $safeMimeType = $disk->mimeType($normalizedPath);
+            if ($safeMimeType === false) {
+                $safeMimeType = 'application/octet-stream';
+            }
+            
             $metadata[] = [
-                'path' => $path,
+                'file_id' => hash('sha256', $normalizedPath),
                 'exists' => true,
-                'mime_type' => (string) ($disk->mimeType($path) ?: 'application/octet-stream'),
+                'validated' => true,
+                'mime_type' => (string) $safeMimeType,
                 'size_bytes' => strlen($binary),
-                'sha256' => hash('sha256', $binary),
+                'content_hash' => hash('sha256', $binary),
             ];
         }
 
@@ -2649,7 +2631,16 @@ class ServiceRequestController extends Controller
         }
 
         if ($mode === 'upload' && $uploaded !== null) {
-            $binary = (string) file_get_contents((string) $uploaded->getRealPath());
+            if (!$this->isValidImageUpload($uploaded)) {
+                return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+            }
+
+            $realPath = $uploaded->getRealPath();
+            if ($realPath === false) {
+                return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+            }
+
+            $binary = (string) file_get_contents($realPath);
             $mime = (string) ($uploaded->getMimeType() ?: 'image/png');
             if ($binary !== '') {
                 $newPath = EncryptedSignature::storeBinary($binary, $mime);
@@ -2827,15 +2818,6 @@ class ServiceRequestController extends Controller
         $signatureScaleRows = $validated['action_log_signature_scale'] ?? [];
         $signatureUploads = $request->file('action_log_signature_upload', []);
         $this->validateActionLogStepOrder($dateRows, $timeRows, $actionDateRows, $actionTimeRows, $actionRows, $officerRows);
-
-        // DEBUG
-        \Log::info('validatedKmitsData debug', [
-            'dateRows' => $dateRows,
-            'timeRows' => $timeRows,
-            'actionTaken' => $actionRows,
-            'raw_request_date' => $request->input('action_log_date'),
-            'raw_request_time' => $request->input('action_log_time'),
-        ]);
 
         // Get existing action logs from database to preserve signatures correctly
         $existingLogs = is_array($serviceRequest->action_logs) ? $serviceRequest->action_logs : [];
@@ -3072,7 +3054,16 @@ class ServiceRequestController extends Controller
         $existingSignaturePath = trim((string) $existingSignature);
 
         if ($uploadedSignature !== null) {
-            $binary = (string) file_get_contents((string) $uploadedSignature->getRealPath());
+            if (!$this->isValidImageUpload($uploadedSignature)) {
+                return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+            }
+
+            $realPath = $uploadedSignature->getRealPath();
+            if ($realPath === false || !is_file($realPath)) {
+                return $existingSignaturePath !== '' ? $existingSignaturePath : null;
+            }
+
+            $binary = (string) file_get_contents($realPath);
             $mime = (string) ($uploadedSignature->getMimeType() ?: 'image/png');
 
             if ($binary !== '') {
@@ -3422,5 +3413,67 @@ class ServiceRequestController extends Controller
             ->filter(fn(array $entry): bool => $entry['name'] !== '')
             ->values()
             ->all();
+    }
+
+    private function isValidImageUpload($uploadedFile): bool
+    {
+        if (!$uploadedFile instanceof \Illuminate\Http\UploadedFile) {
+            return false;
+        }
+
+        if (!$uploadedFile->isValid()) {
+            return false;
+        }
+
+        $allowedMimeTypes = [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+            'image/bmp',
+        ];
+
+        $mimeType = strtolower((string) $uploadedFile->getMimeType());
+        if (!in_array($mimeType, $allowedMimeTypes, true)) {
+            return false;
+        }
+
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'bmp'];
+        $extension = strtolower((string) $uploadedFile->getClientOriginalExtension());
+        if (!in_array($extension, $allowedExtensions, true)) {
+            return false;
+        }
+
+        $realPath = $uploadedFile->getRealPath();
+        if ($realPath === false || !is_file($realPath)) {
+            return false;
+        }
+
+        $normalizedPath = realpath($realPath);
+        if ($normalizedPath === false || !is_file($normalizedPath)) {
+            return false;
+        }
+
+        $systemTempDir = sys_get_temp_dir();
+        $normalizedTempDir = realpath($systemTempDir);
+        if ($normalizedTempDir !== false && !str_starts_with($normalizedPath, $normalizedTempDir)) {
+            return false;
+        }
+
+        $fileSize = $uploadedFile->getSize();
+        if ($fileSize === false || $fileSize > 5242880) {
+            return false;
+        }
+
+        $imageInfo = @getimagesize($normalizedPath);
+        if ($imageInfo === false) {
+            return false;
+        }
+
+        $detectedMimeType = strtolower((string) ($imageInfo['mime'] ?? ''));
+        if ($detectedMimeType !== '' && !in_array($detectedMimeType, $allowedMimeTypes, true)) {
+            return false;
+        }
+
+        return true;
     }
 }

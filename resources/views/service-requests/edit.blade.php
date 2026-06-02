@@ -1462,15 +1462,13 @@
                                     </tr>
                                     <tr>
                                         <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of
-                                            Completion * :
+                                            Completion :
                                             <input type="date" name="expected_completion_date"
                                                 value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}"
-                                                class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0"
-                                                required>
+                                                class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
                                             <input type="time" name="expected_completion_time"
                                                 value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}"
-                                                class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0"
-                                                required>
+                                                class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
                                         </td>
                                     </tr>
                                     <tr>
@@ -1744,9 +1742,8 @@
                                                 </div>
                                                 <div class="col-span-4">
                                                     <input name="approved_date" type="date"
-                                                        value="{{ old('approved_date', $serviceRequest->approved_date->toDateString()) }}"
-                                                        class="auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]"
-                                                        required>
+                                                        value="{{ old('approved_date', optional($serviceRequest->approved_date)->toDateString()) }}"
+                                                        class="auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]">
                                                     <p class="text-center">Date Signed</p>
                                                 </div>
                                             </div>

@@ -146,7 +146,7 @@
             </td>
             <td>
                 <span class="label">Date Signed</span>
-                <div class="value">{{ $serviceRequest->approved_date->format('m/d/Y') }}</div>
+                <div class="value">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
             </td>
         </tr>
     </table>

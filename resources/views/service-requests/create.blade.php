@@ -882,16 +882,15 @@
                             </div>
                             <div class="srf-field">
                                 <label class="srf-label" for="expected_completion_date">
-                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion <span
-                                        class="srf-required">*</span>
+                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion
                                 </label>
                                 <div style="display: flex; gap: 8px;">
                                     <input id="expected_completion_date" type="date" name="expected_completion_date"
                                         value="{{ old('expected_completion_date') }}" class="srf-input"
-                                        style="width: 180px;" required>
+                                        style="width: 180px;">
                                     <input id="expected_completion_time" type="time" name="expected_completion_time"
                                         value="{{ old('expected_completion_time') }}" class="srf-input"
-                                        style="width: 140px;" required>
+                                        style="width: 140px;">
                                 </div>
                             </div>
                         </div>
@@ -1113,7 +1112,7 @@
 
                                         <div class="srf-field-underline">
                                             <input name="approved_date" type="date" value="{{ old('approved_date') }}"
-                                                id="create-approved-date" class="srf-input-underline" required>
+                                                id="create-approved-date" class="srf-input-underline">
                                             <p class="srf-sublabel">Date Signed</p>
                                         </div>
                                     </div>

@@ -109,6 +109,9 @@
                                     'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
                                     default => 'border-amber-300 bg-amber-100 text-amber-800',
                                 };
+                                $openTimeLabel = $ageBase
+                                    ? ($request->status === 'checking' ? 'Checking for ' : 'No checking for ') . $ageBase->diffForHumans(null, true)
+                                    : 'N/A';
                             @endphp
                             <tr class="border-t border-slate-200/90 hover:bg-slate-50">
                                 <td class="py-3 pe-4 font-semibold text-slate-900 whitespace-nowrap">
@@ -124,7 +127,7 @@
                                         {{ $request->status }}
                                     </span>
                                 </td>
-                                <td class="py-3 pe-4 text-slate-700 whitespace-nowrap">{{ $ageBase ? $ageBase->diffForHumans(null, true) . ' open' : 'N/A' }}</td>
+                                <td class="py-3 pe-4 text-slate-700 whitespace-nowrap">{{ $openTimeLabel }}</td>
                             </tr>
                         @empty
                             <tr>
