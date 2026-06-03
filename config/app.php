@@ -110,12 +110,16 @@ return [
     | Track Access Secret
     |--------------------------------------------------------------------------
     |
-    | This key is used for HMAC hashing of track request verification codes.
-    | It should be set to a random, 64 character string for security.
+    | This key is used for HMAC signing of service request tracking tokens.
+    | MUST be a separate secret from APP_KEY to prevent leaking the Laravel
+    | encryption key if tracking tokens are compromised.
+    |
+    | REQUIRED: Set TRACK_ACCESS_SECRET in your .env file.
+    | Do NOT rely on APP_KEY as fallback in production.
     |
     */
 
-    'track_access_secret' => env('TRACK_ACCESS_SECRET', env('APP_KEY')),
+    'track_access_secret' => env('TRACK_ACCESS_SECRET'),
 
     /*
     |--------------------------------------------------------------------------

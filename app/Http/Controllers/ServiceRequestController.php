@@ -1550,9 +1550,13 @@ class ServiceRequestController extends Controller
             ->with('status', $statusMessage);
     }
 
-    public function edit(Request $request, ServiceRequest $serviceRequest): View
+    public function edit(Request $request, ServiceRequest $serviceRequest): View|RedirectResponse
     {
-        abort_unless($this->canAccess($serviceRequest), 403, 'Unauthorized access');
+        if (!$this->canAccess($serviceRequest)) {
+            return redirect()
+                ->route('service-requests.index')
+                ->with('status', 'You do not have access to that service request.');
+        }
 
         $authRole = strtolower(trim((string) Auth::user()?->role));
         $isSuperAdmin = $authRole === 'super admin';
@@ -1561,7 +1565,9 @@ class ServiceRequestController extends Controller
             blank($serviceRequest->received_by_user_id)
             && !$isSuperAdmin
         ) {
-            abort(403, 'Unauthorized access');
+            return redirect()
+                ->route('service-requests.index')
+                ->with('status', 'You do not have access to that service request.');
         }
 
         $isReadOnly = $this->isAssignedToOtherUser($serviceRequest);
@@ -3124,8 +3130,20 @@ class ServiceRequestController extends Controller
         }
 
         $mime = strtolower(trim($mimeType));
-        if ($mime === '' || !str_starts_with($mime, 'image/')) {
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
+        
+        if ($mime === '' || !in_array($mime, $allowedMimes, true)) {
             $mime = 'image/png';
+        }
+
+        // Validate magic bytes match the MIME type
+        if (!$this->validateImageMagicBytes($imageBinary, $mime)) {
+            return '';
+        }
+
+        // Validate size
+        if (strlen($imageBinary) > self::MAX_DECODED_IMAGE_SIZE) {
+            return '';
         }
 
         return 'data:' . $mime . ';base64,' . base64_encode($imageBinary);
@@ -3142,13 +3160,29 @@ class ServiceRequestController extends Controller
             return null;
         }
 
+        $mimeType = strtolower(trim((string) $matches[1]));
+        $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/bmp'];
+        if (!in_array($mimeType, $allowedMimes, true)) {
+            return null;
+        }
+
         $binary = base64_decode((string) $matches[2], true);
         if ($binary === false || $binary === '') {
             return null;
         }
 
+        // Validate decoded size does not exceed maximum
+        if (strlen($binary) > self::MAX_DECODED_IMAGE_SIZE) {
+            return null;
+        }
+
+        // Validate image magic bytes match declared MIME type
+        if (!$this->validateImageMagicBytes($binary, $mimeType)) {
+            return null;
+        }
+
         return [
-            'mime' => strtolower(trim((string) $matches[1])) ?: 'image/png',
+            'mime' => $mimeType ?: 'image/png',
             'binary' => $binary,
         ];
     }
@@ -3476,4 +3510,66 @@ class ServiceRequestController extends Controller
 
         return true;
     }
+
+    /**
+     * Validate image magic bytes (file signatures) to ensure the binary
+     * actually contains valid image data and matches the declared MIME type.
+     *
+     * @param string $binary Raw binary data
+     * @param string $mimeType MIME type to validate against
+     * @return bool True if magic bytes match the declared MIME type
+     */
+    private function validateImageMagicBytes(string $binary, string $mimeType): bool
+    {
+        if ($binary === '') {
+            return false;
+        }
+
+        $mimeLower = strtolower(trim($mimeType));
+
+        // Magic bytes for supported formats
+        $magicPatterns = [
+            'image/jpeg' => [0xFF, 0xD8, 0xFF], // JPEG: FF D8 FF
+            'image/png' => [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], // Full PNG signature
+            'image/webp' => [0x52, 0x49, 0x46, 0x46], // WebP: 52 49 46 46 ("RIFF") + extra checks
+            'image/bmp' => [0x42, 0x4D], // BMP: 42 4D ("BM")
+        ];
+
+        if (!isset($magicPatterns[$mimeLower])) {
+            return false;
+        }
+
+        $pattern = $magicPatterns[$mimeLower];
+        $binaryLength = strlen($binary);
+
+        if ($binaryLength < count($pattern)) {
+            return false;
+        }
+
+        // Check magic bytes match
+        foreach ($pattern as $index => $byte) {
+            if (ord($binary[$index]) !== $byte) {
+                return false;
+            }
+        }
+
+        // Extra validation for WebP: check for "WEBP" at bytes 8-11
+        if ($mimeLower === 'image/webp') {
+            if ($binaryLength < 12) {
+                return false;
+            }
+            $webpSignature = substr($binary, 8, 4);
+            if ($webpSignature !== 'WEBP') {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Maximum decoded binary size for image data URIs (5MB)
+     */
+    private const MAX_DECODED_IMAGE_SIZE = 5242880; // 5MB in bytes
 }
+

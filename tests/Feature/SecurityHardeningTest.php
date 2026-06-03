@@ -203,7 +203,9 @@ class SecurityHardeningTest extends TestCase
             'department_status' => 'approved',
         ]);
 
-        $serviceRequest = $this->createServiceRequest($admin);
+        $serviceRequest = $this->createServiceRequest($admin, [
+            'received_by_user_id' => $admin->id,
+        ]);
 
         $response = $this
             ->actingAs($admin)
@@ -300,6 +302,7 @@ class SecurityHardeningTest extends TestCase
         $serviceRequest = $this->createServiceRequest($owner, [
             'reference_code' => 'SRF-CROSS-DEPT-ASSIGNED',
             'department_code' => 'KMITS',
+            'received_by_user_id' => $owner->id,
             'assigned_to_user_id' => $assignee->id,
             'assigned_by_user_id' => $assigner->id,
             'status' => 'checking',
@@ -366,13 +369,16 @@ class SecurityHardeningTest extends TestCase
     {
         $user = User::factory()->create([
             'name' => 'Current Action User',
+            'role' => 'technical support',
             'department' => 'KMITS',
             'department_status' => 'approved',
         ]);
 
         $serviceRequest = $this->createServiceRequest($user, [
             'status' => 'checking',
+            'received_by_user_id' => $user->id,
         ]);
+        $expectedRedirect = route('service-requests.edit', $serviceRequest);
 
         $this
             ->actingAs($user)
@@ -384,7 +390,7 @@ class SecurityHardeningTest extends TestCase
                 'action_log_action_taken' => ['Checked network request.'],
                 'action_log_action_officer' => [''],
             ])
-            ->assertRedirect(route('service-requests.edit', ['serviceRequest' => $serviceRequest]));
+            ->assertRedirect($expectedRedirect);
 
         $serviceRequest->refresh();
 

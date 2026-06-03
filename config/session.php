@@ -167,9 +167,12 @@ return [
     | to the server if the browser has a HTTPS connection. This will keep
     | the cookie from being sent to you when it can't be done securely.
     |
+    | REQUIRED FOR PRODUCTION: Set SESSION_SECURE_COOKIE=true in .env for
+    | production environments to prevent session hijacking over HTTP.
+    |
     */
 
-    'secure' => env('SESSION_SECURE_COOKIE'),
+    'secure' => env('SESSION_SECURE_COOKIE', false),
 
     /*
     |--------------------------------------------------------------------------

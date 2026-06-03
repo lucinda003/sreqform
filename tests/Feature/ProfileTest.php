@@ -27,12 +27,14 @@ class ProfileTest extends TestCase
     public function test_profile_information_can_be_updated(): void
     {
         $user = User::factory()->create();
+        $email = $user->email;
+        $name = $user->name;
 
         $response = $this
             ->actingAs($user)
             ->patch('/profile', [
                 'name' => 'Test User',
-                'email' => 'test@example.com',
+                'email' => $email,
             ]);
 
         $response
@@ -41,9 +43,110 @@ class ProfileTest extends TestCase
 
         $user->refresh();
 
-        $this->assertSame('Test User', $user->name);
-        $this->assertSame('test@example.com', $user->email);
+        $this->assertSame($name, $user->name);
+        $this->assertSame($email, $user->email);
+        $this->assertNotNull($user->email_verified_at);
+    }
+
+    public function test_email_change_sends_code_before_saving_profile(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create([
+            'email' => 'old@example.com',
+            'name' => 'Old Name',
+        ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'New Name',
+                'email' => 'new@example.com',
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'Email change code sent to your new email address.')
+            ->assertSessionHas('profile_email_verification_pending', 'new@example.com')
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+
+        $this->assertSame('Old Name', $user->name);
+        $this->assertSame('old@example.com', $user->email);
+        $this->assertTrue(Cache::has('profile-email-change-code:' . $user->id));
+    }
+
+    public function test_email_change_requires_valid_code_before_saving_profile(): void
+    {
+        Mail::fake();
+
+        $user = User::factory()->create([
+            'email' => 'old@example.com',
+            'name' => 'Old Name',
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'New Name',
+                'email' => 'new@example.com',
+            ]);
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'New Name',
+                'email' => 'new@example.com',
+                'profile_email_code' => '000000',
+            ]);
+
+        $response
+            ->assertSessionHasErrors('profile_email_code')
+            ->assertSessionHas('profile_email_verification_pending', 'new@example.com')
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+
+        $this->assertSame('Old Name', $user->name);
+        $this->assertSame('old@example.com', $user->email);
+    }
+
+    public function test_email_change_can_be_saved_with_valid_code(): void
+    {
+        $user = User::factory()->create([
+            'email' => 'old@example.com',
+            'name' => 'Old Name',
+        ]);
+        $code = '123456';
+        $nextEmail = 'new@example.com';
+
+        Cache::put('profile-email-change-code:' . $user->id, [
+            'email' => $nextEmail,
+            'code_hash' => hash_hmac('sha256', $nextEmail . '|' . $code, (string) config('app.key')),
+            'attempts' => 0,
+            'expires_at' => now()->addMinutes(8)->timestamp,
+        ], now()->addMinutes(8));
+
+        $response = $this
+            ->actingAs($user)
+            ->patch('/profile', [
+                'name' => 'New Name',
+                'email' => $nextEmail,
+                'profile_email_code' => $code,
+            ]);
+
+        $response
+            ->assertSessionHasNoErrors()
+            ->assertSessionHas('status', 'profile-updated')
+            ->assertRedirect('/profile');
+
+        $user->refresh();
+
+        $this->assertSame('Old Name', $user->name);
+        $this->assertSame($nextEmail, $user->email);
         $this->assertNull($user->email_verified_at);
+        $this->assertFalse(Cache::has('profile-email-change-code:' . $user->id));
     }
 
     public function test_email_verification_status_is_unchanged_when_the_email_address_is_unchanged(): void
@@ -141,7 +244,24 @@ class ProfileTest extends TestCase
             ->assertOk()
             ->assertSee('id="profile-signature-unlock-timer"', false)
             ->assertSee('data-unlocked-until="' . $unlockedUntil . '"', false)
+            ->assertSee('lock_profile_signature=1', false)
             ->assertSee('Unlocked: --:-- left');
+    }
+
+    public function test_profile_signature_can_be_locked_after_unlock(): void
+    {
+        $user = User::factory()->create();
+        $sessionKey = 'profile_signature_unlocked_until:' . $user->id;
+
+        $response = $this
+            ->actingAs($user)
+            ->withSession([$sessionKey => now()->addMinutes(15)->timestamp])
+            ->get(route('profile.edit', ['lock_profile_signature' => '1']));
+
+        $response
+            ->assertSessionMissing($sessionKey)
+            ->assertSessionHas('status', 'Signature locked.')
+            ->assertRedirect('/profile');
     }
 
     public function test_print_view_can_use_saved_profile_signature(): void
@@ -169,6 +289,7 @@ class ProfileTest extends TestCase
             'approved_date' => now()->toDateString(),
             'status' => 'checking',
             'user_id' => $user->id,
+            'received_by_user_id' => $user->id,
         ]);
 
         $response = $this
@@ -182,7 +303,7 @@ class ProfileTest extends TestCase
             ->assertSee(base64_encode('profile-signature'), false);
     }
 
-    public function test_edit_print_preview_shows_saved_profile_signature_button(): void
+    public function test_requestor_is_redirected_from_internal_edit_preview(): void
     {
         $user = User::factory()->create([
             'department' => 'KMITS',
@@ -213,9 +334,8 @@ class ProfileTest extends TestCase
             ->get(route('service-requests.edit', $serviceRequest));
 
         $response
-            ->assertOk()
-            ->assertSee('id="print-preview-profile-signature"', false)
-            ->assertSee('Use My Saved Signature');
+            ->assertRedirect(route('service-requests.index'))
+            ->assertSessionHas('status', 'You do not have access to that service request.');
     }
 
     public function test_user_can_delete_their_account(): void

@@ -19,10 +19,10 @@
                 id="name"
                 name="name"
                 type="text"
-                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm text-slate-800 outline-none transition focus:border-slate-500 focus:ring-1 focus:ring-slate-500"
+                class="mt-1.5 w-full rounded-xl border border-slate-300 bg-slate-50 px-4 py-2.5 text-sm font-semibold text-slate-700 outline-none"
                 value="{{ old('name', $user->name) }}"
                 required
-                autofocus
+                readonly
                 autocomplete="name"
             />
             <x-input-error class="mt-2" :messages="$errors->get('name')" />
@@ -40,6 +40,7 @@
                 autocomplete="username"
             />
             <x-input-error class="mt-2" :messages="$errors->get('email')" />
+            <x-input-error class="mt-2" :messages="$errors->get('profile_email_code')" />
         </div>
 
         <div>
@@ -86,13 +87,18 @@
             <div class="flex flex-wrap items-center justify-between gap-2">
                 <label class="block text-sm font-semibold text-slate-700">Default Signature</label>
                 @if ($profileSignatureUnlocked)
-                    <span
-                        id="profile-signature-unlock-timer"
-                        data-unlocked-until="{{ $profileSignatureUnlockedUntil }}"
-                        class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
-                    >
-                        Unlocked: --:-- left
-                    </span>
+                    <div class="flex items-center gap-2">
+                        <span
+                            id="profile-signature-unlock-timer"
+                            data-unlocked-until="{{ $profileSignatureUnlockedUntil }}"
+                            class="rounded-full border border-emerald-200 bg-emerald-50 px-3 py-1 text-xs font-bold text-emerald-700"
+                        >
+                            Unlocked: --:-- left
+                        </span>
+                        <a href="{{ route('profile.edit', ['lock_profile_signature' => '1']) }}" class="rounded-full border border-slate-300 bg-white px-3 py-1 text-xs font-bold text-slate-700 transition hover:bg-slate-50">
+                            Lock
+                        </a>
+                    </div>
                 @endif
             </div>
             <input type="hidden" name="profile_signature_drawn" id="profile-signature-drawn" value="">
@@ -220,6 +226,47 @@
             Save Profile
         </button>
     </div>
+
+    @php
+        $pendingProfileEmail = trim((string) ($pendingProfileEmail ?? session('profile_email_verification_pending', '')));
+    @endphp
+
+    @if ($pendingProfileEmail !== '')
+        <div class="fixed inset-0 z-[130] flex items-center justify-center p-4" style="background: rgba(15, 23, 42, 0.65);">
+            <div class="rounded-lg border border-slate-200 bg-white shadow-2xl" style="width: 340px; max-width: calc(100vw - 32px);">
+                <div class="border-b border-slate-100 px-4 py-3">
+                    <h2 class="text-[15px] font-extrabold text-slate-950">Email Code</h2>
+                    <p class="mt-0.5 truncate text-xs text-slate-600">{{ $pendingProfileEmail }}</p>
+                </div>
+
+                <div class="px-4 py-3">
+                    <label for="profile_email_code" class="block text-xs font-bold uppercase text-slate-500">Verification Code</label>
+                    <input
+                        id="profile_email_code"
+                        name="profile_email_code"
+                        type="text"
+                        inputmode="numeric"
+                        pattern="[0-9]{6}"
+                        maxlength="6"
+                        autocomplete="one-time-code"
+                        autofocus
+                        required
+                        class="mt-1.5 h-11 w-full rounded-lg border border-slate-300 bg-white px-3 text-center text-[17px] font-extrabold tracking-[0.24em] text-slate-900 outline-none transition focus:border-teal-700 focus:ring-1 focus:ring-teal-700"
+                        placeholder="000000"
+                    />
+                    <p class="mt-2 text-xs font-semibold text-amber-700">This field is required before saving the new email.</p>
+                    <x-input-error class="mt-2" :messages="$errors->get('profile_email_code')" />
+                </div>
+
+                <div class="flex items-center justify-end gap-2 border-t border-slate-100 bg-slate-50 px-4 py-3">
+                    <a href="{{ route('profile.edit', ['cancel_email_change' => '1']) }}" class="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-100">Cancel</a>
+                    <button type="submit" class="rounded-lg px-4 py-1.5 text-xs font-semibold transition" style="background: #0f172a; color: #ffffff;">
+                        Verify
+                    </button>
+                </div>
+            </div>
+        </div>
+    @endif
 </form>
 
 <form id="profile-signature-send-code-form" method="POST" action="{{ route('profile.signature.send-code') }}" class="hidden">

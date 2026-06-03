@@ -22,6 +22,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Validate that TRACK_ACCESS_SECRET is configured separately from APP_KEY
+        if (empty(env('TRACK_ACCESS_SECRET'))) {
+            throw new \RuntimeException(
+                'TRACK_ACCESS_SECRET is not configured. This is required for secure service request tracking. '
+                . 'Set TRACK_ACCESS_SECRET in your .env file to a random, 32+ character string. '
+                . 'Do not use APP_KEY as a fallback.'
+            );
+        }
+
         $normalizeReferenceCode = static function (Request $request): string {
             $rawReferenceCode = (string) ($request->route('referenceCode') ?? $request->query('reference_code', ''));
             $normalizedReferenceCode = strtoupper((string) preg_replace('/[^A-Za-z0-9]/', '', $rawReferenceCode));
