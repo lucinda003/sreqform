@@ -66,6 +66,9 @@ Route::post('/track-your-request/{referenceCode}/messages', [ServiceRequestContr
 Route::get('/track-your-request/{referenceCode}/messages', [ServiceRequestController::class, 'trackMessages'])
     ->middleware('throttle:track-public')
     ->name('service-requests.track.messages.index');
+Route::get('/track-your-request/{referenceCode}/activity', [ServiceRequestController::class, 'trackActivity'])
+    ->middleware('throttle:track-public')
+    ->name('service-requests.track.activity');
 Route::put('/track-your-request/{referenceCode}', [ServiceRequestController::class, 'trackUpdate'])
     ->middleware('signed')
     ->name('service-requests.track.update');
@@ -81,6 +84,9 @@ Route::post('/service-requests/{serviceRequest}/capture-email', [ServiceRequestC
 Route::get('/service-requests/{serviceRequest}/signature/approved', [ServiceRequestController::class, 'approvedSignature'])
     ->name('service-requests.signature.approved');
 
+Route::get('/service-requests', [ServiceRequestController::class, 'index'])->name('service-requests.index');
+Route::get('/api/service-requests', [ServiceRequestController::class, 'indexAjax'])->name('service-requests.ajax');
+
 Route::middleware('auth')->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::get('/api/profile', [ProfileController::class, 'editAjax'])->name('profile.ajax');
@@ -93,8 +99,6 @@ Route::middleware('auth')->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    Route::get('/service-requests', [ServiceRequestController::class, 'index'])->name('service-requests.index');
-    Route::get('/api/service-requests', [ServiceRequestController::class, 'indexAjax'])->name('service-requests.ajax');
     Route::get('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'show'])->name('service-requests.show');
     Route::get('/service-requests/{serviceRequest}/edit', [ServiceRequestController::class, 'edit'])->name('service-requests.edit');
     Route::put('/service-requests/{serviceRequest}', [ServiceRequestController::class, 'update'])->name('service-requests.update');

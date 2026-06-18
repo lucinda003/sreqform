@@ -254,8 +254,8 @@ class AdminUserController extends Controller
     private function availableDepartmentCodes(bool $includeAdmin = false): array
     {
         $codes = DepartmentCode::query()
-            ->pluck('code')
-            ->map(fn (string $code): string => strtoupper(trim($code)))
+            ->pluck('office_name')
+            ->map(fn (?string $code): string => strtoupper(trim((string) $code)))
             ->filter(fn (string $code): bool => $code !== '')
             ->unique()
             ->values()

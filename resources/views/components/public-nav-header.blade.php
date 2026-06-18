@@ -10,8 +10,8 @@
     <a href="{{ route('service-requests.track') }}" class="auth-login-brand" aria-label="DOH home navigation">
         <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
         <div>
-            <h1 class="auth-login-brand-title">KMITS</h1>
-            <p class="auth-login-brand-subtitle">Knowledge Management and Information Technology Service</p>
+            <h1 class="auth-login-brand-title">DEPARMENT OF HEALTH</h1>
+            <p class="auth-login-brand-subtitle">Secure Access Portal</p>
         </div>
     </a>
 

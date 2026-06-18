@@ -16,8 +16,9 @@
         $chatFilter = trim((string) ($chatRequestFilter ?? ''));
         $isSuperAdmin = (bool) ($isSuperAdmin ?? false);
         $receiverStats = $receiverStats ?? collect();
-        $roleValue = strtolower(trim((string) auth()->user()?->role));
-        $enableAutoRefresh = in_array($roleValue, ['admin', 'supervisor', 'technical support'], true);
+        $authUser = auth()->user();
+        $roleValue = $authUser ? strtolower(trim((string) $authUser->role)) : '';
+        $enableAutoRefresh = $authUser && in_array($roleValue, ['admin', 'supervisor', 'technical support'], true);
         $showAssignSummary = $enableAutoRefresh
             && ! $isArchiveView
             && ! $isAssignedView
@@ -340,6 +341,7 @@
                                                 <div class="flex items-center justify-center gap-3">
                                                     @if ($isReceivedView || $isAssignedView || $isArchiveView)
                                                         <a href="{{ route('service-requests.show', ['serviceRequest' => $serviceRequest] + request()->only(['status', 'received', 'assigned', 'receivers', 'q', 'chat_request'])) }}" class="auth-link">Open</a>
+                                                         
                                                     @else
                                                         <button
                                                             type="button"
@@ -350,10 +352,10 @@
                                                         </button>
                                                     @endif
                                                     @php
-                                                        $userRole = Auth::user()->role ?? '';
-                                                        $currentUserId = (int) Auth::id();
+                                                        $userRole = Auth::check() ? (Auth::user()->role ?? '') : '';
+                                                        $currentUserId = Auth::check() ? (int) Auth::id() : 0;
                                                         $assignedToUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
-                                                        $canAssign = ($isReceivedView || $isAssignedView)
+                                                        $canAssign = Auth::check() && ($isReceivedView || $isAssignedView)
                                                             && in_array($userRole, ['admin', 'supervisor', 'technical support'], true)
                                                             && (
                                                                 $assignedToUserId === $currentUserId
@@ -575,6 +577,31 @@
                     </button>
                 </div>
 
+                @php
+                    $requestCategoryOptions = [
+                        'Admin Works',
+                        'Data Encoding',
+                        'Database Management',
+                        'Forum',
+                        'Helpdesk Support',
+                        'Meeting',
+                        'Monitoring',
+                        'Network Management',
+                        'Planning',
+                        'Reports Generation',
+                        'Research Work',
+                        'Server Administration',
+                        'Symposium',
+                        'System Administration',
+                        'System Development',
+                        'System Implementation',
+                        'System Testing and Evaluation (QA)',
+                        'Technical Assistance',
+                        'Training',
+                        'Workshop',
+                        'Others',
+                    ];
+                @endphp
                 <form id="assign-request-form" method="POST" action="" class="mt-6 grid gap-5">
                     @csrf
                     @method('PATCH')
@@ -654,6 +681,22 @@
                             @empty
                             @endforelse
                         </select>
+
+                        <!-- Optional Request Category -->
+                        <div x-show="selectedUserId" x-transition.opacity.duration.300ms class="mt-5 border-t border-slate-100 pt-5" style="display: none;">
+                            <label class="auth-label block text-sm font-medium text-slate-700">Request Category <span class="text-xs font-normal text-slate-400 ml-1">(Optional)</span></label>
+                            <p class="text-xs text-slate-500 mt-1 mb-3">You may optionally classify this request now.</p>
+                            <select name="request_category" x-model="selectedCategory" class="auth-input w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm bg-white">
+                                <option value="">Select Category</option>
+                                @foreach ($requestCategoryOptions as $requestCategoryOption)
+                                    <option value="{{ $requestCategoryOption }}">{{ $requestCategoryOption }}</option>
+                                @endforeach
+                            </select>
+                            
+                            <div x-show="selectedCategory === 'Others'" x-transition class="mt-3" style="display: none;">
+                                <input type="text" name="request_category_other" class="auth-input w-full rounded-lg border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm bg-white" placeholder="Type custom request category...">
+                            </div>
+                        </div>
                     </div>
 
                     <div class="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-5">
@@ -671,11 +714,12 @@
                     search: '',
                     selectedUserId: '',
                     selectedUserName: '',
+                    selectedCategory: '',
                     allUsers: [],
                     filteredUsers: [],
 
                     initUsers(event) {
-                        const users = {!! json_encode($assignableUsers ?? []) !!};
+                        const users = @json($assignableUsers ?? []);
                         this.allUsers = users.map(u => ({
                             id: u.id,
                             name: u.name,
@@ -685,6 +729,7 @@
                         this.search = '';
                         this.selectedUserId = '';
                         this.selectedUserName = '';
+                        this.selectedCategory = '';
                         this.isOpen = false;
                     },
 

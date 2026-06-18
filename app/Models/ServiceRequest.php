@@ -22,7 +22,6 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'office',
     'address',
     'landline',
-    'fax_no',
     'mobile_no',
     'email_address',
     'description_request',

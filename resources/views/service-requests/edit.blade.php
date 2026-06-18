@@ -1280,6 +1280,14 @@
                             {{ $serviceRequest->status }}
                         </span>
 
+                        @if(filled($serviceRequest->request_category))
+                            <p class="ms-4 text-sm font-semibold text-slate-700">RequestCategory :</p>
+                            <span
+                                class="inline-flex rounded-full border border-slate-300 bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-800 shadow-sm">
+                                {{ $serviceRequest->request_category }}
+                            </span>
+                        @endif
+
                         @if ($canModerateChat || $canSetPending)
                             <div class="ms-auto flex flex-wrap items-center gap-2">
                                 @if (!($isReadOnly ?? false) || $canSetPending)
@@ -1292,7 +1300,9 @@
                                     @csrf
                                     @method('PATCH')
                                     @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking'], true))
-                                        <button type="submit" formmethod="PATCH" formaction="{{ route('service-requests.receive', $serviceRequest) }}" formenctype="application/x-www-form-urlencoded"
+                                        <button type="submit" formmethod="PATCH"
+                                            formaction="{{ route('service-requests.receive', $serviceRequest) }}"
+                                            formenctype="application/x-www-form-urlencoded"
                                             class="rounded-xl border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase text-blue-800 transition hover:bg-blue-100">Receive</button>
                                     @endif
                                     @if ($canSetPending)
@@ -1433,27 +1443,7 @@
                                 <p class="srf-section-label">Requester Details</p>
                                 <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
                                     <tr>
-                                        <td class="border border-slate-500 px-2 py-1">2) Request Category :
-                                            <select id="request_category" name="request_category"
-                                                class="auth-input !inline-block align-middle !min-h-0 !w-[260px] !rounded-none !border-0 border-b border-slate-200 !bg-transparent px-0 py-0 text-[12px]">
-                                                <option value="Technical Assistance" @selected(old('request_category', $serviceRequest->request_category) === 'Technical Assistance')>
-                                                    Technical Assistance</option>
-                                                <option value="System Access" @selected(old('request_category', $serviceRequest->request_category) === 'System Access')>System Access
-                                                </option>
-                                                <option value="Network/Internet" @selected(old('request_category', $serviceRequest->request_category) === 'Network/Internet')>
-                                                    Network/Internet</option>
-                                                <option value="Hardware Support" @selected(old('request_category', $serviceRequest->request_category) === 'Hardware Support')>Hardware
-                                                    Support</option>
-                                                <option value="Software Installation" @selected(old('request_category', $serviceRequest->request_category) === 'Software Installation')>
-                                                    Software Installation</option>
-                                                <option value="Data Request" @selected(old('request_category', $serviceRequest->request_category) === 'Data Request')>Data Request
-                                                </option>
-                                                <option value="Others" @selected(old('request_category', $serviceRequest->request_category) === 'Others')>Others</option>
-                                            </select>
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="border border-slate-400 px-2 py-1">3) Application System Name :
+                                        <td class="border border-slate-400 px-2 py-1">2) Application System Name :
                                             <input type="text" name="application_system_name"
                                                 value="{{ old('application_system_name', $serviceRequest->application_system_name) }}"
                                                 class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]"
@@ -1461,21 +1451,10 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of
-                                            Completion :
-                                            <input type="date" name="expected_completion_date"
-                                                value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}"
-                                                class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                                            <input type="time" name="expected_completion_time"
-                                                value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}"
-                                                class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                                        </td>
-                                    </tr>
-                                    <tr>
                                         <td class="border border-slate-400 p-0">
                                             <table class="w-full border-collapse table-fixed text-[12px]">
                                                 <tr>
-                                                    <td class="border-0 px-2 py-1" style="width:32%;">5) Name of Contact
+                                                    <td class="border-0 px-2 py-1" style="width:32%;">3) Name of Contact
                                                         Person :</td>
                                                     <td class="border-0 border-b border-slate-400 px-1 py-1"
                                                         style="width:17%;">
@@ -1517,7 +1496,7 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td class="border border-slate-400 px-2 py-1">6) Office :
+                                        <td class="border border-slate-400 px-2 py-1">4) Office :
                                             <div data-office-picker
                                                 style="display: inline-block; vertical-align: top; width: calc(100% - 85px);">
                                                 <input type="hidden" id="office" name="office"
@@ -1539,7 +1518,7 @@
                                         </td>
                                     </tr>
                                     <tr>
-                                        <td class="border border-slate-400 px-2 py-1">7) Address :
+                                        <td class="border border-slate-400 px-2 py-1">5) Address :
                                             <input id="address" name="address"
                                                 value="{{ old('address', $serviceRequest->address) }}"
                                                 class="auth-input !inline-block !min-h-0 !rounded-none !border-0 !border-b !border-slate-200 !bg-transparent px-1 py-0 text-[12px]"
@@ -1552,7 +1531,7 @@
                                             <table class="w-full border-collapse table-fixed text-[12px]">
                                                 <tr>
                                                     <td class="border-0 border-r border-slate-400 px-2 py-1"
-                                                        style="width:23%;">8) Landline :
+                                                        style="width:23%;">6) Landline :
                                                         <input name="landline"
                                                             value="{{ old('landline', $serviceRequest->landline) }}"
                                                             inputmode="tel"
@@ -1561,16 +1540,7 @@
                                                             autocomplete="tel" maxlength="20">
                                                     </td>
                                                     <td class="border-0 border-r border-slate-400 px-2 py-1"
-                                                        style="width:23%;">9) Fax No :
-                                                        <input name="fax_no"
-                                                            value="{{ old('fax_no', $serviceRequest->fax_no) }}"
-                                                            inputmode="tel"
-                                                            oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');"
-                                                            class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
-                                                            maxlength="20">
-                                                    </td>
-                                                    <td class="border-0 border-r border-slate-400 px-2 py-1"
-                                                        style="width:23%;">10) Mobile No :
+                                                        style="width:33%;">7) Mobile No :
                                                         <input name="mobile_no"
                                                             value="{{ old('mobile_no', $serviceRequest->mobile_no) }}"
                                                             inputmode="tel"
@@ -1578,7 +1548,7 @@
                                                             class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]"
                                                             autocomplete="tel-national" maxlength="20">
                                                     </td>
-                                                    <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address
+                                                    <td class="border-0 px-2 py-1" style="width:44%;">8) Email Address
                                                         * :
                                                         <input type="email" name="email_address"
                                                             value="{{ old('email_address', $serviceRequest->email_address) }}"
@@ -1594,7 +1564,7 @@
 
                             <div class="px-4 pb-3">
                                 <p class="srf-section-label">Description of Request</p>
-                                <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12)
+                                <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">10)
                                     DESCRIPTION OF REQUEST : <span class="font-normal italic">(Please clearly write down
                                         the details of the request.)</span></div>
                                 <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
@@ -1641,7 +1611,7 @@
                                 <p class="srf-section-label">Approved By</p>
                                 <table class="srf-table w-full border-collapse text-[12px] text-slate-900">
                                     <tr>
-                                        <td class="w-48 border border-slate-400 px-2 py-1 font-semibold">13) APPROVED BY
+                                        <td class="w-48 border border-slate-400 px-2 py-1 font-semibold">11) APPROVED BY
                                             :</td>
                                         <td class="border border-slate-400 px-2 py-1">
                                             <div class="grid grid-cols-10 gap-3">
@@ -1756,8 +1726,6 @@
                         @if ($canModerateChat)
                             @php
                                 $existingLogs = $serviceRequest->action_logs ?? [];
-                                $logDates = old('action_log_date', collect($existingLogs)->pluck('date')->pad(5, '')->values()->all());
-                                $logTimes = old('action_log_time', collect($existingLogs)->pluck('time')->pad(5, '')->values()->all());
                                 $logActionDates = old('action_log_action_date', collect($existingLogs)->pluck('action_date')->pad(5, '')->values()->all());
                                 $logActionTimes = old('action_log_action_time', collect($existingLogs)->pluck('action_time')->pad(5, '')->values()->all());
                                 $logActions = old('action_log_action_taken', collect($existingLogs)->pluck('action_taken')->pad(5, '')->values()->all());
@@ -1771,43 +1739,63 @@
                                         <h3 class="text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">For
                                             knowledge management and information technology service only</h3>
 
-                                        <div class="mt-4 overflow-x-auto rounded-lg border border-slate-300 bg-white">
+                                        @php
+                                            $canEditReceivedDateTime = auth()->id() === $serviceRequest->received_by_user_id;
+                                            $receivedDate = old('received_date', optional($serviceRequest->received_at)->format('Y-m-d'));
+                                            $receivedTime = old('received_time', optional($serviceRequest->received_at)->format('H:i'));
+                                        @endphp
+
+                                        <div class="mt-3 grid gap-3 md:grid-cols-2">
+                                            <div>
+                                                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                                    10. Date Received (mm/dd/yyyy)
+                                                </label>
+                                                <input type="date" name="received_date" value="{{ $receivedDate }}"
+                                                    class="mt-1 w-full rounded-md border-slate-300 text-[13px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ !$canEditReceivedDateTime ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                    @if (!$canEditReceivedDateTime) readonly aria-disabled="true" @endif>
+                                            </div>
+                                            <div>
+                                                <label class="block text-[11px] font-bold uppercase tracking-wider text-slate-600">
+                                                    11. Time Received (hh:mm)
+                                                </label>
+                                                <input type="time" name="received_time" value="{{ $receivedTime }}"
+                                                    class="mt-1 w-full rounded-md border-slate-300 text-[13px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ !$canEditReceivedDateTime ? 'bg-slate-100 text-slate-500' : '' }}"
+                                                    @if (!$canEditReceivedDateTime) readonly aria-disabled="true" @endif>
+                                            </div>
+                                        </div>
+
+                                        <h4 class="mt-4 text-[12px] font-semibold uppercase tracking-[0.08em] text-slate-700">
+                                            12. Actions Taken <span class="text-[11px] font-normal italic">(Use separate sheet if necessary)</span>
+                                        </h4>
+
+                                        <div class="mt-2 overflow-x-auto rounded-lg border border-slate-300 bg-white">
                                             <table class="min-w-full border-collapse text-[12px] text-slate-800">
                                                 <thead class="bg-slate-100">
                                                     <tr>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Date (a)
-                                                            Received</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Time (b)
-                                                            Received</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Date (c)
-                                                            Accomplish</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Time (d)
-                                                            Accomplish</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Action Taken
-                                                        </th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Action
-                                                            Officer</th>
-                                                        <th class="border border-slate-300 px-2 py-1 text-left">Signature
-                                                        </th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">DATE (a)</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">TIME (b)</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">ACTION TAKEN (c)</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">ACTION OFFICER (d)</th>
+                                                        <th class="border border-slate-300 px-2 py-1 text-left">SIGNATURE (e)</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody>
                                                     @for ($i = 0; $i < 5; $i++)
                                                         @php
                                                             $rowSignature = (string) ($logSignatures[$i] ?? '');
-                                                            $rowHasValues = trim((string) ($logDates[$i] ?? '')) !== ''
-                                                                || trim((string) ($logTimes[$i] ?? '')) !== ''
-                                                                || trim((string) ($logActionDates[$i] ?? '')) !== ''
+                                                            $rowHasValues = trim((string) ($logActionDates[$i] ?? '')) !== ''
                                                                 || trim((string) ($logActionTimes[$i] ?? '')) !== ''
                                                                 || trim((string) ($logActions[$i] ?? '')) !== ''
                                                                 || trim((string) ($logOfficers[$i] ?? '')) !== ''
                                                                 || $rowSignature !== '';
 
-                                                            // Only lock a row when it has an EXPLICIT signature_user_id that belongs
-                                                            // to a different user. Do NOT lock based on action_user_id, because
-                                                            // rows are collaborative (Assigner writes instruction, Assignee signs).
-                                                            $rowSignatureUserId = (int) data_get($existingLogs, $i . '.signature_user_id', 0);
-                                                            $rowLocked = $rowSignatureUserId > 0 && $rowSignatureUserId !== (int) auth()->id();
+                                                            // Lock row if it has work values (date, time, action, officer) filled by another user
+                                                            $rowWorkUserId = (int) data_get($existingLogs, $i . '.action_work_user_id', 0);
+                                                            $rowHasWorkValues = trim((string) ($logActionDates[$i] ?? '')) !== ''
+                                                                || trim((string) ($logActionTimes[$i] ?? '')) !== ''
+                                                                || trim((string) ($logActions[$i] ?? '')) !== '';
+                                                            $rowLocked = $rowWorkUserId > 0 && $rowWorkUserId !== (int) auth()->id() && $rowHasWorkValues;
+                                                            
                                                             $displayActionOfficer = (string) ($logOfficers[$i] ?? '');
                                                             if (!$rowLocked && $displayActionOfficer === '' && $rowHasValues) {
                                                                 $displayActionOfficer = (string) auth()->user()?->name;
@@ -1815,45 +1803,31 @@
                                                         @endphp
                                                         <tr data-action-log-row>
                                                             <td class="border border-slate-300 px-2 py-1">
-                                                                <input type="date" name="action_log_date[]"
-                                                                    value="{{ $logDates[$i] ?? '' }}"
-                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
-                                                                    data-action-log-step="0" @if ($rowLocked) readonly
-                                                                    aria-disabled="true" @endif>
-                                                            </td>
-                                                            <td class="border border-slate-300 px-2 py-1">
-                                                                <input type="time" name="action_log_time[]"
-                                                                    value="{{ $logTimes[$i] ?? '' }}"
-                                                                    class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
-                                                                    data-action-log-step="1" @if ($rowLocked) readonly
-                                                                    aria-disabled="true" @endif>
-                                                            </td>
-                                                            <td class="border border-slate-300 px-2 py-1">
                                                                 <input type="date" name="action_log_action_date[]"
                                                                     value="{{ $logActionDates[$i] ?? '' }}"
                                                                     class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
-                                                                    data-action-log-step="2" @if ($rowLocked) readonly
+                                                                    data-action-log-step="0" @if ($rowLocked) readonly
                                                                     aria-disabled="true" @endif>
                                                             </td>
                                                             <td class="border border-slate-300 px-2 py-1">
                                                                 <input type="time" name="action_log_action_time[]"
                                                                     value="{{ $logActionTimes[$i] ?? '' }}"
                                                                     class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
-                                                                    data-action-log-step="3" @if ($rowLocked) readonly
+                                                                    data-action-log-step="1" @if ($rowLocked) readonly
                                                                     aria-disabled="true" @endif>
                                                             </td>
                                                             <td class="border border-slate-300 px-2 py-1">
                                                                 <input type="text" name="action_log_action_taken[]"
                                                                     value="{{ $logActions[$i] ?? '' }}"
                                                                     class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
-                                                                    data-action-log-step="4" @if ($rowLocked) readonly
+                                                                    data-action-log-step="2" @if ($rowLocked) readonly
                                                                     aria-disabled="true" @endif>
                                                             </td>
                                                             <td class="border border-slate-300 px-2 py-1">
                                                                 <input type="text" name="action_log_action_officer[]"
                                                                     value="{{ $displayActionOfficer }}"
                                                                     class="w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500 {{ $rowLocked ? 'bg-slate-100 text-slate-500' : '' }}"
-                                                                    data-action-log-step="5" data-action-officer-input
+                                                                    data-action-log-step="3" data-action-officer-input
                                                                     data-current-user-name="{{ auth()->user()?->name }}" @if ($rowLocked) readonly aria-disabled="true" @endif>
                                                             </td>
                                                             <td class="border border-slate-300 px-2 py-1">
@@ -1893,7 +1867,7 @@
                                                 }
                                             @endphp
                                             <label class="block text-[12px] text-slate-700 md:col-span-2">
-                                                <span class="font-semibold">13. Noted by (Name of Supervisor)</span>
+                                                <span class="font-semibold">12. Noted by (Name of Supervisor)</span>
                                                 <input type="text" name="noted_by_name"
                                                     value="{{ old('noted_by_name', $defaultNotedByName) }}"
                                                     class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
@@ -1908,14 +1882,14 @@
                                             </label>
 
                                             <label class="block text-[12px] text-slate-700">
-                                                <span class="font-semibold">14. Position</span>
+                                                <span class="font-semibold">13. Position</span>
                                                 <input type="text" name="noted_by_position"
                                                     value="{{ old('noted_by_position', $serviceRequest->noted_by_position) }}"
                                                     class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
                                             </label>
 
                                             <label class="block text-[12px] text-slate-700">
-                                                <span class="font-semibold">15. Date Signed</span>
+                                                <span class="font-semibold">14. Date Signed</span>
                                                 <input type="date" name="noted_by_date_signed"
                                                     value="{{ old('noted_by_date_signed', optional($serviceRequest->noted_by_date_signed)->toDateString()) }}"
                                                     class="mt-1 w-full rounded-md border-slate-300 text-[12px] shadow-sm focus:border-sky-500 focus:ring-sky-500">
@@ -2123,7 +2097,8 @@
                     <a id="print-preview-open-full" href="#" target="_blank" rel="noopener"
                         class="srf-print-preview-btn">Open Full View</a>
                     @if (filled(auth()->user()?->profile_signature))
-                        <button type="button" id="print-preview-profile-signature" class="srf-print-preview-btn">Use My Saved Signature</button>
+                        <button type="button" id="print-preview-profile-signature" class="srf-print-preview-btn">Use My
+                            Saved Signature</button>
                     @endif
                     <button type="button" id="print-preview-signature" class="srf-print-preview-btn">Add
                         Signature</button>
@@ -2141,70 +2116,118 @@
         </div>
 
         @if ($canAssignRequest)
-            <dialog id="assign-request-dialog" class="w-full max-w-2xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40" style="overflow: hidden;">
+            <dialog id="assign-request-dialog"
+                class="w-full max-w-2xl rounded-2xl border border-slate-200 p-0 backdrop:bg-slate-900/40"
+                style="overflow: hidden;">
                 <div class="flex min-h-[420px] flex-col rounded-2xl bg-white p-6 sm:p-8">
                     <div class="flex items-center justify-between gap-3 border-b border-slate-100 pb-4">
                         <div>
                             <h3 class="text-lg font-bold text-slate-900">Assign Request</h3>
-                            <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Reference: {{ $serviceRequest->reference_code }}</p>
+                            <p class="mt-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Reference:
+                                {{ $serviceRequest->reference_code }}</p>
                         </div>
-                        <button type="button" class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600" data-assign-request-close aria-label="Close assign dialog">
-                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" /></svg>
+                        <button type="button"
+                            class="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+                            data-assign-request-close aria-label="Close assign dialog">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd"
+                                    d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z"
+                                    clip-rule="evenodd" />
+                            </svg>
                         </button>
                     </div>
 
-                    <form method="POST" action="{{ route('service-requests.assign', $serviceRequest) }}" class="mt-6 grid gap-5">
+                    <form method="POST" action="{{ route('service-requests.assign', $serviceRequest) }}"
+                        class="mt-6 grid gap-5">
                         @csrf
                         @method('PATCH')
 
                         <div data-assign-user-picker>
-                            <label class="auth-label block text-sm font-medium text-slate-700" for="edit_assign_to_user_search">Assign to User</label>
+                            <label class="auth-label block text-sm font-medium text-slate-700"
+                                for="edit_assign_to_user_search">Assign to User</label>
                             <input type="hidden" name="assigned_to_user_id" data-assign-user-value>
                             <div class="mt-3">
-                                <button type="button" class="auth-input flex w-full items-center justify-between rounded-lg border-slate-300 bg-white text-left shadow-sm transition hover:bg-slate-50 focus:border-slate-500 focus:ring-slate-500 sm:text-sm" data-assign-user-toggle>
+                                <button type="button"
+                                    class="auth-input flex w-full items-center justify-between rounded-lg border-slate-300 bg-white text-left shadow-sm transition hover:bg-slate-50 focus:border-slate-500 focus:ring-slate-500 sm:text-sm"
+                                    data-assign-user-toggle>
                                     <span class="text-slate-900" data-assign-user-label>Select user...</span>
-                                    <svg class="h-5 w-5 text-slate-400 transition" data-assign-user-chevron viewBox="0 0 20 20" fill="currentColor">
-                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    <svg class="h-5 w-5 text-slate-400 transition" data-assign-user-chevron
+                                        viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd"
+                                            d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z"
+                                            clip-rule="evenodd" />
                                     </svg>
                                 </button>
 
-                                <div class="mt-1 hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg" data-assign-user-menu>
+                                <div class="mt-1 hidden overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg"
+                                    data-assign-user-menu>
                                     <div class="border-b border-slate-100 p-2">
-                                        <input
-                                            id="edit_assign_to_user_search"
-                                            type="search"
+                                        <input id="edit_assign_to_user_search" type="search"
                                             class="w-full rounded border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none focus:ring-1 focus:ring-slate-500"
-                                            placeholder="Search by name or role..."
-                                            autocomplete="off"
-                                            data-assign-user-search
-                                        >
+                                            placeholder="Search by name or role..." autocomplete="off"
+                                            data-assign-user-search>
                                     </div>
                                     <ul class="max-h-48 overflow-y-auto" data-assign-user-list>
                                         @forelse ($assignableUsers ?? [] as $user)
-                                            <li data-assign-user-item data-search-text="{{ strtolower($user->name . ' ' . ($user->role ?? 'No Role')) }}">
-                                                <button type="button" class="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left text-sm transition hover:bg-slate-50 last:border-b-0" data-assign-user-option data-user-id="{{ $user->id }}" data-user-name="{{ $user->name }}">
+                                            <li data-assign-user-item
+                                                data-search-text="{{ strtolower($user->name . ' ' . ($user->role ?? 'No Role')) }}">
+                                                <button type="button"
+                                                    class="flex w-full items-center justify-between border-b border-slate-100 px-4 py-3 text-left text-sm transition hover:bg-slate-50 last:border-b-0"
+                                                    data-assign-user-option data-user-id="{{ $user->id }}"
+                                                    data-user-name="{{ $user->name }}">
                                                     <span>
                                                         <span class="block font-medium text-slate-900">{{ $user->name }}</span>
-                                                        <span class="block text-xs text-slate-500">{{ $user->role ?? 'No Role' }}</span>
+                                                        <span
+                                                            class="block text-xs text-slate-500">{{ $user->role ?? 'No Role' }}</span>
                                                     </span>
-                                                    <svg class="hidden h-5 w-5 text-teal-600" data-assign-user-check viewBox="0 0 20 20" fill="currentColor">
-                                                        <path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                                    <svg class="hidden h-5 w-5 text-teal-600" data-assign-user-check
+                                                        viewBox="0 0 20 20" fill="currentColor">
+                                                        <path fill-rule="evenodd"
+                                                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                                            clip-rule="evenodd" />
                                                     </svg>
                                                 </button>
                                             </li>
                                         @empty
                                             <li class="px-4 py-6 text-center text-sm text-slate-500">No users available</li>
                                         @endforelse
-                                        <li class="hidden px-4 py-6 text-center text-sm text-slate-500" data-assign-user-empty>No users match your search</li>
+                                        <li class="hidden px-4 py-6 text-center text-sm text-slate-500"
+                                            data-assign-user-empty>No users match your search</li>
                                     </ul>
                                 </div>
                             </div>
                             <x-input-error :messages="$errors->get('assigned_to_user_id')" class="mt-2" />
                         </div>
 
+                        <div id="edit_request_category_wrapper" class="hidden mt-1 pb-2">
+                            <label class="auth-label block text-sm font-medium text-slate-700" for="edit_request_category">Request Category (Optional)</label>
+                            <select id="edit_request_category" name="request_category" class="auth-input mt-2 block w-full rounded-lg border-slate-300 bg-white text-slate-900 shadow-sm transition focus:border-slate-500 focus:ring-slate-500 sm:text-sm" onchange="document.getElementById('edit_request_category_other_container').classList.toggle('hidden', this.value !== 'Others')">
+                                <option value="">Select a category</option>
+                                <option value="Technical Assistance">Technical Assistance (Troubleshooting, Hardware/Software issues)</option>
+                                <option value="Network & Connectivity">Network & Connectivity (Internet, LAN, VPN)</option>
+                                <option value="Account & Access">Account & Access (Password reset, System access)</option>
+                                <option value="System & Application Development">System & Application Development (New features, Bug fixes)</option>
+                                <option value="Hardware Procurement/Deployment">Hardware Procurement/Deployment (New PC, Printers, etc.)</option>
+                                <option value="Data & Analytics">Data & Analytics (Reports generation, Data extraction)</option>
+                                <option value="Information Systems Security">Information Systems Security (Antivirus, Access policies)</option>
+                                <option value="Backup & Recovery">Backup & Recovery (File restoration, System backup)</option>
+                                <option value="Website & Portal Services">Website & Portal Services (Content update, Intranet)</option>
+                                <option value="Training & Consultation">Training & Consultation (System tutorials, IT advise)</option>
+                                <option value="Others">Others</option>
+                            </select>
+
+                            <div id="edit_request_category_other_container" class="mt-3 hidden">
+                                <input type="text" id="edit_request_category_other" name="request_category_other" class="auth-input block w-full rounded-lg border-slate-300 bg-white text-slate-900 shadow-sm transition focus:border-slate-500 focus:ring-slate-500 sm:text-sm" placeholder="Please specify...">
+                            </div>
+                        </div>
+
                         <div class="mt-2 flex justify-end gap-3 border-t border-slate-100 pt-5">
-                            <button type="button" class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100" data-assign-request-close>Cancel</button>
-                            <button type="submit" class="rounded-lg px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90" style="background:#0f766e; color:#fff;">Assign</button>
+                            <button type="button"
+                                class="rounded-lg px-4 py-2 text-sm font-semibold text-slate-600 hover:bg-slate-100"
+                                data-assign-request-close>Cancel</button>
+                            <button type="submit"
+                                class="rounded-lg px-5 py-2 text-sm font-semibold text-white shadow-sm transition hover:opacity-90"
+                                style="background:#0f766e; color:#fff;">Assign</button>
                         </div>
                     </form>
                 </div>
@@ -2286,7 +2309,9 @@
                         @csrf
                         @method('PATCH')
                         @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking'], true))
-                            <button type="submit" formmethod="PATCH" formaction="{{ route('service-requests.receive', $serviceRequest) }}" formenctype="application/x-www-form-urlencoded"
+                            <button type="submit" formmethod="PATCH"
+                                formaction="{{ route('service-requests.receive', $serviceRequest) }}"
+                                formenctype="application/x-www-form-urlencoded"
                                 class="rounded-xl border border-blue-300 bg-blue-50 px-3 py-1.5 text-xs font-semibold uppercase text-blue-800 transition hover:bg-blue-100">Receive</button>
                         @endif
                         @if ($canSetPending)
@@ -4168,6 +4193,12 @@
                         const userName = String(option.getAttribute('data-user-name') || 'Select user...');
                         if (valueInput) valueInput.value = userId;
                         if (label) label.textContent = userName;
+                        
+                        const catWrapper = document.getElementById('edit_request_category_wrapper');
+                        if (catWrapper) {
+                            catWrapper.classList.toggle('hidden', userId === '');
+                        }
+
                         options.forEach(function (candidate) {
                             candidate.classList.toggle('bg-slate-100', candidate === option);
                             const check = candidate.querySelector('[data-assign-user-check]');
@@ -4200,6 +4231,22 @@
                         }
                         if (searchInput) {
                             searchInput.value = '';
+                        }
+                        const catWrapper = document.getElementById('edit_request_category_wrapper');
+                        if (catWrapper) {
+                            catWrapper.classList.add('hidden');
+                        }
+                        const catSelect = document.getElementById('edit_request_category');
+                        if (catSelect) {
+                            catSelect.value = '';
+                        }
+                        const catOtherContainer = document.getElementById('edit_request_category_other_container');
+                        if (catOtherContainer) {
+                            catOtherContainer.classList.add('hidden');
+                        }
+                        const catOtherInput = document.getElementById('edit_request_category_other');
+                        if (catOtherInput) {
+                            catOtherInput.value = '';
                         }
                         options.forEach(function (option) {
                             option.classList.remove('bg-slate-100');

@@ -12,8 +12,9 @@
     $chatFilter = trim((string) ($chatRequestFilter ?? ''));
     $isSuperAdmin = (bool) ($isSuperAdmin ?? false);
     $receiverStats = $receiverStats ?? collect();
-    $roleValue = strtolower(trim((string) auth()->user()?->role));
-    $enableAutoRefresh = in_array($roleValue, ['admin', 'supervisor', 'technical support'], true);
+    $authUser = auth()->user();
+    $roleValue = $authUser ? strtolower(trim((string) $authUser->role)) : '';
+    $enableAutoRefresh = $authUser && in_array($roleValue, ['admin', 'supervisor', 'technical support'], true);
     $showAssignSummary = $enableAutoRefresh
         && ! $isArchiveView
         && ! $isAssignedView
@@ -349,10 +350,10 @@
                                                 </button>
                                             @endif
                                             @php
-                                                $userRole = Auth::user()->role ?? '';
-                                                $currentUserId = (int) Auth::id();
+                                                $userRole = Auth::check() ? (Auth::user()->role ?? '') : '';
+                                                $currentUserId = Auth::check() ? (int) Auth::id() : 0;
                                                 $assignedToUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
-                                                $canAssign = ($isReceivedView || $isAssignedView)
+                                                $canAssign = Auth::check() && ($isReceivedView || $isAssignedView)
                                                     && in_array($userRole, ['admin', 'supervisor', 'technical support'], true)
                                                     && (
                                                         $assignedToUserId === $currentUserId

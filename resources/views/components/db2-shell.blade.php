@@ -529,7 +529,7 @@
             @endif
         </nav>
         <div class="db2-sidebar-logout">
-            <form method="POST" action="{{ route('logout') }}">
+            <form method="POST" action="{{ route('logout') }}" data-srs-logout-form>
                 @csrf
                 <button type="submit" class="db2-logout-btn">
                     <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3h4a1 1 0 011 1v12a1 1 0 01-1 1h-4M8 14l4-4-4-4M12 10H2"/></svg>

@@ -161,11 +161,14 @@ class EncryptedSignature
         return null;
     }
 
-    private static function isSignaturePath(string $path): bool
+    public static function isSignaturePath(string $path): bool
     {
-        return $path !== ''
-            && str_starts_with($path, self::DIRECTORY)
-            && ! str_contains($path, '..');
+        $normalizedPath = trim(str_replace('\\', '/', $path));
+
+        return $normalizedPath !== ''
+            && str_starts_with($normalizedPath, self::DIRECTORY)
+            && ! str_contains($normalizedPath, '..')
+            && preg_match('/^service-request-signatures\/[0-9a-fA-F-]+\.encsig$/', $normalizedPath) === 1;
     }
 
     public static function optimizeImageBinary(

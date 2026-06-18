@@ -566,7 +566,6 @@
 
         /* ── Approved section ── */
         .srf-approved-grid {
-
             display: grid;
             grid-template-columns: auto 1fr;
             border: 1.5px solid #e2e8f0;
@@ -752,6 +751,61 @@
             flex-shrink: 0;
             margin-right: 6px;
         }
+
+        /* ── Toggle Switch ── */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 26px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .toggle-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #dc2626;
+            border-radius: 26px;
+            transition: 0.3s;
+        }
+
+        .toggle-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        .toggle-switch input:checked + .toggle-slider {
+            background-color: #16a34a;
+        }
+
+        .toggle-switch input:checked + .toggle-slider:before {
+            transform: translateX(24px);
+        }
+
+        .toggle-switch input:focus + .toggle-slider {
+            box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.2);
+        }
+
+        .toggle-slider:hover {
+            opacity: 0.9;
+        }
     </style>
 
     <div class="srf-root">
@@ -764,7 +818,6 @@
                     <p class="auth-login-brand-subtitle">Knowledge Management and Information Technology Service</p>
                 </div>
             </div>
-
             <div class="auth-login-top-actions"></div>
         </header>
 
@@ -790,77 +843,25 @@
                 <form method="POST" action="{{ route('service-requests.store') }}" enctype="multipart/form-data">
                     @csrf
                     <input type="hidden" name="submission_token" value="{{ $submissionToken ?? '' }}">
+                    {{-- FIX #1: Binalik ang request_date at time_received hidden inputs --}}
                     <input id="request_date" name="request_date" type="hidden"
                         value="{{ old('request_date', now()->toDateString()) }}">
                     <input name="time_received" type="hidden" value="{{ old('time_received', now()->format('H:i')) }}">
+                    
+                    {{-- Hidden inputs for removed fields with default values --}}
+                    <input type="hidden" name="department_code" value="{{ old('department_code', 'KMITS') }}">
+                    <input type="hidden" name="request_category" value="{{ old('request_category', '') }}">
+                    <input type="hidden" name="expected_completion_date" value="{{ old('expected_completion_date', '') }}">
+                    <input type="hidden" name="expected_completion_time" value="{{ old('expected_completion_time', '') }}">
 
                     {{-- Section: Request Info --}}
                     <div class="srf-section" style="padding-bottom: 4px;">
                         <p class="srf-section-label">Request Information</p>
 
-                        <div class="srf-field-grid srf-field-grid-2" style="margin-bottom: 12px;">
-                            <div class="srf-field">
-                                <label class="srf-label" for="department_code">
-                                    <span class="srf-number-badge">1</span> Send to Department <span
-                                        class="srf-required">*</span>
-                                </label>
-                                <select id="department_code" name="department_code" class="srf-select" required>
-                                    <option value="">Select department</option>
-                                    @foreach ($departmentOptions as $department)
-                                        <option value="{{ $department }}" @selected((string) old('department_code') === (string) $department)>
-                                            {{ $department }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                                <x-input-error :messages="$errors->get('department_code')" class="mt-1" />
-                            </div>
-                        </div>
-
-                        <div class="srf-field-grid srf-field-grid-3" style="margin-bottom: 16px;">
-                            <div class="srf-field">
-                                @php
-                                    $requestCategoryOptions = [
-                                        'Technical Assistance',
-                                        'System Access',
-                                        'Network/Internet',
-                                        'Hardware Support',
-                                        'Software Installation',
-                                        'Data Request',
-                                        'Others',
-                                    ];
-                                    $oldRequestCategory = (string) old('request_category', '');
-                                    $hasCustomRequestCategory = $oldRequestCategory !== ''
-                                        && !in_array($oldRequestCategory, $requestCategoryOptions, true);
-                                @endphp
-                                <label class="srf-label" for="request_category">
-                                    <span class="srf-number-badge">2</span> Request Category <span
-                                        class="srf-required">*</span>
-                                </label>
-                                <select name="request_category" id="request_category" class="srf-select">
-                                    <option value="Technical Assistance" @selected(old('request_category') === 'Technical Assistance')>Technical Assistance</option>
-                                    <option value="System Access" @selected(old('request_category') === 'System Access')>
-                                        System Access</option>
-                                    <option value="Network/Internet"
-                                        @selected(old('request_category') === 'Network/Internet')>Network/Internet
-                                    </option>
-                                    <option value="Hardware Support" @selected(old('request_category') === 'Hardware Support')>Hardware Support</option>
-                                    <option value="Software Installation" @selected(old('request_category') === 'Software Installation')>Software Installation</option>
-                                    <option value="Data Request" @selected(old('request_category') === 'Data Request')>
-                                        Data Request</option>
-                                    @if ($hasCustomRequestCategory)
-                                        <option value="{{ $oldRequestCategory }}" selected data-custom="1">
-                                            {{ $oldRequestCategory }}</option>
-                                    @endif
-                                    <option value="Others" @selected(old('request_category') === 'Others' || $hasCustomRequestCategory)>Others</option>
-                                </select>
-                                <input type="text" id="request_category_other"
-                                    class="srf-input mt-2 {{ old('request_category') === 'Others' || $hasCustomRequestCategory ? '' : 'hidden' }}"
-                                    placeholder="Type request category"
-                                    value="{{ $hasCustomRequestCategory ? $oldRequestCategory : '' }}">
-                            </div>
+                        <div class="srf-field-grid srf-field-grid-1" style="margin-bottom: 16px;">
                             <div class="srf-field">
                                 <label class="srf-label" for="application_system_name">
-                                    <span class="srf-number-badge">3</span> Application System Name <span
+                                    <span class="srf-number-badge">1</span> Application System Name <span
                                         class="srf-required">*</span>
                                 </label>
                                 @php
@@ -880,19 +881,6 @@
                                     </div>
                                 </div>
                             </div>
-                            <div class="srf-field">
-                                <label class="srf-label" for="expected_completion_date">
-                                    <span class="srf-number-badge">4</span> Expected Date / Time of Completion
-                                </label>
-                                <div style="display: flex; gap: 8px;">
-                                    <input id="expected_completion_date" type="date" name="expected_completion_date"
-                                        value="{{ old('expected_completion_date') }}" class="srf-input"
-                                        style="width: 180px;">
-                                    <input id="expected_completion_time" type="time" name="expected_completion_time"
-                                        value="{{ old('expected_completion_time') }}" class="srf-input"
-                                        style="width: 140px;">
-                                </div>
-                            </div>
                         </div>
                     </div>
 
@@ -901,7 +889,7 @@
                     {{-- Section: Contact Person --}}
                     <div class="srf-section" style="padding-bottom: 4px;">
                         <p class="srf-section-label">
-                            <span class="srf-number-badge">4</span> Contact Person
+                            <span class="srf-number-badge">2</span> Contact Person
                         </p>
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
@@ -957,12 +945,12 @@
                             <div class="srf-field">
                                 <div class="srf-office-label-row">
                                     <label class="srf-label" for="office">
-                                        <span class="srf-number-badge">5</span> Office <span
+                                        <span class="srf-number-badge">3</span> Office <span
                                             class="srf-required">*</span>
                                     </label>
                                     <select id="office_region_filter" name="office_region_filter"
                                         class="srf-input srf-office-region-filter">
-                                        <option value="">All regions</option>
+                                        <option value="">All</option>
                                         @foreach (($parentOfficeOptions ?? []) as $parentOfficeOption)
                                             <option value="{{ $parentOfficeOption }}" {{ old('office_region_filter') === $parentOfficeOption ? 'selected' : '' }}>
                                                 {{ $parentOfficeOption }}
@@ -989,39 +977,36 @@
                                 </div>
                                 <p id="office-regcode-label" class="mt-1 text-[11px] text-slate-500"></p>
                             </div>
+
                             <div class="srf-field">
-                                <label class="srf-label" for="address">
-                                    <span class="srf-number-badge">6</span> Address <span class="srf-required">*</span>
-                                </label>
+                                <div class="srf-office-label-row" style="min-height: 33px;">
+                                    <label class="srf-label" for="address">
+                                        <span class="srf-number-badge">4</span> Address <span
+                                            class="srf-required">*</span>
+                                    </label>
+                                </div>
                                 <input id="address" name="address" value="{{ old('address') }}" class="srf-input"
                                     autocomplete="street-address" required>
                             </div>
                         </div>
 
-                        <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
+                        <div class="srf-field-grid srf-field-grid-3" style="margin-bottom: 16px;">
                             <div class="srf-field">
-                                <label class="srf-label" for="landline"><span class="srf-number-badge">7</span>
+                                <label class="srf-label" for="landline"><span class="srf-number-badge">5</span>
                                     Landline</label>
                                 <input id="landline" name="landline" value="{{ old('landline') }}" inputmode="tel"
                                     oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
                                     autocomplete="tel" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="fax_no"><span class="srf-number-badge">8</span> Fax
-                                    No</label>
-                                <input id="fax_no" name="fax_no" value="{{ old('fax_no') }}" inputmode="tel"
-                                    oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
-                                    maxlength="20">
-                            </div>
-                            <div class="srf-field">
-                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">9</span> Mobile
+                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">6</span> Mobile
                                     No</label>
                                 <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="tel"
                                     oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
                                     autocomplete="tel-national" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="email_address"><span class="srf-number-badge">10</span>
+                                <label class="srf-label" for="email_address"><span class="srf-number-badge">7</span>
                                     Email Address <span class="srf-required">*</span></label>
                                 <input id="email_address" type="email" name="email_address"
                                     value="{{ old('email_address') }}" class="srf-input" autocomplete="email" required>
@@ -1034,7 +1019,7 @@
                     {{-- Section: Description --}}
                     <div class="srf-section" style="padding-bottom: 16px;">
                         <p class="srf-section-label">
-                            <span class="srf-number-badge">11</span> Description of Request <span
+                            <span class="srf-number-badge">8</span> Description of Request <span
                                 class="srf-required">*</span>
                         </p>
                         <div class="srf-desc-box">
@@ -1051,8 +1036,8 @@
                                 <div class="srf-upload-wrap">
                                     <span class="srf-upload-label">Attach Photos (1 to 3)</span>
                                     <input id="description_photos" name="description_photos[]" type="file"
-                                        accept="image/*" multiple class="srf-file-input">
-                                    <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 images, 5MB each.
+                                        accept="image/*,application/pdf" multiple class="srf-file-input">
+                                    <p style="font-size:11px; color:#94a3b8; margin: 4px 0 0;">Max 3 files (images or PDF), 5MB each.
                                         You can choose files multiple times.</p>
                                     <p id="description-photos-selected"
                                         style="font-size:11px; color:#0f766e; margin: 4px 0 0;"></p>
@@ -1070,7 +1055,7 @@
                     {{-- Section: Approved By --}}
                     <div class="srf-section" style="padding-bottom: 16px;">
                         <p class="srf-section-label">
-                            <span class="srf-number-badge">12</span> Approved By
+                            <span class="srf-number-badge">9</span> Approved By
                         </p>
                         <div class="srf-approved-grid">
                             <div class="srf-approved-label-cell">Approved By</div>
@@ -1078,14 +1063,15 @@
                                 <div class="srf-approved-inner">
                                     <div>
                                         <div class="srf-sig-wrap">
-                                            <div class="srf-sig-modes">
-                                                <label>
-                                                    <input type="radio" name="approved_by_signature_mode" value="draw"
-                                                        @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
-                                                    Draw Signature
+                                            <div class="srf-sig-modes" style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+                                                <span style="font-size: 14px; font-weight: 500; color: #334155;">Draw Signature</span>
+                                                <label class="toggle-switch" style="position: relative; display: inline-block; width: 50px; height: 26px;">
+                                                    <input type="checkbox" id="signature-toggle" style="opacity: 0; width: 0; height: 0;">
+                                                    <span class="toggle-slider"></span>
                                                 </label>
+                                                <span style="font-size: 12px; color: #64748b; font-style: italic;">← click this for digital signature, it's for Head of Office</span>
                                             </div>
-                                            <div id="create-signature-draw-wrap">
+                                            <div id="create-signature-draw-wrap" style="display: none;">
                                                 <canvas id="create-signature-canvas" class="srf-sig-canvas"
                                                     style="width:100%;"></canvas>
                                                 <input type="hidden" name="approved_by_signature_drawn"
@@ -1094,6 +1080,7 @@
                                                 <button type="button" id="create-signature-clear"
                                                     class="srf-sig-clear">Clear</button>
                                             </div>
+                                            <input type="hidden" name="approved_by_signature_mode" value="draw">
                                             <x-input-error :messages="$errors->get('approved_by_signature_drawn')"
                                                 class="mt-1" />
                                         </div>
@@ -1131,6 +1118,7 @@
                 </form>
             </div>
         </section>
+
         <button type="button" class="srf-scroll-top" id="srf-scroll-top" aria-label="Scroll to top">
             <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"
                 stroke-linejoin="round">
@@ -1201,7 +1189,6 @@
                     if (typeof option === 'object' && option !== null) {
                         return normalize(option.label || option.display_name || option.value || option.name || '');
                     }
-
                     return normalize(option);
                 };
 
@@ -1220,7 +1207,6 @@
                             option.phone,
                         ].map(normalize).filter(Boolean).join(' ');
                     }
-
                     return normalize(option);
                 };
 
@@ -1407,8 +1393,6 @@
                         if (error && error.name === 'AbortError') {
                             return false;
                         }
-
-                        // Keep the current option list when search fails.
                         return false;
                     }
                 };
@@ -1554,38 +1538,6 @@
                 };
             };
 
-            const initLockedSearchInput = function (inputId, clearButtonId) {
-                const input = document.getElementById(inputId);
-                const clearButton = document.getElementById(clearButtonId);
-
-                if (!input || !clearButton) return;
-
-                const lockIfFilled = function () {
-                    if (input.value.trim() === '') return;
-
-                    input.readOnly = true;
-                    input.removeAttribute('list');
-                    clearButton.classList.remove('hidden');
-                };
-
-                const unlockAndClear = function () {
-                    input.value = '';
-                    input.readOnly = false;
-                    input.setAttribute('list', input.dataset.optionsList || '');
-                    clearButton.classList.add('hidden');
-                    input.focus();
-                    input.dispatchEvent(new Event('input', { bubbles: true }));
-                };
-
-                input.dataset.optionsList = input.getAttribute('list') || '';
-                input.addEventListener('change', lockIfFilled);
-                input.addEventListener('blur', lockIfFilled);
-                clearButton.addEventListener('click', unlockAndClear);
-
-                lockIfFilled();
-                return lockIfFilled;
-            };
-
             const applicationSystemPicker = initChipSearchPicker({
                 hiddenId: 'application_system_name',
                 searchId: 'application_system_name_search',
@@ -1596,6 +1548,7 @@
                 placeholder: 'Application / System Name',
                 requiredMessage: 'Please select or type at least one application system.',
             });
+
             const officePicker = initChipSearchPicker({
                 hiddenId: 'office',
                 searchId: 'office_search',
@@ -2144,13 +2097,16 @@
             initDescriptionPhotoSelection();
 
             const initSignatureInput = function () {
+                const toggleCheckbox = document.getElementById('signature-toggle');
                 const drawWrap = document.getElementById('create-signature-draw-wrap');
                 const canvas = document.getElementById('create-signature-canvas');
                 const hiddenDrawn = document.getElementById('create-signature-drawn');
                 const clearBtn = document.getElementById('create-signature-clear');
                 const approvedDateInput = document.getElementById('create-approved-date');
 
-                if (!drawWrap || !canvas || !hiddenDrawn) return;
+                if (!drawWrap || !canvas || !hiddenDrawn || !toggleCheckbox) {
+                    return;
+                }
 
                 const fillSignedDateIfEmpty = function () {
                     if (!approvedDateInput || approvedDateInput.value !== '') {
@@ -2165,7 +2121,43 @@
                 };
 
                 const ctx = canvas.getContext('2d');
-                if (!ctx) return;
+                if (!ctx) {
+                    return;
+                }
+
+                // Setup canvas resize function first
+                const resizeCanvas = function () {
+                    const ratio = window.devicePixelRatio || 1;
+                    const rect = canvas.getBoundingClientRect();
+                    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
+                    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
+                    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+                    ctx.lineWidth = 2;
+                    ctx.lineCap = 'round';
+                    ctx.strokeStyle = '#0f172a';
+                };
+
+                // Toggle functionality
+                toggleCheckbox.addEventListener('change', function () {
+                    if (this.checked) {
+                        drawWrap.style.display = 'block';
+                    } else {
+                        drawWrap.style.display = 'none';
+                    }
+                });
+
+                // Initialize canvas on page load
+                resizeCanvas();
+                
+                // Check if there's old signature data to restore
+                if (hiddenDrawn.value) {
+                    const img = new Image();
+                    img.onload = function () {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                        ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
+                    };
+                    img.src = hiddenDrawn.value;
+                }
 
                 const getCenteredSignatureDataUrl = function () {
                     const width = canvas.width;
@@ -2239,28 +2231,8 @@
                     }
                 };
 
-                const resizeCanvas = function () {
-                    const ratio = window.devicePixelRatio || 1;
-                    const rect = canvas.getBoundingClientRect();
-                    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-                    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-                    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-                    ctx.lineWidth = 2;
-                    ctx.lineCap = 'round';
-                    ctx.strokeStyle = '#0f172a';
-                };
-
-                resizeCanvas();
+                // Initialize canvas on page load (but it might be hidden)
                 window.addEventListener('resize', resizeCanvas);
-
-                if (hiddenDrawn.value) {
-                    const img = new Image();
-                    img.onload = function () {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
-                    };
-                    img.src = hiddenDrawn.value;
-                }
 
                 let drawing = false;
 

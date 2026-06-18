@@ -38,7 +38,7 @@
                     <p class="text-xs text-slate-500">{{ $authUser?->email }}</p>
                 </div>
 
-                <form method="POST" action="{{ route('logout') }}">
+                <form method="POST" action="{{ route('logout') }}" data-srs-logout-form>
                     @csrf
                     <button type="submit" class="rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-500 hover:text-slate-900">Log out</button>
                 </form>
@@ -77,7 +77,7 @@
                 <p class="text-sm font-semibold text-slate-800">{{ $authUser?->name }}</p>
                 <p class="text-xs text-slate-500">{{ $authUser?->email }}</p>
 
-                <form method="POST" action="{{ route('logout') }}" class="mt-3">
+                <form method="POST" action="{{ route('logout') }}" class="mt-3" data-srs-logout-form>
                     @csrf
                     <button type="submit" class="w-full rounded-xl border border-slate-300 px-3 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-500 hover:text-slate-900">Log out</button>
                 </form>

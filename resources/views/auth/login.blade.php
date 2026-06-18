@@ -8,7 +8,7 @@
         <div class="auth-login-card">
             <div class="auth-login-card-head auth-login-card-head-simple">
                 <div class="auth-login-card-copy">
-                    <h2 class="auth-login-card-title">Login to our site</h2>
+                    <h2 class="auth-login-card-title">Service Access</h2>
                     <p class="auth-login-card-subtitle">Enter your username or email and password to log on:</p>
                 </div>
             </div>
@@ -47,7 +47,7 @@
                     @endif
                 </div>
 
-                <button type="submit" class="auth-login-button">Sign In</button>
+                <button type="submit" class="auth-login-button">Login to Account</button>
             </form>
         </div>
     </section>

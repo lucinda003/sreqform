@@ -5,7 +5,9 @@ namespace Tests\Feature;
 use App\Models\Office;
 use App\Models\ServiceRequest;
 use App\Models\User;
+use App\Support\EncryptedSignature;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 use Tests\TestCase;
@@ -62,6 +64,114 @@ class SecurityHardeningTest extends TestCase
         }
 
         $this->get($uri)->assertStatus(429);
+    }
+
+    public function test_public_track_activity_requires_verified_track_access(): void
+    {
+        $owner = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($owner, [
+            'email_address' => 'owner@example.com',
+            'action_logs' => [[
+                'action_date' => '2026-06-08',
+                'action_time' => '10:43',
+                'action_taken' => 'Checked request details.',
+                'action_officer' => 'Assigned Admin',
+            ]],
+        ]);
+
+        $this
+            ->getJson(route('service-requests.track.activity', ['referenceCode' => $serviceRequest->reference_code]))
+            ->assertForbidden();
+    }
+
+    public function test_public_track_activity_returns_rendered_action_updates_for_verified_requester(): void
+    {
+        $owner = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($owner, [
+            'email_address' => 'owner@example.com',
+            'status' => 'checking',
+            'checking_at' => '2026-06-08 11:30:00',
+            'action_logs' => [
+                [
+                    'action_date' => '2026-06-08',
+                    'action_time' => '10:43',
+                    'action_taken' => 'First action update.',
+                    'action_officer' => 'Assigned Admin',
+                ],
+                [
+                    'action_date' => '2026-06-08',
+                    'action_time' => '11:15',
+                    'action_taken' => 'Latest action update.',
+                    'action_officer' => 'Second Admin',
+                ],
+            ],
+        ]);
+        $trackSessionKey = strtoupper(str_replace('-', '', $serviceRequest->reference_code));
+
+        $response = $this
+            ->withSession([
+                'track_access' => [
+                    $trackSessionKey => now()->addHour()->timestamp,
+                ],
+            ])
+            ->getJson(route('service-requests.track.activity', ['referenceCode' => $serviceRequest->reference_code]))
+            ->assertOk()
+            ->assertJsonPath('updated_at', $serviceRequest->updated_at?->toIso8601String());
+
+        $html = (string) $response->json('html');
+        $statusHtml = (string) $response->json('status_html');
+
+        $this->assertStringContainsString('Latest action update.', $html);
+        $this->assertStringContainsString('Handled by Second Admin', $html);
+        $this->assertStringContainsString('Checking', $statusHtml);
+        $this->assertStringNotContainsString('First action update.', $html);
+    }
+
+    public function test_public_track_activity_returns_received_update_when_no_action_taken_exists(): void
+    {
+        $receiver = User::factory()->create([
+            'name' => 'Receiving Officer',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $owner = User::factory()->create([
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($owner, [
+            'email_address' => 'owner@example.com',
+            'status' => 'checking',
+            'received_by_user_id' => $receiver->id,
+            'received_at' => '2026-06-08 09:45:00',
+            'action_logs' => [[
+                'date' => '2026-06-08',
+                'time' => '09:45',
+                'action_taken' => null,
+            ]],
+        ]);
+        $trackSessionKey = strtoupper(str_replace('-', '', $serviceRequest->reference_code));
+
+        $response = $this
+            ->withSession([
+                'track_access' => [
+                    $trackSessionKey => now()->addHour()->timestamp,
+                ],
+            ])
+            ->getJson(route('service-requests.track.activity', ['referenceCode' => $serviceRequest->reference_code]))
+            ->assertOk();
+
+        $html = (string) $response->json('html');
+
+        $this->assertStringContainsString('Receiving Officer received your request and is now checking it.', $html);
     }
 
     public function test_admin_management_routes_require_superadmin_department(): void
@@ -223,6 +333,7 @@ class SecurityHardeningTest extends TestCase
     public function test_approved_assigned_request_moves_out_of_assigned_tab_and_into_archive(): void
     {
         $user = User::factory()->create([
+            'role' => 'technical support',
             'department' => 'KMITS',
             'department_status' => 'approved',
         ]);
@@ -365,7 +476,7 @@ class SecurityHardeningTest extends TestCase
             ->assertSee('Open');
     }
 
-    public function test_action_log_officer_defaults_to_current_user_name_when_row_has_work(): void
+    public function test_action_log_officer_defaults_to_current_user_name_when_row_is_complete(): void
     {
         $user = User::factory()->create([
             'name' => 'Current Action User',
@@ -396,6 +507,372 @@ class SecurityHardeningTest extends TestCase
 
         $this->assertSame('Current Action User', $serviceRequest->action_logs[0]['action_officer'] ?? null);
         $this->assertSame($user->id, (int) ($serviceRequest->action_logs[0]['action_user_id'] ?? 0));
+    }
+
+    public function test_action_log_officer_is_not_defaulted_when_row_is_incomplete(): void
+    {
+        $user = User::factory()->create([
+            'name' => 'Current Action User',
+            'role' => 'technical support',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($user, [
+            'status' => 'checking',
+            'received_by_user_id' => $user->id,
+        ]);
+        $expectedRedirect = route('service-requests.edit', $serviceRequest);
+
+        $this
+            ->actingAs($user)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => [now()->toDateString()],
+                'action_log_time' => ['08:30'],
+                'action_log_action_date' => [''],
+                'action_log_action_time' => [''],
+                'action_log_action_taken' => [''],
+                'action_log_action_officer' => [''],
+            ])
+            ->assertRedirect($expectedRedirect);
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('', (string) ($serviceRequest->action_logs[0]['action_officer'] ?? ''));
+        $this->assertSame($user->id, (int) ($serviceRequest->action_logs[0]['action_user_id'] ?? 0));
+    }
+
+    public function test_reassigned_incomplete_action_log_row_can_be_completed_by_new_assignee(): void
+    {
+        $supervisor = User::factory()->create([
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $admin = User::factory()->create([
+            'name' => 'Assigned Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($supervisor, [
+            'status' => 'checking',
+            'received_by_user_id' => $supervisor->id,
+            'assigned_to_user_id' => $admin->id,
+            'assigned_by_user_id' => $supervisor->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => null,
+                'action_time' => null,
+                'action_taken' => null,
+                'action_officer' => null,
+                'signature' => null,
+                'signature_user_id' => null,
+                'action_user_id' => $supervisor->id,
+            ]],
+        ]);
+        $expectedRedirect = route('service-requests.edit', $serviceRequest);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-02'],
+                'action_log_time' => ['11:56'],
+                'action_log_action_date' => ['2026-06-03'],
+                'action_log_action_time' => ['09:30'],
+                'action_log_action_taken' => ['Completed reassigned work.'],
+                'action_log_action_officer' => [''],
+            ])
+            ->assertRedirect($expectedRedirect);
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('2026-06-03', $serviceRequest->action_logs[0]['action_date'] ?? null);
+        $this->assertSame('09:30', $serviceRequest->action_logs[0]['action_time'] ?? null);
+        $this->assertSame('Completed reassigned work.', $serviceRequest->action_logs[0]['action_taken'] ?? null);
+        $this->assertSame('Assigned Admin', $serviceRequest->action_logs[0]['action_officer'] ?? null);
+        $this->assertSame($admin->id, (int) ($serviceRequest->action_logs[0]['action_work_user_id'] ?? 0));
+    }
+
+    public function test_received_date_and_time_are_not_overwritten_by_another_user(): void
+    {
+        $receiver = User::factory()->create([
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $admin = User::factory()->create([
+            'name' => 'Assigned Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($receiver, [
+            'status' => 'checking',
+            'received_by_user_id' => $receiver->id,
+            'assigned_to_user_id' => $admin->id,
+            'assigned_by_user_id' => $receiver->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => null,
+                'action_time' => null,
+                'action_taken' => null,
+                'action_officer' => null,
+                'signature' => null,
+                'signature_user_id' => null,
+                'action_user_id' => $receiver->id,
+            ]],
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-04'],
+                'action_log_time' => ['12:00'],
+                'action_log_action_date' => ['2026-06-03'],
+                'action_log_action_time' => ['09:30'],
+                'action_log_action_taken' => ['Completed after receiving.'],
+                'action_log_action_officer' => [''],
+            ])
+            ->assertRedirect(route('service-requests.edit', $serviceRequest));
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('2026-06-02', $serviceRequest->action_logs[0]['date'] ?? null);
+        $this->assertSame('11:56', $serviceRequest->action_logs[0]['time'] ?? null);
+        $this->assertSame('2026-06-03', $serviceRequest->action_logs[0]['action_date'] ?? null);
+        $this->assertSame('09:30', $serviceRequest->action_logs[0]['action_time'] ?? null);
+        $this->assertSame('Completed after receiving.', $serviceRequest->action_logs[0]['action_taken'] ?? null);
+    }
+
+    public function test_action_work_fields_are_not_overwritten_by_another_user(): void
+    {
+        $receiver = User::factory()->create([
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $admin = User::factory()->create([
+            'name' => 'Assigned Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+        $otherAdmin = User::factory()->create([
+            'name' => 'Other Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($receiver, [
+            'status' => 'checking',
+            'received_by_user_id' => $receiver->id,
+            'assigned_to_user_id' => $otherAdmin->id,
+            'assigned_by_user_id' => $receiver->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => '2026-06-03',
+                'action_time' => '09:30',
+                'action_taken' => 'Completed by original assignee.',
+                'action_officer' => 'Assigned Admin',
+                'signature' => null,
+                'signature_user_id' => null,
+                'action_user_id' => $receiver->id,
+                'action_work_user_id' => $admin->id,
+            ]],
+        ]);
+
+        $this
+            ->actingAs($otherAdmin)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-02'],
+                'action_log_time' => ['11:56'],
+                'action_log_action_date' => ['2026-06-04'],
+                'action_log_action_time' => ['10:45'],
+                'action_log_action_taken' => ['Overwritten by other admin.'],
+                'action_log_action_officer' => ['Other Admin'],
+            ])
+            ->assertRedirect(route('service-requests.edit', $serviceRequest));
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('2026-06-03', $serviceRequest->action_logs[0]['action_date'] ?? null);
+        $this->assertSame('09:30', $serviceRequest->action_logs[0]['action_time'] ?? null);
+        $this->assertSame('Completed by original assignee.', $serviceRequest->action_logs[0]['action_taken'] ?? null);
+        $this->assertSame('Assigned Admin', $serviceRequest->action_logs[0]['action_officer'] ?? null);
+        $this->assertSame($admin->id, (int) ($serviceRequest->action_logs[0]['action_work_user_id'] ?? 0));
+    }
+
+    public function test_action_work_owner_can_edit_their_action_work_fields(): void
+    {
+        $receiver = User::factory()->create([
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $admin = User::factory()->create([
+            'name' => 'Assigned Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($receiver, [
+            'status' => 'checking',
+            'received_by_user_id' => $receiver->id,
+            'assigned_to_user_id' => $admin->id,
+            'assigned_by_user_id' => $receiver->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => '2026-06-03',
+                'action_time' => '09:30',
+                'action_taken' => 'Original action work.',
+                'action_officer' => 'Assigned Admin',
+                'signature' => null,
+                'signature_user_id' => null,
+                'action_user_id' => $receiver->id,
+                'action_work_user_id' => $admin->id,
+            ]],
+        ]);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-04'],
+                'action_log_time' => ['12:00'],
+                'action_log_action_date' => ['2026-06-05'],
+                'action_log_action_time' => ['14:15'],
+                'action_log_action_taken' => ['Updated own action work.'],
+                'action_log_action_officer' => ['Assigned Admin'],
+            ])
+            ->assertRedirect(route('service-requests.edit', $serviceRequest));
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('2026-06-02', $serviceRequest->action_logs[0]['date'] ?? null);
+        $this->assertSame('11:56', $serviceRequest->action_logs[0]['time'] ?? null);
+        $this->assertSame('2026-06-05', $serviceRequest->action_logs[0]['action_date'] ?? null);
+        $this->assertSame('14:15', $serviceRequest->action_logs[0]['action_time'] ?? null);
+        $this->assertSame('Updated own action work.', $serviceRequest->action_logs[0]['action_taken'] ?? null);
+        $this->assertSame($admin->id, (int) ($serviceRequest->action_logs[0]['action_work_user_id'] ?? 0));
+    }
+
+    public function test_reassigned_incomplete_signed_action_log_row_can_still_be_completed(): void
+    {
+        $signaturePath = 'service-request-signatures/' . Str::uuid()->toString() . '.encsig';
+        $supervisor = User::factory()->create([
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $admin = User::factory()->create([
+            'name' => 'Assigned Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($supervisor, [
+            'status' => 'checking',
+            'received_by_user_id' => $supervisor->id,
+            'assigned_to_user_id' => $admin->id,
+            'assigned_by_user_id' => $supervisor->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => null,
+                'action_time' => null,
+                'action_taken' => null,
+                'action_officer' => null,
+                'signature' => $signaturePath,
+                'signature_user_id' => $supervisor->id,
+                'action_user_id' => $supervisor->id,
+            ]],
+        ]);
+        $expectedRedirect = route('service-requests.edit', $serviceRequest);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-02'],
+                'action_log_time' => ['11:56'],
+                'action_log_action_date' => ['2026-06-03'],
+                'action_log_action_time' => ['09:30'],
+                'action_log_action_taken' => ['Completed signed partial row.'],
+                'action_log_action_officer' => [''],
+            ])
+            ->assertRedirect($expectedRedirect);
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('2026-06-03', $serviceRequest->action_logs[0]['action_date'] ?? null);
+        $this->assertSame('09:30', $serviceRequest->action_logs[0]['action_time'] ?? null);
+        $this->assertSame('Completed signed partial row.', $serviceRequest->action_logs[0]['action_taken'] ?? null);
+        $this->assertSame('Assigned Admin', $serviceRequest->action_logs[0]['action_officer'] ?? null);
+        $this->assertSame($signaturePath, $serviceRequest->action_logs[0]['signature'] ?? null);
+        $this->assertSame($supervisor->id, (int) ($serviceRequest->action_logs[0]['signature_user_id'] ?? 0));
+    }
+
+    public function test_complete_action_log_row_is_not_overwritten_after_reassignment(): void
+    {
+        $supervisor = User::factory()->create([
+            'role' => 'supervisor',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+        $admin = User::factory()->create([
+            'name' => 'Assigned Admin',
+            'role' => 'admin',
+            'department' => 'ADMIN',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($supervisor, [
+            'status' => 'checking',
+            'received_by_user_id' => $supervisor->id,
+            'assigned_to_user_id' => $admin->id,
+            'assigned_by_user_id' => $supervisor->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => '2026-06-03',
+                'action_time' => '09:30',
+                'action_taken' => 'Original completed work.',
+                'action_officer' => 'Original Officer',
+                'signature' => null,
+                'signature_user_id' => null,
+                'action_user_id' => $supervisor->id,
+            ]],
+        ]);
+        $expectedRedirect = route('service-requests.edit', $serviceRequest);
+
+        $this
+            ->actingAs($admin)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-04'],
+                'action_log_time' => ['12:00'],
+                'action_log_action_date' => ['2026-06-05'],
+                'action_log_action_time' => ['13:00'],
+                'action_log_action_taken' => ['Overwritten work.'],
+                'action_log_action_officer' => ['Assigned Admin'],
+            ])
+            ->assertRedirect($expectedRedirect);
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('2026-06-02', $serviceRequest->action_logs[0]['date'] ?? null);
+        $this->assertSame('11:56', $serviceRequest->action_logs[0]['time'] ?? null);
+        $this->assertSame('2026-06-03', $serviceRequest->action_logs[0]['action_date'] ?? null);
+        $this->assertSame('09:30', $serviceRequest->action_logs[0]['action_time'] ?? null);
+        $this->assertSame('Original completed work.', $serviceRequest->action_logs[0]['action_taken'] ?? null);
+        $this->assertSame('Original Officer', $serviceRequest->action_logs[0]['action_officer'] ?? null);
     }
 
     public function test_supervisor_receive_sets_noted_by_name_when_blank(): void
@@ -450,7 +927,8 @@ class SecurityHardeningTest extends TestCase
             ->patch(route('service-requests.assign', $serviceRequest), [
                 'assigned_to_user_id' => $supervisor->id,
             ])
-            ->assertRedirect();
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
 
         $serviceRequest->refresh();
 
@@ -479,6 +957,72 @@ class SecurityHardeningTest extends TestCase
         $serviceRequest->refresh();
 
         $this->assertSame('Existing Supervisor', $serviceRequest->noted_by_name);
+    }
+
+    public function test_signature_paths_reject_traversal_and_non_signature_names(): void
+    {
+        Storage::fake('local');
+        Storage::fake('public');
+
+        $validPath = 'service-request-signatures/' . Str::uuid()->toString() . '.encsig';
+        $traversalPath = 'service-request-signatures/../../other-file.encsig';
+        $wrongNamePath = 'service-request-signatures/not-a-uuid.encsig';
+
+        Storage::disk('local')->put($wrongNamePath, 'payload');
+
+        $this->assertTrue(EncryptedSignature::isSignaturePath($validPath));
+        $this->assertFalse(EncryptedSignature::isSignaturePath($traversalPath));
+        $this->assertFalse(EncryptedSignature::isSignaturePath($wrongNamePath));
+        $this->assertNull(EncryptedSignature::readBinaryFromPath($traversalPath));
+
+        EncryptedSignature::deletePath($traversalPath);
+        EncryptedSignature::deletePath($wrongNamePath);
+
+        Storage::disk('local')->assertExists($wrongNamePath);
+    }
+
+    public function test_unsafe_existing_action_signature_path_is_not_preserved_on_save(): void
+    {
+        $user = User::factory()->create([
+            'role' => 'technical support',
+            'department' => 'KMITS',
+            'department_status' => 'approved',
+        ]);
+
+        $serviceRequest = $this->createServiceRequest($user, [
+            'status' => 'checking',
+            'received_by_user_id' => $user->id,
+            'assigned_to_user_id' => $user->id,
+            'action_logs' => [[
+                'date' => '2026-06-02',
+                'time' => '11:56',
+                'action_date' => '2026-06-03',
+                'action_time' => '09:30',
+                'action_taken' => 'Existing action.',
+                'action_officer' => 'Current Action User',
+                'signature' => 'service-request-signatures/../../unsafe.encsig',
+                'signature_user_id' => $user->id,
+                'action_user_id' => $user->id,
+                'action_work_user_id' => $user->id,
+            ]],
+        ]);
+
+        $this
+            ->actingAs($user)
+            ->put(route('service-requests.update', $serviceRequest), [
+                'action_log_date' => ['2026-06-02'],
+                'action_log_time' => ['11:56'],
+                'action_log_action_date' => ['2026-06-03'],
+                'action_log_action_time' => ['09:30'],
+                'action_log_action_taken' => ['Existing action.'],
+                'action_log_action_officer' => ['Current Action User'],
+            ])
+            ->assertRedirect()
+            ->assertSessionHasNoErrors();
+
+        $serviceRequest->refresh();
+
+        $this->assertSame('', (string) ($serviceRequest->action_logs[0]['signature'] ?? ''));
     }
 
     private function createServiceRequest(User $owner, array $overrides = []): ServiceRequest
@@ -523,7 +1067,6 @@ class SecurityHardeningTest extends TestCase
             'office' => 'Main Office',
             'address' => '123 Test Street',
             'landline' => '1234567',
-            'fax_no' => '1234567',
             'mobile_no' => '09171234567',
             'email_address' => 'owner@example.com',
             'description_request' => 'Testing duplicate submission protection.',

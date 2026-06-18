@@ -1,685 +1,719 @@
+@php View::share('pageTitle', 'Edit Service Request'); @endphp
 <x-guest-layout>
-    <header class="auth-login-topbar">
-        <div class="auth-login-brand">
-            <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH Logo" class="auth-login-brand-logo">
-            <div>
-                <h1 class="auth-login-brand-title">DEPARTMENT OF HEALTH</h1>
-                <p class="auth-login-brand-subtitle">Secure Access Portal</p>
-            </div>
-        </div>
-    </header>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap');
 
-    <section class="auth-login-card-wrap" style="max-width: 1280px; margin-top: 1.4rem;">
-        <div class="mx-auto w-full py-2">
-        <div class="overflow-x-auto rounded-2xl border border-slate-300 bg-white shadow-lg">
-            <form method="POST" action="{{ $signedUpdateUrl }}" enctype="multipart/form-data" class="min-w-[1040px] space-y-0">
+        .srf-root {
+            position: relative;
+            z-index: 5;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: #000;
+        }
+
+        /* ── Header ── */
+        .srf-topbar {
+            background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);
+            padding: 0;
+            display: flex;
+            align-items: stretch;
+            min-height: 64px;
+        }
+
+        .srf-topbar-accent {
+            width: 6px;
+            background: #f1f5f9;
+            flex-shrink: 0;
+        }
+
+        .srf-topbar-inner {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1.5rem;
+            flex: 1;
+        }
+
+        .srf-topbar-brand {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .srf-topbar-logo {
+            width: 40px;
+            height: 40px;
+            object-fit: contain;
+        }
+
+        .srf-topbar-title {
+            font-size: 11px;
+            font-weight: 600;
+            letter-spacing: 0.18em;
+            text-transform: uppercase;
+            color: #f1f5f9;
+            margin: 0;
+            line-height: 1;
+        }
+
+        .srf-topbar-sub {
+            font-size: 11px;
+            color: #94a3b8;
+            margin: 3px 0 0;
+            letter-spacing: 0.04em;
+        }
+
+        /* ── Card ── */
+        .srf-card {
+            background: #fff;
+            border-radius: 12px;
+            border: 1.5px solid #cbd5e1;
+            overflow: hidden;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        }
+
+        /* ── Form header bar ── */
+        .srf-form-header {
+            background: #1e293b;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .srf-header-back {
+            display: inline-flex;
+            align-items: center;
+            justify-content: flex-start;
+            font-size: 18px;
+            font-weight: 700;
+            color: #fff;
+            text-decoration: none;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            padding: 4px 10px;
+            transition: all 0.2s;
+        }
+
+        .srf-header-back:hover {
+            background: rgba(255, 255, 255, 0.2);
+            transform: translateX(-2px);
+        }
+
+        .srf-form-header-text {
+            font-size: 18px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            text-transform: uppercase;
+            color: #fff;
+            margin: 0;
+        }
+
+        .srf-ref-code {
+            font-family: 'DM Mono', monospace;
+            background: #f1f5f9;
+            color: #0f172a;
+            padding: 4px 12px;
+            border-radius: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            margin-left: auto;
+        }
+
+        /* ── Section label ── */
+        .srf-section {
+            padding: 20px 24px 0;
+        }
+
+        .srf-section-label {
+            font-size: 15px;
+            font-weight: 700;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #1e293b;
+            margin: 0 0 12px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .srf-section-label::after {
+            content: '';
+            flex: 1;
+            height: 1.5px;
+            background: #e2e8f0;
+        }
+
+        /* ── Field rows ── */
+        .srf-field-grid {
+            display: grid;
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .srf-field-grid-2 {
+            grid-template-columns: 1fr 1fr;
+        }
+
+        .srf-field-grid-3 {
+            grid-template-columns: 1fr 1fr 1fr;
+        }
+
+        .srf-field-grid-name {
+            grid-template-columns: 1.2fr 1fr 1fr 1fr 0.6fr;
+        }
+
+        .srf-field {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .srf-label {
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+            color: #64748b;
+        }
+
+        .srf-required {
+            color: #ef4444;
+            margin-left: 2px;
+        }
+
+        /* ── Inputs ── */
+        .srf-input,
+        .srf-select,
+        .srf-textarea {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 15px;
+            color: #0f172a;
+            font-weight: 500;
+            background: #fff;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 8px;
+            padding: 10px 12px;
+            outline: none;
+            width: 100%;
+            box-sizing: border-box;
+            transition: all 0.2s;
+        }
+
+        .srf-input:focus,
+        .srf-select:focus,
+        .srf-textarea:focus {
+            border-color: #64748b;
+            box-shadow: 0 0 0 4px rgba(100, 116, 139, 0.1);
+        }
+
+        .srf-textarea {
+            resize: vertical;
+            min-height: 120px;
+        }
+
+        /* ── Signature area ── */
+        .srf-sig-wrap {
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            background: #f8fafc;
+            padding: 12px;
+        }
+
+        .srf-sig-modes {
+            display: flex;
+            gap: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            margin-bottom: 10px;
+        }
+
+        .srf-sig-canvas {
+            width: 100%;
+            height: 200px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            background: #fff;
+            cursor: crosshair;
+        }
+
+        /* ── Actions ── */
+        .srf-actions {
+            margin-top: 24px;
+            padding: 16px 24px;
+            background: #f8fafc;
+            border-top: 1px solid #e2e8f0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .srf-btn {
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 700;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-size: 13px;
+            border: none;
+        }
+
+        .srf-btn-submit {
+            background: #0f172a;
+            color: #fff;
+            box-shadow: 0 4px 12px rgba(15, 23, 42, 0.2);
+        }
+
+        .srf-btn-submit:hover {
+            background: #1e293b;
+            transform: translateY(-1px);
+        }
+
+        .srf-btn-cancel {
+            background: #fff;
+            color: #64748b;
+            border: 1.5px solid #e2e8f0;
+        }
+
+        .srf-btn-cancel:hover {
+            border-color: #cbd5e1;
+            color: #475569;
+        }
+    </style>
+
+    <div class="srf-root" style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
+        <div class="srf-card">
+            <!-- Top brand bar -->
+            <div class="srf-topbar">
+                <div class="srf-topbar-accent"></div>
+                <div class="srf-topbar-inner">
+                    <div class="srf-topbar-brand">
+                        <img src="{{ asset('images/dohlogo.svg') }}" alt="DOH" class="srf-topbar-logo">
+                        <div>
+                            <h2 class="srf-topbar-title">Department of Health</h2>
+                            <p class="srf-topbar-sub">Knowledge Management and Information Technology Service</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Header with Back & Reference -->
+            <div class="srf-form-header">
+                <a href="{{ route('service-requests.track', ['reference_code' => $serviceRequest->reference_code]) }}"
+                    class="srf-header-back" title="Go Back">←</a>
+                <h1 class="srf-form-header-text">Edit Service Request</h1>
+                <div class="srf-ref-code">#{{ $serviceRequest->reference_code }}</div>
+            </div>
+
+            <form method="POST" action="{{ $signedUpdateUrl }}" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
 
-                <div class="px-4 pb-3">
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1 font-semibold">Reference Code :
-                                <span class="inline-block min-w-64 border-b border-slate-400 px-1 py-0.5 text-center">{{ $serviceRequest->reference_code }}</span>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">1) Date/Time of Request (mm/dd/yyyy h:m:s) :
-                                <div class="ms-2 inline-flex items-center gap-2 align-middle">
-                                    <input id="request_date" name="request_date" type="date" class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-400 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0" value="{{ old('request_date', optional($serviceRequest->request_date)->toDateString() ?? now()->toDateString()) }}" required>
-                                    <input name="time_received" type="time" value="{{ old('time_received', $serviceRequest->time_received) }}" class="inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-400 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                                </div>
-                                <x-input-error :messages="$errors->get('request_date')" class="mt-1" />
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="px-4 pb-3">
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="border border-slate-500 px-2 py-1">2) Request Category :
-                                <select id="request_category" name="request_category" class="inline-block align-middle min-h-0 w-[260px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] focus:outline-none focus:ring-0">
-                                    <option value="Technical Assistance" @selected(old('request_category', $serviceRequest->request_category) === 'Technical Assistance')>Technical Assistance</option>
-                                    <option value="System Access" @selected(old('request_category', $serviceRequest->request_category) === 'System Access')>System Access</option>
-                                    <option value="Network/Internet" @selected(old('request_category', $serviceRequest->request_category) === 'Network/Internet')>Network/Internet</option>
-                                    <option value="Hardware Support" @selected(old('request_category', $serviceRequest->request_category) === 'Hardware Support')>Hardware Support</option>
-                                    <option value="Software Installation" @selected(old('request_category', $serviceRequest->request_category) === 'Software Installation')>Software Installation</option>
-                                    <option value="Data Request" @selected(old('request_category', $serviceRequest->request_category) === 'Data Request')>Data Request</option>
-                                    <option value="Others" @selected(old('request_category', $serviceRequest->request_category) === 'Others')>Others</option>
-                                </select>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">3) Application System Name * : <input type="text" name="application_system_name" value="{{ old('application_system_name', $serviceRequest->application_system_name) }}" class="auth-input !inline-block !min-h-0 !w-[320px] !rounded-none !border-0 !bg-transparent px-1 py-0 text-[12px]" required></td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">4) Expected Date / Time of Completion :
-                                <input type="date" name="expected_completion_date" value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}" class="inline-block min-h-0 w-[170px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                                <input type="time" name="expected_completion_time" value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}" class="ms-2 inline-block min-h-0 w-[130px] rounded-none border-0 border-b border-slate-200 bg-transparent px-0 py-0 text-[12px] align-middle focus:outline-none focus:ring-0">
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 p-0">
-                                <table class="w-full border-collapse table-fixed text-[12px]">
-                                    <tr>
-                                        <td class="border-0 px-2 py-1" style="width:32%;">5) Name of Contact Person :</td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_last_name" value="{{ old('contact_last_name', $serviceRequest->contact_last_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" required>
-                                        </td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_first_name" value="{{ old('contact_first_name', $serviceRequest->contact_first_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]" required>
-                                        </td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input name="contact_middle_name" value="{{ old('contact_middle_name', $serviceRequest->contact_middle_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]">
-                                        </td>
-                                        <td class="border-0 border-b border-slate-400 px-1 py-1" style="width:17%;">
-                                            <input type="text" name="contact_suffix_name" value="{{ old('contact_suffix_name', $serviceRequest->contact_suffix_name) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-center text-[12px]">
-                                        </td>
-                                    </tr>
-                                    <tr>
-                                        <td class="border-0 px-2 py-1"></td>
-                                        <td class="border-0 px-1 py-1 text-center">Last Name</td>
-                                        <td class="border-0 px-1 py-1 text-center">First Name</td>
-                                        <td class="border-0 px-1 py-1 text-center">Middle Name</td>
-                                        <td class="border-0 px-1 py-1 text-center">Suffix Name</td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">6) Office :
-                                <div data-office-picker style="display: inline-block; vertical-align: top; width: calc(100% - 85px);">
-                                    <input type="hidden" id="office" name="office" value="{{ old('office', $serviceRequest->office) }}">
-                                    <div style="display: flex; align-items: center; border: 0; border-bottom: 1px solid #e2e8f0; border-radius: 0; padding: 0 2px; background: transparent; min-height: 22px;">
-                                        <div id="office_chips" style="display: flex; flex-wrap: wrap; gap: 4px; flex: 1; min-width: 0;"></div>
-                                        <input type="search" id="office_search" placeholder="Office..." autocomplete="off" style="border: none; outline: none; padding: 0 4px; flex: 1; min-width: 140px; font-size: 12px; background: transparent;">
-                                    </div>
-                                    <div id="office_results" style="display: none; border: 1px solid #ccc; max-height: 200px; overflow-y: auto; background: white; margin-top: 2px; font-size: 12px;"></div>
-                                </div>
-                                <p id="office-regcode-display" class="mt-1 text-[11px] text-slate-500"></p>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 px-2 py-1">7) Address :
-                                <input id="address" name="address" value="{{ old('address', $serviceRequest->address) }}" class="auth-input !inline-block !min-h-0 !rounded-none !border-0 !border-b !border-slate-200 !bg-transparent px-1 py-0 text-[12px]" style="width: calc(100% - 85px);" required>
-                            </td>
-                        </tr>
-                        <tr>
-                            <td class="border border-slate-400 p-0">
-                                <table class="w-full border-collapse table-fixed text-[12px]">
-                                    <tr>
-                                        <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">8) Landline :
-                                            <input name="landline" value="{{ old('landline', $serviceRequest->landline) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                                        </td>
-                                        <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">9) Fax No :
-                                            <input name="fax_no" value="{{ old('fax_no', $serviceRequest->fax_no) }}" inputmode="numeric" pattern="[0-9]*" oninput="this.value=this.value.replace(/[^0-9]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]">
-                                        </td>
-                                        <td class="border-0 border-r border-slate-400 px-2 py-1" style="width:23%;">10) Mobile No :
-                                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}" inputmode="tel" oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="tel-national" maxlength="20">
-                                        </td>
-                                        <td class="border-0 px-2 py-1" style="width:31%;">11) Email Address * :
-                                            <input type="email" name="email_address" value="{{ old('email_address', $serviceRequest->email_address) }}" class="auth-input !min-h-0 !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" autocomplete="email" required>
-                                        </td>
-                                    </tr>
-                                </table>
-                            </td>
-                        </tr>
-                    </table>
-                </div>
-
-                <div class="px-4 pb-3">
-                    <div class="border border-slate-400 border-b-4 px-2 py-1 text-[12px] font-semibold">12) DESCRIPTION OF REQUEST * : <span class="font-normal italic">(Please clearly write down the details of the request.)</span></div>
-                    <div class="border border-t-0 border-slate-400 border-b-4 px-2 py-1">
-                        <textarea name="description_request" style="height: 240px; min-height: 240px;" class="auth-input !h-[240px] !min-h-[240px] !rounded-none !border-0 !bg-transparent px-0 py-0 text-[12px]" required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
-
-                        <div class="mt-3 border-t border-slate-300 pt-2">
-                            <label for="description_photos" class="block text-[12px] font-semibold text-slate-700">Attach Photos (1 to 3)</label>
-                            <input id="description_photos" name="description_photos[]" type="file" accept="image/*" multiple class="mt-1 block w-full text-[12px] text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-800 file:px-3 file:py-1.5 file:text-[12px] file:font-medium file:text-white hover:file:bg-slate-700">
-                            <p class="mt-1 text-[11px] text-slate-500">You can upload up to 3 images. Max 5MB each.</p>
-                            <x-input-error :messages="$errors->get('description_photos')" class="mt-1" />
-                            <x-input-error :messages="$errors->get('description_photos.*')" class="mt-1" />
+                <!-- 1. Date/Time -->
+                <div class="srf-section">
+                    <h3 class="srf-section-label">1. Request Timeline</h3>
+                    <div class="srf-field-grid srf-field-grid-2">
+                        <div class="srf-field">
+                            <label class="srf-label">Date of Request<span class="srf-required">*</span></label>
+                            <input type="date" name="request_date"
+                                value="{{ old('request_date', optional($serviceRequest->request_date)->toDateString() ?? now()->toDateString()) }}"
+                                class="srf-input" required>
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">Time of Request</label>
+                            <input type="time" name="time_received"
+                                value="{{ old('time_received', $serviceRequest->time_received) }}" class="srf-input">
                         </div>
                     </div>
-                    <x-input-error :messages="$errors->get('description_request')" class="mt-1" />
                 </div>
 
-                <div class="px-4 pb-3">
-                    <table class="w-full border-collapse text-[12px] text-slate-900">
-                        <tr>
-                            <td class="w-48 border border-slate-400 px-2 py-1 font-semibold">13) APPROVED BY :</td>
-                            <td class="border border-slate-400 px-2 py-1">
-                                <div class="grid grid-cols-10 gap-3">
-                                    <div class="col-span-6">
-                                        <div class="mb-0 rounded-md border border-slate-300 bg-slate-50 p-1 pb-0">
-                                            <div class="mb-1 flex flex-wrap items-center gap-3 text-[11px] text-slate-700">
-                                                <label class="inline-flex items-center gap-1">
-                                                    <input type="radio" name="approved_by_signature_mode" value="draw" @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
-                                                    Draw Signature
-                                                </label>
-                                                <label class="inline-flex items-center gap-1">
-                                                    <input type="radio" name="approved_by_signature_mode" value="upload" @checked(old('approved_by_signature_mode') === 'upload')>
-                                                    Upload Signature
-                                                </label>
-                                            </div>
+                <!-- 2-4. Category & Completion -->
+                <div class="srf-section">
+                    <h3 class="srf-section-label">2-4. Service Details</h3>
+                    <div class="srf-field-grid">
+                        <div class="srf-field">
+                            <label class="srf-label">2. Request Category</label>
+                            <select name="request_category" class="srf-select">
+                                <option value="Technical Assistance" @selected(old('request_category', $serviceRequest->request_category) === 'Technical Assistance')>Technical Assistance
+                                </option>
+                                <option value="System Access" @selected(old('request_category', $serviceRequest->request_category) === 'System Access')>System Access</option>
+                                <option value="Network/Internet" @selected(old('request_category', $serviceRequest->request_category) === 'Network/Internet')>Network/Internet</option>
+                                <option value="Hardware Support" @selected(old('request_category', $serviceRequest->request_category) === 'Hardware Support')>Hardware Support</option>
+                                <option value="Software Installation" @selected(old('request_category', $serviceRequest->request_category) === 'Software Installation')>Software Installation
+                                </option>
+                                <option value="Data Request" @selected(old('request_category', $serviceRequest->request_category) === 'Data Request')>Data Request</option>
+                                <option value="Others" @selected(old('request_category', $serviceRequest->request_category) === 'Others')>Others</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="srf-field-grid">
+                        <div class="srf-field">
+                            <label class="srf-label">3. Application System Name<span
+                                    class="srf-required">*</span></label>
+                            <input type="text" name="application_system_name"
+                                value="{{ old('application_system_name', $serviceRequest->application_system_name) }}"
+                                class="srf-input" required>
+                        </div>
+                    </div>
+                    <div class="srf-field-grid srf-field-grid-2">
+                        <div class="srf-field">
+                            <label class="srf-label">4. Expected Completion Date</label>
+                            <input type="date" name="expected_completion_date"
+                                value="{{ old('expected_completion_date', optional($serviceRequest->expected_completion_date)->toDateString()) }}"
+                                class="srf-input">
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">Expected Completion Time</label>
+                            <input type="time" name="expected_completion_time"
+                                value="{{ old('expected_completion_time', $serviceRequest->expected_completion_time) }}"
+                                class="srf-input">
+                        </div>
+                    </div>
+                </div>
 
-                                            <div id="create-signature-draw-wrap" class="space-y-1">
-                                                <canvas id="create-signature-canvas" class="h-56 w-full rounded border border-slate-500 bg-white"></canvas>
-                                                <input type="hidden" name="approved_by_signature_drawn" id="create-signature-drawn" value="{{ old('approved_by_signature_drawn') }}">
-                                                <input type="hidden" name="approved_by_signature_clear" id="create-signature-clear-flag" value="0">
-                                                <button type="button" id="create-signature-clear" class="rounded border border-slate-300 bg-white px-2 py-1 text-[11px] font-semibold text-slate-700">Clear</button>
-                                            </div>
+                <!-- 5. Name -->
+                <div class="srf-section">
+                    <h3 class="srf-section-label">5. Contact Person</h3>
+                    <div class="srf-field-grid srf-field-grid-name">
+                        <div class="srf-field">
+                            <label class="srf-label">Last Name<span class="srf-required">*</span></label>
+                            <input type="text" name="contact_last_name"
+                                value="{{ old('contact_last_name', $serviceRequest->contact_last_name) }}"
+                                class="srf-input text-center" required>
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">First Name<span class="srf-required">*</span></label>
+                            <input type="text" name="contact_first_name"
+                                value="{{ old('contact_first_name', $serviceRequest->contact_first_name) }}"
+                                class="srf-input text-center" required>
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">Middle Name</label>
+                            <input type="text" name="contact_middle_name"
+                                value="{{ old('contact_middle_name', $serviceRequest->contact_middle_name) }}"
+                                class="srf-input text-center">
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">Suffix</label>
+                            <input type="text" name="contact_suffix_name"
+                                value="{{ old('contact_suffix_name', $serviceRequest->contact_suffix_name) }}"
+                                class="srf-input text-center">
+                        </div>
+                    </div>
+                </div>
 
-                                            <div id="create-signature-upload-wrap" class="hidden">
-                                                <input type="file" name="approved_by_signature_upload" accept="image/*" class="block w-full text-[11px] text-slate-700 file:mr-2 file:rounded-md file:border-0 file:bg-slate-800 file:px-2 file:py-1 file:text-[11px] file:font-medium file:text-white">
-                                            </div>
-
-                                            <x-input-error :messages="$errors->get('approved_by_signature_upload')" class="mt-1" />
-                                            <x-input-error :messages="$errors->get('approved_by_signature_drawn')" class="mt-1" />
-                                        </div>
-
-                                        <input name="approved_by_name" value="{{ old('approved_by_name', $serviceRequest->approved_by_name) }}" class="auth-input !-mt-2 !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
-                                        <p class="text-center">Name &amp; Signature of Head of Office</p>
-
-                                        <input name="approved_by_position" value="{{ old('approved_by_position', $serviceRequest->approved_by_position) }}" class="mt-2 auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]" required>
-                                        <p class="text-center">Position</p>
-                                    </div>
-                                    <div class="col-span-4">
-                                        <input name="approved_date" type="date" value="{{ old('approved_date', optional($serviceRequest->approved_date)->toDateString()) }}" class="auth-input !min-h-0 !rounded-none !border-0 border-b border-slate-400 !bg-transparent px-0 py-0 text-[12px]">
-                                        <p class="text-center">Date Signed</p>
-                                    </div>
+                <!-- 6-7. Office & Address -->
+                <div class="srf-section">
+                    <h3 class="srf-section-label">6-7. Location Information</h3>
+                    <div class="srf-field-grid">
+                        <div class="srf-field">
+                            <label class="srf-label">6. Office<span class="srf-required">*</span></label>
+                            <div data-office-picker style="position:relative;">
+                                <input type="hidden" id="office" name="office"
+                                    value="{{ old('office', $serviceRequest->office) }}">
+                                <div id="office_picker_root"
+                                    style="display:flex; align-items:center; border:1.5px solid #e2e8f0; border-radius:8px; padding:6px 12px; background:#fff; min-height:45px;">
+                                    <div id="office_chips" style="display:flex; flex-wrap:wrap; gap:6px; flex:1;"></div>
+                                    <input type="search" id="office_search" placeholder="Search office..."
+                                        autocomplete="off"
+                                        style="border:none; outline:none; padding:4px 0; flex:1; min-width:150px; font-size:15px; background:transparent;">
                                 </div>
-                            </td>
-                        </tr>
-                    </table>
-
-                    <input type="hidden" name="kmits_date" value="{{ old('kmits_date', optional($serviceRequest->kmits_date)->toDateString() ?? now()->toDateString()) }}">
-                    <x-input-error :messages="$errors->get('kmits_date')" class="mt-1" />
+                                <div id="office_results"
+                                    style="display:none; position:absolute; top:100%; left:0; right:0; z-index:50; border:1.5px solid #cbd5e1; border-radius:8px; background:#fff; margin-top:5px; max-height:220px; overflow-y:auto; box-shadow:0 10px 25px rgba(0,0,0,0.1);">
+                                </div>
+                            </div>
+                            <p id="office-regcode-display" style="font-size:12px; color:#64748b; margin-top:4px;"></p>
+                        </div>
+                    </div>
+                    <div class="srf-field-grid">
+                        <div class="srf-field">
+                            <label class="srf-label">7. Address<span class="srf-required">*</span></label>
+                            <input id="address" name="address" value="{{ old('address', $serviceRequest->address) }}"
+                                class="srf-input" required>
+                        </div>
+                    </div>
                 </div>
 
-                <div class="flex items-center justify-between border-t border-slate-300 bg-slate-50 px-4 py-3">
-                    <a href="{{ route('service-requests.track', ['reference_code' => $serviceRequest->reference_code]) }}" class="rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:border-slate-500">Back</a>
-                    <button type="submit" class="auth-button">Update Service Request</button>
+                <!-- 8-11. Contact Info -->
+                <div class="srf-section">
+                    <h3 class="srf-section-label">8-11. Communications</h3>
+                    <div class="srf-field-grid srf-field-grid-3">
+                        <div class="srf-field">
+                            <label class="srf-label">8. Landline</label>
+                            <input name="landline" value="{{ old('landline', $serviceRequest->landline) }}"
+                                class="srf-input">
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">9. Mobile No</label>
+                            <input name="mobile_no" value="{{ old('mobile_no', $serviceRequest->mobile_no) }}"
+                                class="srf-input">
+                        </div>
+                    </div>
+                    <div class="srf-field-grid">
+                        <div class="srf-field">
+                            <label class="srf-label">10. Email Address<span class="srf-required">*</span></label>
+                            <input type="email" name="email_address"
+                                value="{{ old('email_address', $serviceRequest->email_address) }}" class="srf-input"
+                                required>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 12. Description -->
+                <div class="srf-section">
+                    <h3 class="srf-section-label">12. Description of Request</h3>
+                    <div class="srf-field">
+                        <label class="srf-label">Details of your request<span class="srf-required">*</span></label>
+                        <textarea name="description_request" class="srf-textarea"
+                            placeholder="Please clearly write down the details..."
+                            required>{{ old('description_request', $serviceRequest->description_request) }}</textarea>
+                    </div>
+                    <div class="srf-field" style="margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">
+                        <label class="srf-label">Attach Photos (Up to 3)</label>
+                        <input type="file" name="description_photos[]" accept="image/*,application/pdf" multiple class="srf-input"
+                            style="padding:8px;">
+                        <p style="font-size:12px; color:#64748b; margin-top:4px;">You can upload up to 3 files (images or PDF). Max 5MB
+                            each.</p>
+                    </div>
+                </div>
+
+                <!-- 13. Approval -->
+                <div class="srf-section" style="padding-bottom: 24px;">
+                    <h3 class="srf-section-label">13. Head of Office Approval</h3>
+                    <p style="font-size:12px; color:#64748b; margin-bottom:12px;">Update head of office details and
+                        signature if necessary.</p>
+
+                    <div class="srf-sig-wrap">
+                        <div class="srf-sig-modes" style="margin-bottom:15px;">
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="radio" name="approved_by_signature_mode" value="draw"
+                                    @checked(old('approved_by_signature_mode', 'draw') === 'draw')>
+                                <span style="display:flex; align-items:center; gap:4px;"><svg width="14" height="14"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M12 20h9M16.5 3.5a2.121 2.121 0 013 3L7 19l-4 1 1-4L16.5 3.5z"></path>
+                                    </svg> Draw Signature</span>
+                            </label>
+                            <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+                                <input type="radio" name="approved_by_signature_mode" value="upload"
+                                    @checked(old('approved_by_signature_mode') === 'upload')>
+                                <span style="display:flex; align-items:center; gap:4px;"><svg width="14" height="14"
+                                        viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4M17 8l-5-5-5 5M12 3v12"></path>
+                                    </svg> Upload File</span>
+                            </label>
+                        </div>
+
+                        <div id="draw-wrap">
+                            <canvas id="signature-canvas" class="srf-sig-canvas"></canvas>
+                            <input type="hidden" name="approved_by_signature_drawn" id="signature-drawn"
+                                value="{{ old('approved_by_signature_drawn') }}">
+                            <div
+                                style="margin-top:10px; display:flex; justify-content:space-between; align-items:center;">
+                                <button type="button" id="signature-clear" class="srf-btn srf-btn-cancel"
+                                    style="padding:6px 16px; font-size:11px; text-transform:none;">Clear
+                                    Drawing</button>
+                                <span style="font-size:11px; color:#94a3b8; font-style:italic;">Please sign your name
+                                    clearly in the box</span>
+                            </div>
+                        </div>
+
+                        <div id="upload-wrap" class="hidden">
+                            <div
+                                style="border:2px dashed #e2e8f0; border-radius:8px; padding:20px; text-align:center; background:#fff;">
+                                <input type="file" name="approved_by_signature_upload" accept="image/*"
+                                    class="srf-input" style="border:none; background:transparent;">
+                                <p style="font-size:11px; color:#64748b; margin-top:8px;">PNG or JPEG with transparent
+                                    background preferred.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="srf-field-grid srf-field-grid-2" style="margin-top:20px;">
+                        <div class="srf-field">
+                            <label class="srf-label">Head of Office Name<span class="srf-required">*</span></label>
+                            <input type="text" name="approved_by_name"
+                                value="{{ old('approved_by_name', $serviceRequest->approved_by_name) }}"
+                                class="srf-input" placeholder="FULL NAME" required>
+                        </div>
+                        <div class="srf-field">
+                            <label class="srf-label">Position / Designation<span class="srf-required">*</span></label>
+                            <input type="text" name="approved_by_position"
+                                value="{{ old('approved_by_position', $serviceRequest->approved_by_position) }}"
+                                class="srf-input" placeholder="OFFICIAL POSITION" required>
+                        </div>
+                    </div>
+                    <div class="srf-field-grid" style="grid-template-columns: 200px 1fr;">
+                        <div class="srf-field">
+                            <label class="srf-label">Date Signed</label>
+                            <input type="date" name="approved_date"
+                                value="{{ old('approved_date', optional($serviceRequest->approved_date)->toDateString()) }}"
+                                class="srf-input">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="srf-actions">
+                    <a href="{{ route('service-requests.track', ['reference_code' => $serviceRequest->reference_code]) }}"
+                        class="srf-btn srf-btn-cancel">Cancel Changes</a>
+                    <button type="submit" class="srf-btn srf-btn-submit">Update Request Form</button>
                 </div>
             </form>
         </div>
     </div>
-    </section>
+
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            const escapePickerHtml = function (value) {
-                return String(value || '')
-                    .replace(/&/g, '&amp;')
-                    .replace(/</g, '&lt;')
-                    .replace(/>/g, '&gt;')
-                    .replace(/"/g, '&quot;')
-                    .replace(/'/g, '&#039;');
-            };
-
-            const initChipSearchPicker = function (config) {
-                const hiddenInput = document.getElementById(config.hiddenId);
-                const searchInput = document.getElementById(config.searchId);
-                const chipsContainer = document.getElementById(config.chipsId);
-                const results = document.getElementById(config.resultsId);
-                let options = Array.isArray(config.options) ? config.options : [];
-                const maxSelections = Number(config.maxSelections || 0);
-
-                if (!hiddenInput || !searchInput || !chipsContainer || !results) {
-                    return null;
-                }
-
-                let selected = [];
-
-                const normalize = function (value) {
-                    return String(value || '').trim();
-                };
-
-                const selectedKey = function (value) {
-                    return normalize(value).toLowerCase();
-                };
-
-                const syncHiddenInput = function () {
-                    hiddenInput.value = selected.join(', ');
-                    hiddenInput.dispatchEvent(new Event('input', { bubbles: true }));
-                    hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
-                    searchInput.setCustomValidity('');
-                };
-
-                const renderChips = function () {
-                    chipsContainer.innerHTML = selected.map(function (value, index) {
-                        return '<span style="display:inline-block;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding:0 4px;font-size:12px;font-weight:600;color:#0f172a;">' +
-                            escapePickerHtml(value) +
-                            '</span>';
-                    }).join('');
-
-                    searchInput.placeholder = selected.length > 0 ? '' : config.placeholder;
-                    searchInput.style.flex = selected.length > 0 ? '0 0 24px' : '1';
-                    searchInput.classList.remove('hidden');
-                };
-
-                const loadRemoteOptions = async function (query) {
-                    if (!config.searchEndpoint) {
-                        return;
-                    }
-
-                    const url = new URL(config.searchEndpoint, window.location.origin);
-                    url.searchParams.set('q', query);
-
-                    try {
-                        const response = await fetch(url.toString(), {
-                            headers: {
-                                'Accept': 'application/json',
-                                'X-Requested-With': 'XMLHttpRequest',
-                            },
-                        });
-
-                        if (!response.ok) {
-                            return;
-                        }
-
-                        const payload = await response.json();
-                        const offices = Array.isArray(payload.offices) ? payload.offices : [];
-
-                        offices.forEach(function (office) {
-                            const name = normalize(office.name || '');
-                            if (name === '') {
-                                return;
-                            }
-
-                            officeAddressMap[name] = String(office.address || '');
-                            officeRegcodeMap[name] = String(office.regcode || '');
-                        });
-
-                        options = offices
-                            .map(function (office) {
-                                return normalize(office.name || '');
-                            })
-                            .filter(function (name) {
-                                return name !== '';
-                            });
-                    } catch (error) {
-                        // Keep current options on transient failures.
-                    }
-                };
-
-                const renderResults = async function () {
-                    const query = normalize(searchInput.value);
-                    await loadRemoteOptions(query);
-
-                    const selectedKeys = selected.map(selectedKey);
-                    const matches = options
-                        .filter(function (option) {
-                            return selectedKeys.indexOf(selectedKey(option)) === -1;
-                        })
-                        .filter(function (option) {
-                            return query === '' || selectedKey(option).includes(selectedKey(query));
-                        })
-                        .slice(0, 20);
-
-                    const rows = matches.map(function (option) {
-                        return '<button type="button" data-chip-picker-option="' + escapePickerHtml(option) + '" style="display:block;width:100%;border:0;background:#fff;padding:6px 8px;text-align:left;cursor:pointer;">' +
-                            escapePickerHtml(option) +
-                            '</button>';
-                    });
-
-                    const exactMatch = options.some(function (option) {
-                        return selectedKey(option) === selectedKey(query);
-                    });
-                    const alreadySelected = selectedKeys.indexOf(selectedKey(query)) !== -1;
-
-                    if (query !== '' && !exactMatch && !alreadySelected) {
-                        rows.unshift('<button type="button" data-chip-picker-option="' + escapePickerHtml(query) + '" style="display:block;width:100%;border:0;background:#fff;padding:6px 8px;text-align:left;cursor:pointer;">Add "' + escapePickerHtml(query) + '"</button>');
-                    }
-
-                    results.innerHTML = rows.length > 0
-                        ? rows.join('')
-                        : '<div style="padding:6px 8px;color:#64748b;">No matching records.</div>';
-                    results.style.display = 'block';
-                };
-
-                const addSelection = function (value) {
-                    const normalized = normalize(value);
-                    if (normalized === '') {
-                        return;
-                    }
-
-                    if (maxSelections > 0 && selected.length >= maxSelections) {
-                        selected = [];
-                    }
-
-                    const exists = selected.some(function (item) {
-                        return selectedKey(item) === selectedKey(normalized);
-                    });
-
-                    if (!exists) {
-                        selected.push(normalized);
-                    }
-
-                    searchInput.value = '';
-                    results.style.display = 'none';
-                    syncHiddenInput();
-                    renderChips();
-                };
-
-                const removeSelection = function (index) {
-                    selected.splice(index, 1);
-                    syncHiddenInput();
-                    renderChips();
-                    renderResults();
-                    searchInput.focus();
-                };
-
-                const setFromHiddenInput = function () {
-                    selected = hiddenInput.value
-                        .split(',')
-                        .map(normalize)
-                        .filter(function (value, index, items) {
-                            return value !== '' && items.findIndex(function (item) {
-                                return selectedKey(item) === selectedKey(value);
-                            }) === index;
-                        });
-
-                    syncHiddenInput();
-                    renderChips();
-                };
-
-                searchInput.addEventListener('input', renderResults);
-                searchInput.addEventListener('focus', renderResults);
-                searchInput.addEventListener('keydown', function (event) {
-                    if (event.key !== 'Enter') {
-                        return;
-                    }
-
-                    event.preventDefault();
-                    const firstOption = results.querySelector('[data-chip-picker-option]');
-                    addSelection(firstOption ? firstOption.getAttribute('data-chip-picker-option') : searchInput.value);
-                });
-
-                results.addEventListener('mousedown', function (event) {
-                    event.preventDefault();
-                });
-
-                results.addEventListener('click', function (event) {
-                    const option = event.target.closest('[data-chip-picker-option]');
-                    if (!option) {
-                        return;
-                    }
-
-                    addSelection(option.getAttribute('data-chip-picker-option'));
-                });
-
-                chipsContainer.addEventListener('click', function (event) {
-                    const removeButton = event.target.closest('[data-chip-picker-remove]');
-                    if (!removeButton) {
-                        return;
-                    }
-
-                    removeSelection(Number(removeButton.getAttribute('data-chip-picker-remove')));
-                });
-
-                document.addEventListener('click', function (event) {
-                    if (event.target.closest(config.rootSelector)) {
-                        return;
-                    }
-
-                    results.style.display = 'none';
-                });
-
-                setFromHiddenInput();
-
-                return {
-                    setFromHiddenInput: setFromHiddenInput,
-                    setOptions: function (nextOptions) {
-                        options = Array.isArray(nextOptions) ? nextOptions : [];
-                        renderResults();
-                    },
-                };
-            };
-
-            // Initialize office chip picker
-            const officeOptions = [];
-            const officeAddressMap = {};
-            const officeRegcodeMap = {};
-            const officeSearchEndpoint = @json(route('offices.search'));
-            const currentOffice = @json(old('office', $serviceRequest->office ?? ''));
-            
-            const officePicker = initChipSearchPicker({
-                hiddenId: 'office',
-                searchId: 'office_search',
-                chipsId: 'office_chips',
-                resultsId: 'office_results',
-                rootSelector: '[data-office-picker]',
-                options: officeOptions,
-                searchEndpoint: officeSearchEndpoint,
-                placeholder: 'Office',
-                requiredMessage: 'Please select an office.',
-                maxSelections: 1,
-            });
-
-            // Sync address and regcode when office changes
-            const officeInput = document.getElementById('office');
-            const addressInput = document.getElementById('address');
-            
-            const syncOfficeDetails = function () {
-                const selectedOffice = officeInput.value.trim();
-                
-                if (selectedOffice && officeAddressMap[selectedOffice]) {
-                    addressInput.value = officeAddressMap[selectedOffice];
-                }
-                
+            // Office Picker Logic
+            const initOfficePicker = function () {
+                const hiddenInput = document.getElementById('office');
+                const searchInput = document.getElementById('office_search');
+                const chipsContainer = document.getElementById('office_chips');
+                const resultsContainer = document.getElementById('office_results');
+                const addressInput = document.getElementById('address');
                 const regcodeDisplay = document.getElementById('office-regcode-display');
-                if (regcodeDisplay && selectedOffice && officeRegcodeMap[selectedOffice]) {
-                    regcodeDisplay.textContent = 'Regional Hospital / Health Facility Code (for reference): ' + officeRegcodeMap[selectedOffice];
-                }
+
+                let selected = hiddenInput.value ? [hiddenInput.value] : [];
+                let officeDataMap = {};
+
+                const renderChips = () => {
+                    chipsContainer.innerHTML = selected.map(val => `
+                        <div style="background:#f1f5f9; border:1px solid #cbd5e1; border-radius:4px; padding:4px 10px; display:flex; align-items:center; gap:8px; font-size:14px; font-weight:700; color:#0f172a;">
+                            ${val}
+                            <button type="button" data-remove="${val}" style="border:none; background:transparent; color:#94a3b8; cursor:pointer; font-size:18px; line-height:1;">&times;</button>
+                        </div>
+                    `).join('');
+                    searchInput.placeholder = selected.length ? '' : 'Search for your office...';
+                    searchInput.style.display = selected.length ? 'none' : 'block';
+                };
+
+                const fetchOffices = async (query) => {
+                    try {
+                        const response = await fetch(\`{{ route('offices.search') }}?q=\${encodeURIComponent(query)}\`);
+                        const data = await response.json();
+                        return data.offices || [];
+                    } catch (err) { return []; }
+                };
+
+                searchInput.addEventListener('input', async (e) => {
+                    const query = e.target.value.trim();
+                    if (query.length < 2) { resultsContainer.style.display = 'none'; return; }
+                    
+                    const offices = await fetchOffices(query);
+                    resultsContainer.innerHTML = offices.map(o => {
+                        officeDataMap[o.name] = o;
+                        return \`<div data-office="\${o.name}" style="padding:12px; cursor:pointer; border-bottom:1px solid #f1f5f9; font-size:14px; transition:background 0.2s;">
+                            <div style="font-weight:700; color:#1e293b;">\${o.name}</div>
+                            <div style="font-size:12px; color:#64748b; margin-top:2px;">\${o.address || 'No address listed'}</div>
+                        </div>\`;
+                    }).join('');
+                    
+                    resultsContainer.querySelectorAll('div[data-office]').forEach(div => {
+                        div.addEventListener('mouseenter', () => div.style.background = '#f8fafc');
+                        div.addEventListener('mouseleave', () => div.style.background = '#fff');
+                    });
+                    
+                    resultsContainer.style.display = offices.length ? 'block' : 'none';
+                });
+
+                resultsContainer.addEventListener('click', (e) => {
+                    const row = e.target.closest('[data-office]');
+                    if (!row) return;
+                    const name = row.dataset.office;
+                    const data = officeDataMap[name];
+                    
+                    selected = [name];
+                    hiddenInput.value = name;
+                    if (data && data.address) addressInput.value = data.address;
+                    if (data && data.regcode) regcodeDisplay.textContent = 'Regional / Facility Code: ' + data.regcode;
+                    
+                    searchInput.value = '';
+                    resultsContainer.style.display = 'none';
+                    renderChips();
+                });
+
+                chipsContainer.addEventListener('click', (e) => {
+                    const btn = e.target.closest('[data-remove]');
+                    if (!btn) return;
+                    selected = [];
+                    hiddenInput.value = '';
+                    renderChips();
+                    searchInput.focus();
+                });
+
+                document.addEventListener('click', (e) => {
+                    if (!e.target.closest('[data-office-picker]')) resultsContainer.style.display = 'none';
+                });
+
+                if (selected.length) renderChips();
             };
-            
-            // Observe changes to office input
-            if (officeInput) {
-                const observer = new MutationObserver(syncOfficeDetails);
-                observer.observe(officeInput, { attributes: true, attributeFilter: ['value'] });
-                
-                officeInput.addEventListener('change', syncOfficeDetails);
-            }
-            
-            // Initial sync if there's an existing office
-            if (currentOffice) {
-                syncOfficeDetails();
-            }
 
-            const initSignatureInput = function () {
+            // Signature Logic
+            const initSignature = function() {
+                const canvas = document.getElementById('signature-canvas');
+                const hidden = document.getElementById('signature-drawn');
                 const modeInputs = document.querySelectorAll('input[name="approved_by_signature_mode"]');
-                const drawWrap = document.getElementById('create-signature-draw-wrap');
-                const uploadWrap = document.getElementById('create-signature-upload-wrap');
-                const canvas = document.getElementById('create-signature-canvas');
-                const hiddenDrawn = document.getElementById('create-signature-drawn');
-                const clearFlag = document.getElementById('create-signature-clear-flag');
-                const clearBtn = document.getElementById('create-signature-clear');
-
-                if (!drawWrap || !uploadWrap || !canvas || !hiddenDrawn) {
-                    return;
-                }
-
+                const drawWrap = document.getElementById('draw-wrap');
+                const uploadWrap = document.getElementById('upload-wrap');
+                const clearBtn = document.getElementById('signature-clear');
+                
+                if (!canvas) return;
                 const ctx = canvas.getContext('2d');
-                if (!ctx) {
-                    return;
-                }
+                let drawing = false;
 
-                const getCenteredSignatureDataUrl = function () {
-                    const width = canvas.width;
-                    const height = canvas.height;
-                    const imageData = ctx.getImageData(0, 0, width, height);
-                    const data = imageData.data;
-
-                    let minX = width;
-                    let minY = height;
-                    let maxX = -1;
-                    let maxY = -1;
-
-                    for (let y = 0; y < height; y++) {
-                        for (let x = 0; x < width; x++) {
-                            const alpha = data[(y * width + x) * 4 + 3];
-                            if (alpha > 0) {
-                                if (x < minX) minX = x;
-                                if (y < minY) minY = y;
-                                if (x > maxX) maxX = x;
-                                if (y > maxY) maxY = y;
-                            }
-                        }
-                    }
-
-                    if (maxX < minX || maxY < minY) {
-                        return '';
-                    }
-
-                    const cropWidth = maxX - minX + 1;
-                    const cropHeight = maxY - minY + 1;
-
-                    const targetCanvas = document.createElement('canvas');
-                    targetCanvas.width = width;
-                    targetCanvas.height = height;
-
-                    const targetCtx = targetCanvas.getContext('2d');
-                    if (!targetCtx) {
-                        return canvas.toDataURL('image/png');
-                    }
-
-                    const scale = Math.min((width * 0.9) / cropWidth, (height * 0.8) / cropHeight, 1);
-                    const drawWidth = cropWidth * scale;
-                    const drawHeight = cropHeight * scale;
-                    const drawX = (width - drawWidth) / 2;
-                    const drawY = (height - drawHeight) / 2;
-
-                    targetCtx.clearRect(0, 0, width, height);
-                    targetCtx.drawImage(
-                        canvas,
-                        minX,
-                        minY,
-                        cropWidth,
-                        cropHeight,
-                        drawX,
-                        drawY,
-                        drawWidth,
-                        drawHeight
-                    );
-
-                    return targetCanvas.toDataURL('image/png');
-                };
-
-                const syncHiddenSignature = function () {
-                    const centeredSignature = getCenteredSignatureDataUrl();
-                    hiddenDrawn.value = centeredSignature;
-
-                    if (clearFlag && centeredSignature !== '') {
-                        clearFlag.value = '0';
-                    }
-                };
-
-                const resizeCanvas = function () {
+                const resize = () => {
                     const ratio = window.devicePixelRatio || 1;
-                    const rect = canvas.getBoundingClientRect();
-                    canvas.width = Math.max(1, Math.floor(rect.width * ratio));
-                    canvas.height = Math.max(1, Math.floor(rect.height * ratio));
-                    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-                    ctx.lineWidth = 2;
+                    const w = canvas.offsetWidth;
+                    const h = canvas.offsetHeight;
+                    canvas.width = w * ratio;
+                    canvas.height = h * ratio;
+                    ctx.scale(ratio, ratio);
+                    ctx.lineWidth = 2.5;
                     ctx.lineCap = 'round';
                     ctx.strokeStyle = '#0f172a';
                 };
 
-                resizeCanvas();
-                window.addEventListener('resize', resizeCanvas);
-
-                if (hiddenDrawn.value) {
-                    const img = new Image();
-                    img.onload = function () {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
-                    };
-                    img.src = hiddenDrawn.value;
-                }
-
-                let drawing = false;
-
-                const pointFromEvent = function (event) {
+                const getPoint = (e) => {
                     const rect = canvas.getBoundingClientRect();
-                    const source = event.touches ? event.touches[0] : event;
-                    return {
-                        x: source.clientX - rect.left,
-                        y: source.clientY - rect.top,
-                    };
+                    const s = e.touches ? e.touches[0] : e;
+                    return { x: s.clientX - rect.left, y: s.clientY - rect.top };
                 };
 
-                const start = function (event) {
-                    drawing = true;
-                    const point = pointFromEvent(event);
-                    ctx.beginPath();
-                    ctx.moveTo(point.x, point.y);
-                    event.preventDefault();
-                };
+                const start = (e) => { drawing = true; ctx.beginPath(); const p = getPoint(e); ctx.moveTo(p.x, p.y); e.preventDefault(); };
+                const move = (e) => { if (!drawing) return; const p = getPoint(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault(); };
+                const end = () => { if (drawing) hidden.value = canvas.toDataURL(); drawing = false; };
 
-                const move = function (event) {
-                    if (!drawing) {
-                        return;
-                    }
-
-                    const point = pointFromEvent(event);
-                    ctx.lineTo(point.x, point.y);
-                    ctx.stroke();
-                    event.preventDefault();
-                };
-
-                const end = function () {
-                    if (drawing) {
-                        syncHiddenSignature();
-                    }
-                    drawing = false;
-                };
+                resize();
+                window.addEventListener('resize', resize);
 
                 canvas.addEventListener('mousedown', start);
                 canvas.addEventListener('mousemove', move);
                 window.addEventListener('mouseup', end);
-                canvas.addEventListener('touchstart', start, { passive: false });
-                canvas.addEventListener('touchmove', move, { passive: false });
+                canvas.addEventListener('touchstart', start, {passive:false});
+                canvas.addEventListener('touchmove', move, {passive:false});
                 canvas.addEventListener('touchend', end);
 
-                if (clearBtn) {
-                    clearBtn.addEventListener('click', function () {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        hiddenDrawn.value = '';
-                        if (clearFlag) {
-                            clearFlag.value = '1';
-                        }
-                    });
-                }
+                clearBtn.addEventListener('click', () => { ctx.clearRect(0,0,canvas.width,canvas.height); hidden.value = ''; });
 
-                const syncMode = function () {
-                    const selected = document.querySelector('input[name="approved_by_signature_mode"]:checked');
-                    const mode = selected ? selected.value : 'draw';
-                    drawWrap.classList.toggle('hidden', mode !== 'draw');
-                    uploadWrap.classList.toggle('hidden', mode !== 'upload');
+                modeInputs.forEach(input => input.addEventListener('change', (e) => {
+                    const isDraw = e.target.value === 'draw';
+                    drawWrap.classList.toggle('hidden', !isDraw);
+                    uploadWrap.classList.toggle('hidden', isDraw);
+                }));
 
-                    if (mode === 'upload' && clearFlag) {
-                        clearFlag.value = '0';
-                    }
-                };
-
-                modeInputs.forEach(function (input) {
-                    input.addEventListener('change', syncMode);
-                });
-                syncMode();
-
-                const form = canvas.closest('form');
-                if (form) {
-                    form.addEventListener('submit', function () {
-                        const selected = document.querySelector('input[name="approved_by_signature_mode"]:checked');
-                        const mode = selected ? selected.value : 'draw';
-                        if (mode === 'draw') {
-                            syncHiddenSignature();
-                        }
-                    });
+                // Load existing signature if any
+                if (hidden.value) {
+                    const img = new Image();
+                    img.onload = () => ctx.drawImage(img, 0, 0, canvas.width / (window.devicePixelRatio || 1), canvas.height / (window.devicePixelRatio || 1));
+                    img.src = hidden.value;
                 }
             };
 
-            initSignatureInput();
+            initOfficePicker();
+            initSignature();
         });
     </script>
 </x-guest-layout>

@@ -92,17 +92,17 @@
             </td>
         </tr>
         <tr>
-            <td>
-                <span class="label">Landline</span>
+            <td style="width: 33%;">
+                <span class="label">6. Landline</span>
                 <div class="value">{{ $serviceRequest->landline ?: '-' }}</div>
             </td>
-            <td>
-                <span class="label">Fax No.</span>
-                <div class="value">{{ $serviceRequest->fax_no ?: '-' }}</div>
-            </td>
-            <td>
-                <span class="label">Mobile No.</span>
+            <td style="width: 33%;">
+                <span class="label">7. Mobile No.</span>
                 <div class="value">{{ $serviceRequest->mobile_no }}</div>
+            </td>
+            <td style="width: 34%;">
+                <span class="label">8. Email</span>
+                <div class="value">{{ $serviceRequest->email ?: '-' }}</div>
             </td>
         </tr>
     </table>

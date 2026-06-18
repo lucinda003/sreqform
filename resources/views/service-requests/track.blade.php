@@ -264,6 +264,60 @@
         font-size: 13px;
     }
 
+    .trk-activity-wrap {
+        margin: -0.35rem 0 1.2rem;
+    }
+    .trk-activity-card {
+        background: #ffffff;
+        border: 1px solid rgba(15,118,110,0.16);
+        border-radius: 0.75rem;
+        padding: 0.95rem 1.1rem;
+        box-shadow: 0 8px 20px rgba(15,23,42,0.05);
+    }
+    .trk-activity-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 0.8rem;
+        margin-bottom: 0.45rem;
+    }
+    .trk-activity-title {
+        margin: 0;
+        font-size: 12px;
+        font-weight: 800;
+        letter-spacing: 0.08em;
+        text-transform: uppercase;
+        color: #0f766e;
+    }
+    .trk-activity-state {
+        color: #64748b;
+        font-size: 11px;
+        white-space: nowrap;
+    }
+    .trk-activity-item {
+        border-top: 1px solid rgba(15,118,110,0.12);
+        padding-top: 0.65rem;
+        margin-top: 0.65rem;
+    }
+    .trk-activity-item:first-of-type {
+        border-top: 0;
+        padding-top: 0;
+        margin-top: 0;
+    }
+    .trk-activity-text {
+        margin: 0;
+        color: #1e293b;
+        font-size: 14px;
+        line-height: 1.5;
+        white-space: pre-wrap;
+    }
+    .trk-activity-meta,
+    .trk-activity-empty {
+        margin: 0.45rem 0 0;
+        color: #64748b;
+        font-size: 12px;
+    }
+
     .trk-status-badge {
         font-size: 1.35rem;
         font-weight: 700;
@@ -689,6 +743,7 @@
     class="trk-wrap"
     data-track-access-expires-at="{{ $trackAccessExpiresAt ?? '' }}"
     data-track-reference-code="{{ $serviceRequest?->reference_code ?? '' }}"
+    data-track-activity-endpoint="{{ $serviceRequest ? route('service-requests.track.activity', ['referenceCode' => $serviceRequest->reference_code]) : '' }}"
 >
     @php
         $trackTab = strtolower((string) request()->query('tab'));
@@ -849,6 +904,12 @@
                 @endphp
 
                 <div class="trk-status-card">
+                    <div data-track-status-summary>
+                        @include('service-requests.partials.track-status-summary', [
+                            'serviceRequest' => $serviceRequest,
+                        ])
+                    </div>
+                    <div class="hidden" aria-hidden="true">
                     <h2 class="trk-ref-title">REQUEST TRACKING STATUS</h2>
                     <p class="trk-ref-code">REFERENCE CODE NUMBER: {{ $serviceRequest->reference_code }}</p>
 
@@ -930,6 +991,8 @@
                         @endforeach
                     </div>
 
+                    </div>
+
                     {{-- Detail box --}}
                     <div class="trk-detail-box">
                         <div class="trk-detail-row">
@@ -964,6 +1027,12 @@
                         @endif
                     </div>
 
+                    <div class="trk-activity-wrap" data-track-activity-wrap>
+                        @include('service-requests.partials.track-activity', [
+                            'actionUpdates' => $trackActionUpdates ?? [],
+                        ])
+                    </div>
+
                     {{-- Action bar --}}
                     <div class="trk-action-bar">
                         <a href="{{ route('service-requests.track') }}" class="trk-btn trk-btn-back">← Back</a>
@@ -990,9 +1059,10 @@
                                     </span>
                                 </button>
                             @endif
+
                             <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" data-track-print-button data-track-print-url="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" class="trk-btn trk-btn-print">
                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="12" height="5" rx="1"/><path d="M4 7H2a1 1 0 00-1 1v6a1 1 0 001 1h2v3h12v-3h2a1 1 0 001-1V8a1 1 0 00-1-1h-2"/></svg>
-                                Print Status Report
+                                Print Request Form
                             </a>
                         </div>
                     </div>
@@ -1111,6 +1181,7 @@
         const trackWrap = document.querySelector('.trk-wrap');
         const trackBaseUrl = '{{ route('service-requests.track') }}';
         const trackReferenceCode = trackWrap ? String(trackWrap.dataset.trackReferenceCode || '') : '';
+        const trackActivityEndpoint = trackWrap ? String(trackWrap.dataset.trackActivityEndpoint || '') : '';
         const trackAccessExpiry = trackWrap ? Number(trackWrap.dataset.trackAccessExpiresAt || '') : 0;
         const chatForms = document.querySelectorAll('[data-chat-enter-form]');
         const chatWidget = document.querySelector('[data-chat-widget]');
@@ -1484,6 +1555,49 @@
                 .replace(/"/g, '&quot;')
                 .replace(/'/g, '&#039;');
         };
+
+        const initTrackActivityPolling = function () {
+            const activityWrap = document.querySelector('[data-track-activity-wrap]');
+            const statusSummary = document.querySelector('[data-track-status-summary]');
+            if ((!activityWrap && !statusSummary) || trackActivityEndpoint === '') {
+                return;
+            }
+
+            const pollActivity = async function () {
+                try {
+                    const endpoint = trackActivityEndpoint + (trackActivityEndpoint.includes('?') ? '&' : '?') + '_=' + Date.now();
+                    const response = await fetch(endpoint, {
+                        cache: 'no-store',
+                        credentials: 'same-origin',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest',
+                        },
+                    });
+
+                    if (!response.ok) {
+                        return;
+                    }
+
+                    const payload = await response.json();
+                    if (statusSummary && typeof payload.status_html === 'string' && payload.status_html.trim() !== '') {
+                        statusSummary.innerHTML = payload.status_html;
+                    }
+                    if (typeof payload.html === 'string' && payload.html.trim() !== '') {
+                        if (activityWrap) {
+                            activityWrap.innerHTML = payload.html;
+                        }
+                    }
+                } catch (error) {
+                    // Keep current activity content if background refresh fails.
+                }
+            };
+
+            pollActivity();
+            window.setInterval(pollActivity, 4000);
+        };
+
+        initTrackActivityPolling();
 
         chatForms.forEach(function (form) {
             const textarea = form.querySelector('textarea[name="message"]');

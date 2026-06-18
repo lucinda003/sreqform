@@ -7,6 +7,7 @@
     <style>
         @page {
             size: A4;
+            padding-top: 50px;
             margin: 4mm;
         }
 
@@ -576,7 +577,7 @@
             .reference-code { display: inline-block; min-width: auto; border-bottom: 1px solid #111827; text-align: center; font-size: 20px; font-weight: 700; }
             .reference-wrap { width: 100%; margin-left: 0; margin-top: 7px; display: flex; align-items: center; gap: 5px; justify-content: flex-end; flex-wrap: nowrap; }
             .datetime-line, .datetime-value { font-size: 15px; }
-            .datetime-wrap { width: 100%; margin-left: 330px; margin-top: 7px; display: flex; align-items: center; gap: 5px; }
+            .datetime-wrap { width: 100%; margin-left: 380px; margin-top: 7px; display: flex; align-items: center; gap: 5px; }
             .datetime-line { margin-top: 0; font-size: 12px; margin-bottom: 1px; }
             .datetime-value { width: auto; display: block; border-bottom: 1px solid #111827; text-align: center; font-weight: 700; }
             .desc-title { font-size: 13px; }
@@ -698,14 +699,12 @@
         </div>
 
         <table style="margin-top:8px;">
-            <tr><td>2) Request Category : {{ data_get($serviceRequest, 'request_category', '') }}</td></tr>
-            <tr><td>3) Application System Name : {{ data_get($serviceRequest, 'application_system_name', '') }}</td></tr>
-            <tr><td>4) Expected Date / Time of Completion : {{ optional($serviceRequest->expected_completion_date)->format('m/d/Y') }}{{ $serviceRequest->expected_completion_date && $serviceRequest->expected_completion_time ? ' - ' : '' }}{{ $formatClock($serviceRequest->expected_completion_time) }}</td></tr>
+            <tr><td>2) Application System Name : {{ data_get($serviceRequest, 'application_system_name', '') }}</td></tr>
             <tr>
                 <td style="padding:0;">
                     <table style="width:95%; border-collapse:collapse; table-layout:fixed; border:0;">
                         <tr>
-                            <td class="noborder" style="width:31%; padding:4px 6px; vertical-align:top;">5) Name of Contact Person :</td>
+                            <td class="noborder" style="width:31%; padding:4px 6px; vertical-align:top;">3) Name of Contact Person :</td>
                             <td class="noborder center" style="width:17%; border-bottom:1px solid #111827 !important;">{{ $serviceRequest->contact_last_name }}</td>
                             <td class="noborder center" style="width:17%; border-bottom:1px solid #111827 !important;">{{ $serviceRequest->contact_first_name }}</td>
                             <td class="noborder center" style="width:17%; border-bottom:1px solid #111827 !important;">{{ $serviceRequest->contact_middle_name ?: '' }}</td>
@@ -721,16 +720,15 @@
                     </table>
                 </td>
             </tr>
-            <tr><td>6) Office : {{ $serviceRequest->office }}</td></tr>
-            <tr><td>7) Address : {{ $serviceRequest->address }}</td></tr>
+            <tr><td>4) Office : {{ $serviceRequest->office }}</td></tr>
+            <tr><td>5) Address : {{ $serviceRequest->address }}</td></tr>
             <tr>
                 <td style="padding:0;">
                     <table style="width:100%; border-collapse:collapse; table-layout:fixed; border:0;">
                         <tr>
-                            <td class="noborder" style="width:25%; border-right:1px solid #111827 !important; padding:6px;">8) Landline : {{ $serviceRequest->landline ?: '' }}</td>
-                            <td class="noborder" style="width:23%; border-right:1px solid #111827 !important; padding:8px;">9) Fax No : {{ $serviceRequest->fax_no ?: '' }}</td>
-                            <td class="noborder" style="width:23%; border-right:1px solid #111827 !important; padding:8px;">10) Mobile No : {{ $serviceRequest->mobile_no ?: '' }}</td>
-                            <td class="noborder" style="width:29%; padding:8px;">11) Email Address : {{ data_get($serviceRequest, 'email_address', '') }}</td>
+                            <td class="noborder" style="width:33%; border-right:1px solid #111827 !important; padding:6px;">6) Landline : {{ $serviceRequest->landline ?: '' }}</td>
+                            <td class="noborder" style="width:33%; border-right:1px solid #111827 !important; padding:8px;">7) Mobile No : {{ $serviceRequest->mobile_no ?: '' }}</td>
+                            <td class="noborder" style="width:34%; padding:8px;">8) Email Address : {{ data_get($serviceRequest, 'email_address', '') }}</td>
                         </tr>
                     </table>
                 </td>
@@ -738,7 +736,7 @@
         </table>
 
         <div class="desc-title">
-            12) <span class="bold">DESCRIPTION OF REQUEST</span> : <span style="font-style:italic;">(Please clearly write down the details of the request.)</span>
+            9) <span class="bold">DESCRIPTION OF REQUEST</span> : <span style="font-style:italic;">(Please clearly write down the details of the request.)</span>
         </div>
         @php
             $descriptionPreview = \Illuminate\Support\Str::limit((string) $serviceRequest->description_request, 1800, '...');
@@ -752,53 +750,57 @@
 
         <table style="margin-top:0;">
             <tr>
-                <td style="width:180px; border-right:0; font-size: 16px;" class="bold">13) APPROVED BY :</td>
-                <td style="padding:0 10px 6px; border-left:0;">
-                    <div style="display:flex; gap:16px; align-items:flex-end;">
-                        <div style="flex:1;">
-                            <div style="min-height:56px; margin-top:4px;">
-                                @php
-                                    $approvedSignatureUrl = trim((string) ($serviceRequest->approved_by_signature ?? '')) !== ''
-                                        ? route('service-requests.signature.approved', [
-                                            'serviceRequest' => $serviceRequest,
-                                            'reference_code' => $serviceRequest->reference_code,
-                                            'token' => (string) ($signatureViewToken ?? ''),
-                                        ])
-                                        : '';
-                                @endphp
-                                @if ($approvedSignatureUrl !== '')
-                                    <img src="{{ $approvedSignatureUrl }}" alt="Signature" style="max-height:60px; max-width:220px; object-fit:contain; display:block; margin:0 auto; margin-bottom:-10px; user-select:none; -webkit-user-drag:none;">
-                                @endif
-                                <div class="line-value center" style="margin-top:0; min-height:16px; padding-left:0; padding-right:0;">{{ \Illuminate\Support\Str::limit((string) $serviceRequest->approved_by_name, 90, '...') }}</div>
+                <td colspan="2" style="padding:2px 6px;">
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <span class="bold" style="font-size:16px; white-space:nowrap; padding-top:4px;">10) APPROVED BY:</span>
+                        <div style="flex:1; display:flex; gap:30px; align-items:flex-end;">
+                            <div style="flex:1; text-align:center;">
+                                <div style="min-height:56px; margin-top:4px;">
+                                    @php
+                                        $approvedSignatureUrl = trim((string) ($serviceRequest->approved_by_signature ?? '')) !== ''
+                                            ? route('service-requests.signature.approved', [
+                                                'serviceRequest' => $serviceRequest,
+                                                'reference_code' => $serviceRequest->reference_code,
+                                                'token' => (string) ($signatureViewToken ?? ''),
+                                            ])
+                                            : '';
+                                    @endphp
+                                    @if ($approvedSignatureUrl !== '')
+                                        <img src="{{ $approvedSignatureUrl }}" alt="Signature" style="max-height:60px; max-width:220px; object-fit:contain; display:block; margin:0 auto; margin-bottom:-10px; user-select:none; -webkit-user-drag:none;">
+                                    @endif
+                                    <div class="line-value center" style="margin-top:0; min-height:16px; padding-left:0; padding-right:0;">{{ \Illuminate\Support\Str::limit((string) $serviceRequest->approved_by_name, 90, '...') }}</div>
+                                </div>
+                                <div class="line-caption">Name &amp; Signature of Head of Office</div>
+                                <div style="margin-top:8px;" class="line-value center">{{ \Illuminate\Support\Str::limit((string) $serviceRequest->approved_by_position, 80, '...') }}</div>
+                                <div class="line-caption">Position</div>
                             </div>
-                            <div class="line-caption">Name &amp; Signature of Head of Office</div>
-                            <div style="margin-top:8px;" class="line-value center">{{ \Illuminate\Support\Str::limit((string) $serviceRequest->approved_by_position, 80, '...') }}</div>
-                            <div class="line-caption">Position</div>
-                        </div>
-                        <div style="width:38%;">
-                            <div class="line-value center" style="margin-top:36px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
-                            <div class="line-caption">Date Signed</div>
+                            <div style="flex:0 0 200px; text-align:center;">
+                                <div class="line-value center" style="margin-top:36px;">{{ optional($serviceRequest->approved_date)->format('m/d/Y') }}</div>
+                                <div class="line-caption">Date Signed</div>
+                            </div>
                         </div>
                     </div>
                 </td>
             </tr>
             <tr><td colspan="2" class="center bold" style="padding:2px 6px;">(For Knowledge Management and Information Technology Service only)</td></tr>
-            <tr><td colspan="2" class="bold">14) ACTION TAKEN <span style="font-style:italic; font-weight:400;">(Use separate sheet if necessary)</span></td></tr>
+            <tr>
+                <td class="bold" style="padding:2px 6px; width:50%; border-right:none;">
+                    11. Date Received (mm/dd/yyyy): <span style="text-decoration:underline; padding-right:10px;">{{ optional($serviceRequest->received_at)->format('m/d/Y') ?: '________________' }}</span>
+                </td>
+                <td class="bold" style="padding:2px 6px; width:50%; border-left:none;">
+                    12. Time Received (hh:mm): <span style="text-decoration:underline; padding-right:10px;">{{ optional($serviceRequest->received_at)->format('g:i A') ?: '________' }}</span>
+                </td>
+            </tr>
+            <tr><td colspan="2" class="bold" style="padding:2px 6px;">13. ACTIONS TAKEN: <span style="font-style:italic; font-weight:400;">(Use separate sheet if necessary)</span></td></tr>
         </table>
 
         <table style="table-layout: fixed;">
             <tr class="center">
-                <td colspan="2" style="width:190px;">Received</td>
-                <td colspan="4">Action</td>
-                <td rowspan="2" style="width:90px; vertical-align:middle;">Signature<br><span class="tiny">(g)</span></td>
-            </tr>
-            <tr class="center">
-                <td style="width:95px;">Date<br><span class="tiny">(a)</span></td>
-                <td style="width:95px;">Time<br><span class="tiny">(b)</span></td>
-                <td style="width:95px;">Date<br><span class="tiny">(c)</span></td>
-                <td style="width:95px;">Time<br><span class="tiny">(d)</span></td>
-                <td style="width:120px;">Taken<br><span class="tiny">(e)</span></td>
-                <td style="width:120px;">Officer<br><span class="tiny">(f)</span></td>
+                <td style="width:95px;">DATE<br><span class="tiny">(a)</span></td>
+                <td style="width:95px;">TIME<br><span class="tiny">(b)</span></td>
+                <td style="width:140px;">ACTION TAKEN<br><span class="tiny">(c)</span></td>
+                <td style="width:120px;">ACTION OFFICER<br><span class="tiny">(d)</span></td>
+                <td style="width:90px;">SIGNATURE<br><span class="tiny">(e)</span></td>
             </tr>
             @php
                 $logs = $serviceRequest->action_logs ?? [];
@@ -813,8 +815,6 @@
             @endphp
             @for ($i = 0; $i < 5; $i++)
                 <tr class="action-row">
-                    <td>{{ data_get($logs, $i . '.date', '') }}</td>
-                    <td>{{ $formatLogTime(data_get($logs, $i . '.time', '')) }}</td>
                     <td>{{ data_get($logs, $i . '.action_date', '') }}</td>
                     <td>{{ $formatLogTime(data_get($logs, $i . '.action_time', '')) }}</td>
                     <td>{{ (string) data_get($logs, $i . '.action_taken', '') }}</td>
@@ -838,9 +838,9 @@
 
         <table>
             <tr>
-                <td style="width:34%; border-bottom:0 !important;">15) NOTED BY :</td>
+                <td style="width:34%; border-bottom:0 !important;">14) NOTED BY :</td>
+                <td style="width:33%; border-bottom:0 !important;">15)</td>
                 <td style="width:33%; border-bottom:0 !important;">16)</td>
-                <td style="width:33%; border-bottom:0 !important;">17)</td>
             </tr>
             @php
                 $notedSignatureRaw = trim((string) ($serviceRequest->noted_by_signature ?? ''));
@@ -851,7 +851,7 @@
             <tr>
                 <td style="padding:1px 6px; border-top:0 !important;">
                     <div class="line-value2 center">{{ \Illuminate\Support\Str::limit((string) ($serviceRequest->noted_by_name ?: ''), 70, '...') }}</div>
-                    <div class="center" style="padding-top:1px;">Name of Supervisor</div>
+                    <div class="center" style="padding-top:1px;">Name and Signature of Supervisor</div>
                 </td>
                 <td style="padding:1px 6px; border-top:0 !important;">
                     <div class="line-value2 center">{{ \Illuminate\Support\Str::limit((string) ($serviceRequest->noted_by_position ?: ''), 60, '...') }}</div>
@@ -1650,13 +1650,30 @@
             // Load persisted signatures from backend
             if (typeof window.__persistedSignatures === 'object' && window.__persistedSignatures) {
                 const currentUserId = parseInt(window.__persistedSignatures.currentUserId ?? 0, 10) || 0;
+                console.log(' Current User ID:', currentUserId);
+                
                 const persistedActions = Array.isArray(window.__persistedSignatures.actions)
                     ? window.__persistedSignatures.actions
                     : [];
+                    
+                console.log(' Persisted Actions:', persistedActions);
+                
                 persistedActions.forEach((entry, index) => {
                     const src = sanitizeValue(entry && entry.src);
-                    if (src === '' || src.includes('blank')) return;
+                    if (src === '' || src.includes('blank')) {
+                        console.log(`⏭️ Skipping Row ${index}: No signature`);
+                        return;
+                    }
+                    
                     const ownerUserId = parseInt(entry.userId ?? 0, 10) || 0;
+                    const isLocked = ownerUserId > 0 && ownerUserId !== currentUserId;
+                    
+                    console.log(`Row ${index}:`, {
+                        ownerUserId,
+                        currentUserId,
+                        isLocked,
+                        hasSignature: src !== ''
+                    });
 
                     signatures.push({
                         id: generateSignatureId(),
@@ -1665,7 +1682,7 @@
                         xRatio: parseFloat(entry.coords?.xRatio ?? 0.72),
                         yRatio: parseFloat(entry.coords?.yRatio ?? (0.58 + (index * 0.045))),
                         scale: parseFloat(entry.coords?.scale ?? 0.62),
-                        locked: ownerUserId === 0 || ownerUserId !== currentUserId,
+                        locked: isLocked,
                     });
                 });
 
@@ -1678,7 +1695,7 @@
                         xRatio: parseFloat(window.__persistedSignatures.notedCoords?.xRatio ?? 0.65),
                         yRatio: parseFloat(window.__persistedSignatures.notedCoords?.yRatio ?? 0.72),
                         scale: parseFloat(window.__persistedSignatures.notedCoords?.scale ?? 0.9),
-                        locked: notedOwnerUserId === 0 || notedOwnerUserId !== currentUserId,
+                        locked: notedOwnerUserId > 0 && notedOwnerUserId !== currentUserId,
                     };
 
                     signatures.push(notedSig);

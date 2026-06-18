@@ -116,7 +116,6 @@ class ServiceRequestDummySeeder extends Seeder
                 'office' => $faker->randomElement($offices),
                 'address' => $faker->streetAddress(),
                 'landline' => $faker->boolean(55) ? $faker->numerify('02#######') : null,
-                'fax_no' => $faker->boolean(25) ? $faker->numerify('02#######') : null,
                 'mobile_no' => $faker->numerify('09#########'),
                 'email_address' => $faker->safeEmail(),
                 'description_request' => $faker->sentence(14),
