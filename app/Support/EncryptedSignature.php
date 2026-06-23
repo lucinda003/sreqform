@@ -259,6 +259,12 @@ class EncryptedSignature
 
     public static function optimizePhotoBinary(string $binary, string $mimeType): array
     {
+        // Don't optimize PDFs - just return them as-is
+        $normalizedMime = strtolower(trim($mimeType));
+        if (str_contains($normalizedMime, 'pdf') || $normalizedMime === 'application/pdf') {
+            return [$binary, $mimeType];
+        }
+
         [$bestBinary, $bestMime] = self::optimizeImageBinary($binary, $mimeType, 1280, 75, 9);
 
         if (! function_exists('imagecreatefromstring') || ! function_exists('imagewebp')) {

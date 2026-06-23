@@ -14,24 +14,25 @@
     $statusRaw = strtolower((string) $serviceRequest->status);
     $isCheckingStage = in_array($statusRaw, ['reviewing', 'checking'], true);
     $isApprovedStage = $statusRaw === 'approved';
-    $isBeyondPendingStage = in_array($statusRaw, ['approved', 'completed', 'closed'], true);
+    $isOngoingStage = $statusRaw === 'ongoing';
+    $isBeyondPendingStage = in_array($statusRaw, ['approved', 'ongoing', 'completed', 'closed'], true);
 
     $steps = [
         ['key' => 'submitted', 'label' => 'Request Submitted', 'icon' => '&#10003;'],
         ['key' => 'pending', 'label' => $isBeyondPendingStage ? 'Done' : ($isCheckingStage ? 'Checking' : 'Pending'), 'icon' => '&#9201;'],
-        ['key' => 'approved', 'label' => 'Approved', 'icon' => '&#10003;'],
-        ['key' => 'completed', 'label' => $isApprovedStage ? 'Completed' : 'Completed/Closed', 'icon' => '&#10003;'],
+        ['key' => 'approved', 'label' => 'Ongoing', 'icon' => '&#10003;'],
+        ['key' => 'completed', 'label' => 'Closed', 'icon' => '&#10003;'],
     ];
 
-    $stepOrder = ['submitted' => 0, 'pending' => 1, 'reviewing' => 1, 'checking' => 1, 'approved' => 2, 'completed' => 3, 'closed' => 3];
+    $stepOrder = ['submitted' => 0, 'pending' => 1, 'reviewing' => 1, 'checking' => 1, 'approved' => 2, 'ongoing' => 2, 'completed' => 3, 'closed' => 3];
     $currentStep = $stepOrder[$statusRaw] ?? 0;
 
     $stepDateTimes = [
         1 => $isCheckingStage
             ? ($serviceRequest->checking_at ?? $serviceRequest->pending_at)
             : $serviceRequest->pending_at,
-        2 => $serviceRequest->approved_at,
-        3 => $serviceRequest->completed_at ?? ($isApprovedStage ? $serviceRequest->approved_at : null),
+        2 => $serviceRequest->ongoing_at ?? $serviceRequest->approved_at,
+        3 => $serviceRequest->completed_at ?? (($isApprovedStage || $isOngoingStage) ? ($serviceRequest->ongoing_at ?? $serviceRequest->approved_at) : null),
     ];
 @endphp
 
@@ -43,6 +44,8 @@
         @php
             if ($isCheckingStage) {
                 $state = $i <= 1 ? 'done' : 'pending';
+            } elseif ($isOngoingStage) {
+                $state = $i <= 2 ? 'done' : 'pending';
             } elseif ($isApprovedStage) {
                 $state = 'done';
             } else {
@@ -61,6 +64,8 @@
         @php
             if ($isCheckingStage) {
                 $state = $i <= 1 ? 'done' : 'pending';
+            } elseif ($isOngoingStage) {
+                $state = $i <= 2 ? 'done' : 'pending';
             } elseif ($isApprovedStage) {
                 $state = 'done';
             } else {

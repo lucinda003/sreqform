@@ -16,7 +16,7 @@
         $assignedToUserId = (int) ($serviceRequest->assigned_to_user_id ?? 0);
         $receivedByUserId = (int) ($serviceRequest->received_by_user_id ?? 0);
         $canAssignRequest = in_array($currentUserRole, ['admin', 'supervisor', 'technical support'], true)
-            && in_array((string) $serviceRequest->status, ['pending', 'checking'], true)
+            && in_array((string) $serviceRequest->status, ['pending', 'checking', 'ongoing'], true)
             && (
                 $assignedToUserId === $currentUserId
                 || ($assignedToUserId === 0 && $receivedByUserId === $currentUserId)
@@ -1267,7 +1267,7 @@
                         <p class="text-sm font-semibold text-slate-700">Status :</p>
                         @php
                             $currentStatusValue = strtolower((string) $serviceRequest->status);
-                            $showDecisionButtons = !($isReadOnly ?? false) && in_array($currentStatusValue, ['pending', 'checking'], true);
+                            $showDecisionButtons = !($isReadOnly ?? false) && in_array($currentStatusValue, ['pending', 'checking', 'ongoing'], true);
                             $statusClasses = match ($serviceRequest->status) {
                                 'checking' => 'border-sky-300 bg-sky-100 text-sky-800',
                                 'approved' => 'border-emerald-300 bg-emerald-100 text-emerald-800',
@@ -1299,7 +1299,7 @@
                                     class="flex flex-wrap items-center gap-2" data-status-action-form>
                                     @csrf
                                     @method('PATCH')
-                                    @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking'], true))
+                                    @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking', 'ongoing'], true))
                                         <button type="submit" formmethod="PATCH"
                                             formaction="{{ route('service-requests.receive', $serviceRequest) }}"
                                             formenctype="application/x-www-form-urlencoded"
@@ -1582,17 +1582,37 @@
                                                     <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 md:grid-cols-3">
                                                         @foreach ($serviceRequest->description_photos as $photoPath)
                                                             @php
-                                                                $photoSource = str_starts_with((string) $photoPath, 'data:image/')
+                                                                // Support both data URIs (data:image/ and data:application/pdf) and storage paths
+                                                                $isDataUri = str_starts_with((string) $photoPath, 'data:');
+                                                                $photoSource = $isDataUri
                                                                     ? (string) $photoPath
                                                                     : \Illuminate\Support\Facades\Storage::url((string) $photoPath);
+                                                                
+                                                                // Check if it's a PDF (data:application/pdf or file path ending with .pdf)
+                                                                $isPdf = str_starts_with((string) $photoPath, 'data:application/pdf') 
+                                                                    || str_ends_with(strtolower((string) $photoPath), '.pdf');
                                                             @endphp
-                                                            <a href="{{ $photoSource }}"
-                                                                class="block overflow-hidden rounded-lg border border-slate-300 bg-white"
-                                                                data-uploaded-photo-trigger data-photo-src="{{ $photoSource }}"
-                                                                data-photo-alt="Service Request Photo">
-                                                                <img src="{{ $photoSource }}" alt="Service Request Photo"
-                                                                    class="h-32 w-full object-cover">
-                                                            </a>
+                                                            @if ($isPdf)
+                                                                {{-- PDF file - show download link --}}
+                                                                <a href="{{ $photoSource }}" download
+                                                                    class="flex flex-col items-center justify-center gap-2 rounded-lg border border-slate-300 bg-slate-50 p-4 hover:bg-slate-100"
+                                                                    title="Download PDF">
+                                                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 text-red-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                                                    </svg>
+                                                                    <span class="text-xs font-semibold text-slate-700">PDF Document</span>
+                                                                    <span class="text-xs text-slate-500">Click to download</span>
+                                                                </a>
+                                                            @else
+                                                                {{-- Image file - show thumbnail --}}
+                                                                <a href="{{ $photoSource }}"
+                                                                    class="block overflow-hidden rounded-lg border border-slate-300 bg-white"
+                                                                    data-uploaded-photo-trigger data-photo-src="{{ $photoSource }}"
+                                                                    data-photo-alt="Service Request Photo">
+                                                                    <img src="{{ $photoSource }}" alt="Service Request Photo"
+                                                                        class="h-32 w-full object-cover">
+                                                                </a>
+                                                            @endif
                                                         @endforeach
                                                     </div>
                                                 @else
@@ -1740,7 +1760,8 @@
                                             knowledge management and information technology service only</h3>
 
                                         @php
-                                            $canEditReceivedDateTime = auth()->id() === $serviceRequest->received_by_user_id;
+                                            // Date/Time Received should always be editable for the current receiver
+                                            $canEditReceivedDateTime = true;
                                             $receivedDate = old('received_date', optional($serviceRequest->received_at)->format('Y-m-d'));
                                             $receivedTime = old('received_time', optional($serviceRequest->received_at)->format('H:i'));
                                         @endphp
@@ -2308,7 +2329,7 @@
                         class="flex items-center gap-2" data-status-action-form>
                         @csrf
                         @method('PATCH')
-                        @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking'], true))
+                        @if ($canSetPending && blank($serviceRequest->received_by_user_id) && in_array((string) $serviceRequest->status, ['pending', 'checking', 'ongoing'], true))
                             <button type="submit" formmethod="PATCH"
                                 formaction="{{ route('service-requests.receive', $serviceRequest) }}"
                                 formenctype="application/x-www-form-urlencoded"

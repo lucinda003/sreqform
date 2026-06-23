@@ -16,7 +16,8 @@
         $statusRows = [
             ['label' => 'Pending', 'count' => $pendingRequests, 'color' => '#f59e0b'],
             ['label' => 'Checking', 'count' => $checkingRequests, 'color' => '#0ea5e9'],
-            ['label' => 'Approved', 'count' => $approvedRequests, 'color' => '#10b981'],
+            ['label' => 'Ongoing', 'count' => $ongoingRequests, 'color' => '#10b981'],
+            ['label' => 'Approved', 'count' => $approvedRequests, 'color' => '#a855f7'],
         ];
         $topOfficeCount = (int) (($officeBreakdown ?? collect())->max() ?? 0);
         $topRegionCount = (int) (($regionBreakdown ?? collect())->max() ?? 0);
@@ -63,7 +64,7 @@
             </div>
         </div>
 
-        <div class="mt-3 grid gap-3 sm:grid-cols-3">
+        <div class="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
             <a href="{{ route('service-requests.index', ['status' => 'pending']) }}" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-amber-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Pending</p>
                 <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($pendingRequests) }}</p>
@@ -72,7 +73,11 @@
                 <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Checking</p>
                 <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($checkingRequests) }}</p>
             </a>
-            <a href="{{ route('service-requests.index', ['status' => 'approved']) }}" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+            <a href="{{ route('service-requests.index', ['status' => 'ongoing']) }}" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
+                <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Ongoing</p>
+                <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($ongoingRequests) }}</p>
+            </a>
+            <a href="{{ route('service-requests.index', ['status' => 'approved']) }}" class="rounded-xl border border-slate-200 bg-white p-4 transition hover:-translate-y-0.5 hover:border-purple-300 hover:bg-slate-50 hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-300">
                 <p class="text-[11px] font-semibold uppercase tracking-[0.1em] text-slate-500">Approved</p>
                 <p class="mt-1 text-2xl font-bold text-slate-900">{{ number_format($approvedRequests) }}</p>
             </a>

@@ -872,17 +872,18 @@
                     $statusRaw = strtolower((string) $serviceRequest->status);
                     $isCheckingStage = in_array($statusRaw, ['reviewing', 'checking'], true);
                     $isApprovedStage = $statusRaw === 'approved';
-                    $isBeyondPendingStage = in_array($statusRaw, ['approved', 'completed', 'closed'], true);
-                    $chatLocked = in_array($statusRaw, ['approved', 'completed', 'closed'], true);
+                    $isOngoingStage = $statusRaw === 'ongoing';
+                    $isBeyondPendingStage = in_array($statusRaw, ['approved', 'ongoing', 'completed', 'closed'], true);
+                    $chatLocked = in_array($statusRaw, ['approved', 'ongoing', 'completed', 'closed'], true);
 
                     $steps = [
                         ['key' => 'submitted',  'label' => 'Request Submitted',   'icon' => '✓'],
                         ['key' => 'pending',    'label' => $isBeyondPendingStage ? 'Done' : ($isCheckingStage ? 'Checking' : 'Pending'), 'icon' => '⏱'],
-                        ['key' => 'approved',   'label' => 'Approved', 'icon' => '✓'],
-                        ['key' => 'completed',  'label' => $isApprovedStage ? 'Completed' : 'Completed/Closed', 'icon' => '✓'],
+                        ['key' => 'approved',   'label' => 'Ongoing', 'icon' => '✓'],
+                        ['key' => 'completed',  'label' => 'Closed', 'icon' => '✓'],
                     ];
 
-                    $stepOrder = ['submitted' => 0, 'pending' => 1, 'reviewing' => 1, 'checking' => 1, 'approved' => 2, 'completed' => 3, 'closed' => 3];
+                    $stepOrder = ['submitted' => 0, 'pending' => 1, 'reviewing' => 1, 'checking' => 1, 'approved' => 2, 'ongoing' => 2, 'completed' => 3, 'closed' => 3];
                     $currentStep = $stepOrder[$statusRaw] ?? 0;
 
                     $statusLabel = match($statusRaw) {
@@ -890,6 +891,7 @@
                         'pending', 'reviewing', 'checking' => 'PENDING',
                         'forwarded' => 'FORWARDED TO DEPT.',
                         'approved' => 'APPROVED',
+                        'ongoing' => 'ONGOING',
                         'completed', 'closed' => 'COMPLETED',
                         default => strtoupper($serviceRequest->status),
                     };
@@ -898,8 +900,8 @@
                         1 => $isCheckingStage
                             ? ($serviceRequest->checking_at ?? $serviceRequest->pending_at)
                             : $serviceRequest->pending_at,
-                        2 => $serviceRequest->approved_at,
-                        3 => $serviceRequest->completed_at ?? ($isApprovedStage ? $serviceRequest->approved_at : null),
+                        2 => $serviceRequest->ongoing_at ?? $serviceRequest->approved_at,
+                        3 => $serviceRequest->completed_at ?? (($isApprovedStage || $isOngoingStage) ? ($serviceRequest->ongoing_at ?? $serviceRequest->approved_at) : null),
                     ];
                 @endphp
 
@@ -919,6 +921,8 @@
                             @php
                                 if ($isCheckingStage) {
                                     $state = $i <= 1 ? 'done' : 'pending';
+                                } elseif ($isOngoingStage) {
+                                    $state = $i <= 2 ? 'done' : 'pending';
                                 } elseif ($isApprovedStage) {
                                     $state = 'done';
                                 } else {
@@ -938,6 +942,8 @@
                             @php
                                 if ($isCheckingStage) {
                                     $state = $i <= 1 ? 'done' : 'pending';
+                                } elseif ($isOngoingStage) {
+                                    $state = $i <= 2 ? 'done' : 'pending';
                                 } elseif ($isApprovedStage) {
                                     $state = 'done';
                                 } else {
@@ -956,6 +962,8 @@
                             @php
                                 if ($isCheckingStage) {
                                     $state = $i <= 1 ? 'done' : 'pending';
+                                } elseif ($isOngoingStage) {
+                                    $state = $i <= 2 ? 'done' : 'pending';
                                 } elseif ($isApprovedStage) {
                                     $state = 'done';
                                 } else {
@@ -1060,10 +1068,11 @@
                                 </button>
                             @endif
 
-                            <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" data-track-print-button data-track-print-url="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" class="trk-btn trk-btn-print">
+                            {{-- Print Request Form button hidden per user request --}}
+                            {{-- <a href="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" data-track-print-button data-track-print-url="{{ route('service-requests.track.view', ['referenceCode' => $serviceRequest->reference_code]) }}" class="trk-btn trk-btn-print">
                                 <svg width="13" height="13" viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="2" width="12" height="5" rx="1"/><path d="M4 7H2a1 1 0 00-1 1v6a1 1 0 001 1h2v3h12v-3h2a1 1 0 001-1V8a1 1 0 00-1-1h-2"/></svg>
                                 Print Request Form
-                            </a>
+                            </a> --}}
                         </div>
                     </div>
 

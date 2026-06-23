@@ -544,7 +544,7 @@
             .reference-code { display: inline-block; min-width: auto; border-bottom: 1px solid #111827; text-align: center; font-size: 20px; font-weight: 700; }
             .reference-wrap { width: 100%; margin-left: 0; margin-top: 7px; display: flex; align-items: center; gap: 5px; justify-content: flex-end; flex-wrap: nowrap; }
             .datetime-line, .datetime-value { font-size: 15px; }
-            .datetime-wrap { width: 100%; margin-left: 330px; margin-top: 7px; display: flex; align-items: center; gap: 5px; }
+            .datetime-wrap { width: 100%; margin-left: 370px; margin-top: 7px; display: flex; align-items: center; gap: 5px; }
             .datetime-line { margin-top: 0; font-size: 12px; margin-bottom: 1px; }
             .datetime-value { width: auto; display: block; border-bottom: 1px solid #111827; text-align: center; font-weight: 700; }
             .desc-title { font-size: 13px; }
@@ -577,7 +577,7 @@
             .reference-code { display: inline-block; min-width: auto; border-bottom: 1px solid #111827; text-align: center; font-size: 20px; font-weight: 700; }
             .reference-wrap { width: 100%; margin-left: 0; margin-top: 7px; display: flex; align-items: center; gap: 5px; justify-content: flex-end; flex-wrap: nowrap; }
             .datetime-line, .datetime-value { font-size: 15px; }
-            .datetime-wrap { width: 100%; margin-left: 380px; margin-top: 7px; display: flex; align-items: center; gap: 5px; }
+            .datetime-wrap { width: 100%; margin-left: 370px; margin-top: 7px; display: flex; align-items: center; gap: 5px; }
             .datetime-line { margin-top: 0; font-size: 12px; margin-bottom: 1px; }
             .datetime-value { width: auto; display: block; border-bottom: 1px solid #111827; text-align: center; font-weight: 700; }
             .desc-title { font-size: 13px; }

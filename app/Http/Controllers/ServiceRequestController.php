@@ -96,7 +96,7 @@ class ServiceRequestController extends Controller
                     $serviceRequestsQuery->whereRaw('1 = 0');
                 }
             }
-        } elseif (in_array($statusFilter, ['pending', 'checking', 'approved'], true)) {
+        } elseif (in_array($statusFilter, ['pending', 'checking', 'approved', 'ongoing'], true)) {
             $serviceRequestsQuery->where('status', $statusFilter);
         } else {
             $statusFilter = '';
@@ -1130,9 +1130,12 @@ class ServiceRequestController extends Controller
         ]);
 
         $assignee = User::query()->find((int) $validated['assigned_to_user_id']);
+        $now = now();
         $updates = [
             'assigned_to_user_id' => $validated['assigned_to_user_id'],
             'assigned_by_user_id' => $userId,
+            'received_by_user_id' => $validated['assigned_to_user_id'], // Update to new assignee
+            'received_at' => $now, // Update to current timestamp
         ];
 
         if ($this->isSupervisorUser($assignee) && blank($serviceRequest->noted_by_name)) {
@@ -1758,6 +1761,30 @@ class ServiceRequestController extends Controller
             $validated['department_code'] = (string) $serviceRequest->department_code;
         }
 
+        // Auto-change status to 'ongoing' if action_logs have content (from checking or approved status)
+        if ($isModerationEditor && isset($validated['action_logs'])) {
+            $actionLogs = is_array($validated['action_logs']) ? $validated['action_logs'] : [];
+            $hasFilledActionLog = false;
+            
+            foreach ($actionLogs as $log) {
+                $actionDate = trim((string) ($log['action_date'] ?? ''));
+                $actionTime = trim((string) ($log['action_time'] ?? ''));
+                $actionTaken = trim((string) ($log['action_taken'] ?? ''));
+                $actionOfficer = trim((string) ($log['action_officer'] ?? ''));
+                
+                if ($actionDate !== '' || $actionTime !== '' || $actionTaken !== '' || $actionOfficer !== '') {
+                    $hasFilledActionLog = true;
+                    break;
+                }
+            }
+            
+            // If has filled action log and status is 'checking' or 'approved', change to 'ongoing'
+            if ($hasFilledActionLog && in_array($serviceRequest->status, ['checking', 'approved'], true)) {
+                $validated['status'] = 'ongoing';
+                $validated['ongoing_at'] = now();
+            }
+        }
+
         $serviceRequest->update($validated);
 
         $routeParams = ['serviceRequest' => $serviceRequest] + $this->listingContextFromRequest($request);
@@ -2028,7 +2055,7 @@ class ServiceRequestController extends Controller
         abort_unless($this->canManageStatus($serviceRequest), 403);
 
         $validated = $request->validate([
-            'status' => ['required', 'in:pending,checking,approved'],
+            'status' => ['required', 'in:pending,checking,approved,ongoing'],
         ]);
 
         $now = now();
@@ -2159,7 +2186,7 @@ class ServiceRequestController extends Controller
         $search = trim((string) $request->query('q'));
         $chatRequest = trim((string) $request->query('chat_request'));
 
-        if (in_array($status, ['pending', 'checking', 'approved', 'archived'], true)) {
+        if (in_array($status, ['pending', 'checking', 'approved', 'ongoing', 'archived'], true)) {
             $context['status'] = $status;
         }
 
@@ -3669,6 +3696,7 @@ class ServiceRequestController extends Controller
             'image/png',
             'image/webp',
             'image/bmp',
+            'application/pdf',  // Allow PDF files
         ];
 
         $mimeType = strtolower((string) $uploadedFile->getMimeType());
@@ -3676,7 +3704,7 @@ class ServiceRequestController extends Controller
             return false;
         }
 
-        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'bmp'];
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'bmp', 'pdf'];  // Allow .pdf extension
         $extension = strtolower((string) $uploadedFile->getClientOriginalExtension());
         if (!in_array($extension, $allowedExtensions, true)) {
             return false;

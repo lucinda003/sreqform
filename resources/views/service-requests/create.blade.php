@@ -858,38 +858,10 @@
                     <div class="srf-section" style="padding-bottom: 4px;">
                         <p class="srf-section-label">Request Information</p>
 
-                        <div class="srf-field-grid srf-field-grid-1" style="margin-bottom: 16px;">
-                            <div class="srf-field">
-                                <label class="srf-label" for="application_system_name">
-                                    <span class="srf-number-badge">1</span> Application System Name <span
-                                        class="srf-required">*</span>
-                                </label>
-                                @php
-                                    $applicationSystemOptions = collect($applicationSystemOptions ?? []);
-                                    $oldApplicationSystemName = (string) old('application_system_name', '');
-                                @endphp
-                                <div class="srf-system-picker" data-application-system-picker>
-                                    <input id="application_system_name" type="hidden" name="application_system_name"
-                                        value="{{ $oldApplicationSystemName }}">
-                                    <div class="srf-system-picker-box">
-                                        <div id="application_system_name_chips" class="srf-system-picker-chips"></div>
-                                        <input id="application_system_name_search" type="text"
-                                            class="srf-system-picker-input" autocomplete="off"
-                                            placeholder="Application / System Name">
-                                    </div>
-                                    <div id="application_system_name_results" class="srf-system-picker-results hidden">
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="srf-divider"></div>
-
-                    {{-- Section: Contact Person --}}
+                    {{-- Section: Contact Person (moved to #1) --}}
                     <div class="srf-section" style="padding-bottom: 4px;">
                         <p class="srf-section-label">
-                            <span class="srf-number-badge">2</span> Contact Person
+                            <span class="srf-number-badge">1</span> Contact Person
                         </p>
                         <div class="srf-field-grid srf-field-grid-4" style="margin-bottom: 16px;">
                             <div class="srf-field">
@@ -897,6 +869,7 @@
                                         class="srf-required">*</span></label>
                                 <input id="contact_last_name" name="contact_last_name"
                                     value="{{ old('contact_last_name') }}" class="srf-input" autocomplete="family-name"
+                                    placeholder="Enter Last Name"
                                     required maxlength="100">
                             </div>
                             <div class="srf-field">
@@ -904,12 +877,14 @@
                                         class="srf-required">*</span></label>
                                 <input id="contact_first_name" name="contact_first_name"
                                     value="{{ old('contact_first_name') }}" class="srf-input" autocomplete="given-name"
+                                    placeholder="Enter First Name"
                                     required maxlength="100">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="contact_middle_name">Middle Name</label>
+                                <label class="srf-label" for="contact_middle_name">Middle Name (optional)</label>
                                 <input id="contact_middle_name" name="contact_middle_name"
                                     value="{{ old('contact_middle_name') }}" class="srf-input"
+                                    placeholder="Enter Middle Name"
                                     autocomplete="additional-name" maxlength="100">
                             </div>
                             <div class="srf-field">
@@ -924,11 +899,7 @@
                                     </option>
                                     <option value="Jr." {{ old('contact_suffix_name') === 'Jr.' ? 'selected' : '' }}>Jr.
                                     </option>
-                                    <option value="N/A" {{ old('contact_suffix_name') === 'N/A' ? 'selected' : '' }}>N/A
-                                    </option>
                                     <option value="Sr." {{ old('contact_suffix_name') === 'Sr.' ? 'selected' : '' }}>Sr.
-                                    </option>
-                                    <option value="V" {{ old('contact_suffix_name') === 'V' ? 'selected' : '' }}>V
                                     </option>
                                 </select>
                             </div>
@@ -945,7 +916,7 @@
                             <div class="srf-field">
                                 <div class="srf-office-label-row">
                                     <label class="srf-label" for="office">
-                                        <span class="srf-number-badge">3</span> Office <span
+                                        <span class="srf-number-badge">2</span> Office <span
                                             class="srf-required">*</span>
                                     </label>
                                     <select id="office_region_filter" name="office_region_filter"
@@ -971,7 +942,7 @@
                                     <div class="srf-system-picker-box">
                                         <div id="office_chips" class="srf-system-picker-chips"></div>
                                         <input id="office_search" type="text" class="srf-system-picker-input"
-                                            placeholder="Search and select an office..." autocomplete="off">
+                                            placeholder="Search or Enter Office" autocomplete="off">
                                     </div>
                                     <div id="office_results" class="srf-system-picker-results hidden"></div>
                                 </div>
@@ -981,42 +952,76 @@
                             <div class="srf-field">
                                 <div class="srf-office-label-row" style="min-height: 33px;">
                                     <label class="srf-label" for="address">
-                                        <span class="srf-number-badge">4</span> Address <span
+                                        <span class="srf-number-badge">3</span> Address <span
                                             class="srf-required">*</span>
                                     </label>
                                 </div>
                                 <input id="address" name="address" value="{{ old('address') }}" class="srf-input"
+                                    placeholder="Enter Address"
                                     autocomplete="street-address" required>
                             </div>
                         </div>
 
                         <div class="srf-field-grid srf-field-grid-3" style="margin-bottom: 16px;">
                             <div class="srf-field">
-                                <label class="srf-label" for="landline"><span class="srf-number-badge">5</span>
+                                <label class="srf-label" for="landline"><span class="srf-number-badge">4</span>
                                     Landline</label>
                                 <input id="landline" name="landline" value="{{ old('landline') }}" inputmode="tel"
+                                    placeholder="Enter Landline (optional)"
                                     oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
                                     autocomplete="tel" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">6</span> Mobile
+                                <label class="srf-label" for="mobile_no"><span class="srf-number-badge">5</span> Mobile
                                     No</label>
                                 <input id="mobile_no" name="mobile_no" value="{{ old('mobile_no') }}" inputmode="tel"
+                                    placeholder="Enter Mobile No (optional)"
                                     oninput="this.value=this.value.replace(/[^0-9+() -]/g,'');" class="srf-input"
                                     autocomplete="tel-national" maxlength="20">
                             </div>
                             <div class="srf-field">
-                                <label class="srf-label" for="email_address"><span class="srf-number-badge">7</span>
+                                <label class="srf-label" for="email_address"><span class="srf-number-badge">6</span>
                                     Email Address <span class="srf-required">*</span></label>
                                 <input id="email_address" type="email" name="email_address"
-                                    value="{{ old('email_address') }}" class="srf-input" autocomplete="email" required>
+                                    value="{{ old('email_address') }}" class="srf-input" 
+                                    placeholder="Enter Email Address"
+                                    autocomplete="email" required>
                             </div>
                         </div>
                     </div>
 
                     <div class="srf-divider"></div>
 
-                    {{-- Section: Description --}}
+                    {{-- Section: Application System Name (moved before Description) --}}
+                    <div class="srf-section" style="padding-bottom: 4px;">
+                        <p class="srf-section-label">
+                            <span class="srf-number-badge">7</span> Application System Name <span class="srf-required">*</span>
+                        </p>
+                        <div class="srf-field-grid srf-field-grid-1" style="margin-bottom: 16px;">
+                            <div class="srf-field">
+                                @php
+                                    $applicationSystemOptions = collect($applicationSystemOptions ?? []);
+                                    $oldApplicationSystemName = (string) old('application_system_name', '');
+                                @endphp
+                                <div class="srf-system-picker" data-application-system-picker>
+                                    <input id="application_system_name" type="hidden" name="application_system_name"
+                                        value="{{ $oldApplicationSystemName }}">
+                                    <div class="srf-system-picker-box">
+                                        <div id="application_system_name_chips" class="srf-system-picker-chips"></div>
+                                        <input id="application_system_name_search" type="text"
+                                            class="srf-system-picker-input" autocomplete="off"
+                                            placeholder="Search or Enter Application System Name">
+                                    </div>
+                                    <div id="application_system_name_results" class="srf-system-picker-results hidden">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="srf-divider"></div>
+
+                    {{-- Section: Description (renumbered to 8) --}}
                     <div class="srf-section" style="padding-bottom: 16px;">
                         <p class="srf-section-label">
                             <span class="srf-number-badge">8</span> Description of Request <span
@@ -1087,19 +1092,19 @@
 
                                         <div class="srf-field-underline">
                                             <input name="approved_by_name" value="{{ old('approved_by_name') }}"
-                                                class="srf-input-underline">
+                                                id="create-approved-name" class="srf-input-underline" style="text-align: center;">
                                             <p class="srf-sublabel">Name &amp; Signature of Head of Office</p>
                                         </div>
 
                                         <div class="srf-field-underline">
                                             <input name="approved_by_position" value="{{ old('approved_by_position') }}"
-                                                class="srf-input-underline">
+                                                id="create-approved-position" class="srf-input-underline" style="text-align: center;">
                                             <p class="srf-sublabel">Position</p>
                                         </div>
 
                                         <div class="srf-field-underline">
                                             <input name="approved_date" type="date" value="{{ old('approved_date') }}"
-                                                id="create-approved-date" class="srf-input-underline">
+                                                id="create-approved-date" class="srf-input-underline" style="text-align: center;">
                                             <p class="srf-sublabel">Date Signed</p>
                                         </div>
                                     </div>
@@ -1545,7 +1550,7 @@
                 resultsId: 'application_system_name_results',
                 rootSelector: '[data-application-system-picker]',
                 options: applicationSystemOptions,
-                placeholder: 'Application / System Name',
+                placeholder: 'Search or Enter Application System Name',
                 requiredMessage: 'Please select or type at least one application system.',
             });
 
@@ -1558,7 +1563,7 @@
                 options: officeOptions,
                 searchEndpoint: officeSearchEndpoint,
                 parentFilterId: 'office_region_filter',
-                placeholder: 'Office',
+                placeholder: 'Search or Enter Office',
                 requiredMessage: 'Please select an office.',
                 maxSelections: 1,
                 onSelect: function (option, selectedOffice) {
@@ -2065,9 +2070,18 @@
                     }
 
                     const known = new Set(selectedFiles.map(fileKey));
+                    const maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+                    const rejectedFiles = [];
 
                     incoming.forEach(function (file) {
                         const key = fileKey(file);
+                        
+                        // Check if file exceeds 5MB
+                        if (file.size > maxFileSize) {
+                            rejectedFiles.push(file.name + ' (' + (file.size / (1024 * 1024)).toFixed(2) + ' MB)');
+                            return;
+                        }
+                        
                         if (known.has(key) || selectedFiles.length >= maxFiles) {
                             return;
                         }
@@ -2075,6 +2089,11 @@
                         known.add(key);
                         selectedFiles.push(file);
                     });
+
+                    // Show alert if any files were rejected
+                    if (rejectedFiles.length > 0) {
+                        alert('The following file(s) exceed the 5MB limit and were not added:\n\n' + rejectedFiles.join('\n') + '\n\nPlease choose files that are 5MB or smaller.');
+                    }
 
                     syncInputFiles();
                     syncSelectedLabel();
@@ -2103,22 +2122,65 @@
                 const hiddenDrawn = document.getElementById('create-signature-drawn');
                 const clearBtn = document.getElementById('create-signature-clear');
                 const approvedDateInput = document.getElementById('create-approved-date');
+                const approvedNameInput = document.getElementById('create-approved-name');
+                const approvedPositionInput = document.getElementById('create-approved-position');
 
                 if (!drawWrap || !canvas || !hiddenDrawn || !toggleCheckbox) {
                     return;
                 }
 
                 const fillSignedDateIfEmpty = function () {
-                    if (!approvedDateInput || approvedDateInput.value !== '') {
+                    if (!approvedDateInput || !approvedNameInput || !approvedPositionInput) {
                         return;
                     }
 
-                    const now = new Date();
-                    const year = now.getFullYear();
-                    const month = String(now.getMonth() + 1).padStart(2, '0');
-                    const day = String(now.getDate()).padStart(2, '0');
-                    approvedDateInput.value = `${year}-${month}-${day}`;
+                    // Only fill if BOTH name AND position have values
+                    const hasName = approvedNameInput.value.trim() !== '';
+                    const hasPosition = approvedPositionInput.value.trim() !== '';
+
+                    if (hasName && hasPosition && approvedDateInput.value === '') {
+                        const now = new Date();
+                        const year = now.getFullYear();
+                        const month = String(now.getMonth() + 1).padStart(2, '0');
+                        const day = String(now.getDate()).padStart(2, '0');
+                        approvedDateInput.value = `${year}-${month}-${day}`;
+                    }
                 };
+
+                const clearSignedDateIfIncomplete = function () {
+                    if (!approvedDateInput || !approvedNameInput || !approvedPositionInput) {
+                        return;
+                    }
+
+                    // Clear date if EITHER name OR position is empty
+                    const hasName = approvedNameInput.value.trim() !== '';
+                    const hasPosition = approvedPositionInput.value.trim() !== '';
+
+                    if (!hasName || !hasPosition) {
+                        approvedDateInput.value = '';
+                    }
+                };
+
+                // Add input listeners to name and position fields
+                if (approvedNameInput) {
+                    approvedNameInput.addEventListener('input', function() {
+                        if (this.value.trim() === '') {
+                            clearSignedDateIfIncomplete();
+                        } else {
+                            fillSignedDateIfEmpty();
+                        }
+                    });
+                }
+
+                if (approvedPositionInput) {
+                    approvedPositionInput.addEventListener('input', function() {
+                        if (this.value.trim() === '') {
+                            clearSignedDateIfIncomplete();
+                        } else {
+                            fillSignedDateIfEmpty();
+                        }
+                    });
+                }
 
                 const ctx = canvas.getContext('2d');
                 if (!ctx) {
@@ -2141,22 +2203,37 @@
                 toggleCheckbox.addEventListener('change', function () {
                     if (this.checked) {
                         drawWrap.style.display = 'block';
+                        // IMPORTANT: Resize canvas AFTER it becomes visible
+                        setTimeout(() => {
+                            resizeCanvas();
+                            // Restore signature if exists
+                            if (hiddenDrawn.value) {
+                                const img = new Image();
+                                img.onload = function () {
+                                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                                    ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
+                                };
+                                img.src = hiddenDrawn.value;
+                            }
+                        }, 50);
                     } else {
                         drawWrap.style.display = 'none';
                     }
                 });
 
-                // Initialize canvas on page load
-                resizeCanvas();
-                
-                // Check if there's old signature data to restore
-                if (hiddenDrawn.value) {
-                    const img = new Image();
-                    img.onload = function () {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                        ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
-                    };
-                    img.src = hiddenDrawn.value;
+                // Initialize canvas on page load ONLY if already checked
+                if (toggleCheckbox.checked) {
+                    resizeCanvas();
+                    
+                    // Check if there's old signature data to restore
+                    if (hiddenDrawn.value) {
+                        const img = new Image();
+                        img.onload = function () {
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            ctx.drawImage(img, 0, 0, canvas.clientWidth, canvas.clientHeight);
+                        };
+                        img.src = hiddenDrawn.value;
+                    }
                 }
 
                 const getCenteredSignatureDataUrl = function () {
@@ -2226,9 +2303,8 @@
 
                     saveDraftToStorage();
 
-                    if (centeredSignature !== '') {
-                        fillSignedDateIfEmpty();
-                    }
+                    // Removed auto-fill from signature drawing
+                    // Date will only auto-fill based on Name + Position fields
                 };
 
                 // Initialize canvas on page load (but it might be hidden)

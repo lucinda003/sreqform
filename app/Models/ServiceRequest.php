@@ -34,6 +34,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'pending_at',
     'checking_at',
     'approved_at',
+    'ongoing_at',
     'completed_at',
     'approved_by_name',
     'approved_by_signature',
@@ -74,6 +75,7 @@ class ServiceRequest extends Model
             'pending_at' => 'datetime',
             'checking_at' => 'datetime',
             'approved_at' => 'datetime',
+            'ongoing_at' => 'datetime',
             'completed_at' => 'datetime',
             'received_at' => 'datetime',
         ];

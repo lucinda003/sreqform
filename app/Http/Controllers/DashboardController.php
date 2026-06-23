@@ -85,14 +85,16 @@ class DashboardController extends Controller
             ])
             ->count();
         $uniqueOffices = Office::where('is_active', true)->count();
-        $pendingRequests = (clone $baseQuery)->where('status', 'pending')->count();
-        $checkingRequests = (clone $baseQuery)->where('status', 'checking')->count();
-        $approvedRequests = (clone $baseQuery)->where('status', 'approved')->count();
+        $pendingRequests = ServiceRequest::query()->where('status', 'pending')->whereNull('received_by_user_id')->count();
+        $checkingRequests = ServiceRequest::query()->where('status', 'checking')->where('received_by_user_id', $userId)->count();
+        $ongoingRequests = ServiceRequest::query()->where('status', 'ongoing')->where('received_by_user_id', $userId)->count();
+        $approvedRequests = ServiceRequest::query()->where('status', 'approved')->where('received_by_user_id', $userId)->count();
         $unresolvedRequests = $pendingRequests + $checkingRequests;
         if ($isSuperAdmin) {
             $receivedRequests = (clone $baseQuery)->whereNotNull('received_by_user_id')->count();
             $receivedCheckingRequests = (clone $baseQuery)->where('status', 'checking')->count();
             $receivedApprovedRequests = (clone $baseQuery)->where('status', 'approved')->count();
+            $receivedOngoingRequests = (clone $baseQuery)->where('status', 'ongoing')->count();
         } else {
             $receivedRequests = $userId > 0
                 ? (clone $baseQuery)->where('received_by_user_id', $userId)->count()
@@ -107,6 +109,12 @@ class DashboardController extends Controller
                 ? (clone $baseQuery)
                     ->where('received_by_user_id', $userId)
                     ->where('status', 'approved')
+                    ->count()
+                : 0;
+            $receivedOngoingRequests = $userId > 0
+                ? (clone $baseQuery)
+                    ->where('received_by_user_id', $userId)
+                    ->where('status', 'ongoing')
                     ->count()
                 : 0;
         }
@@ -178,8 +186,19 @@ class DashboardController extends Controller
             ->take(8)
             ->get();
 
-        $needsAttentionRequests = (clone $baseQuery)
-            ->whereIn('status', ['pending', 'checking'])
+        $needsAttentionRequests = ServiceRequest::query()
+            ->where(function ($query) use ($userId) {
+                // Pending requests with no receiver (available for anyone to pick up)
+                $query->where(function ($q) {
+                    $q->where('status', 'pending')
+                      ->whereNull('received_by_user_id');
+                })
+                // OR Checking/Ongoing requests assigned to current user
+                ->orWhere(function ($q) use ($userId) {
+                    $q->whereIn('status', ['checking', 'ongoing'])
+                      ->where('received_by_user_id', $userId);
+                });
+            })
             ->orderByRaw('COALESCE(checking_at, pending_at, created_at) asc')
             ->take(5)
             ->get();
@@ -225,10 +244,12 @@ class DashboardController extends Controller
             'uniqueOffices' => $uniqueOffices,
             'pendingRequests' => $pendingRequests,
             'checkingRequests' => $checkingRequests,
+            'ongoingRequests' => $ongoingRequests,
             'approvedRequests' => $approvedRequests,
             'unresolvedRequests' => $unresolvedRequests,
             'receivedRequests' => $receivedRequests,
             'receivedCheckingRequests' => $receivedCheckingRequests,
+            'receivedOngoingRequests' => $receivedOngoingRequests,
             'receivedApprovedRequests' => $receivedApprovedRequests,
             'requestMessages' => $requestMessages,
             'recentRequests' => $recentRequests,

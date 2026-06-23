@@ -475,7 +475,7 @@
                     <div class="srf-field" style="margin-top:16px; padding-top:16px; border-top:1px solid #f1f5f9;">
                         <label class="srf-label">Attach Photos (Up to 3)</label>
                         <input type="file" name="description_photos[]" accept="image/*,application/pdf" multiple class="srf-input"
-                            style="padding:8px;">
+                            id="track-edit-description-photos" style="padding:8px;">
                         <p style="font-size:12px; color:#64748b; margin-top:4px;">You can upload up to 3 files (images or PDF). Max 5MB
                             each.</p>
                     </div>
@@ -714,6 +714,35 @@
 
             initOfficePicker();
             initSignature();
+
+            // File size validation for description photos
+            const photoInput = document.getElementById('track-edit-description-photos');
+            if (photoInput) {
+                photoInput.addEventListener('change', function(e) {
+                    const maxFileSize = 5 * 1024 * 1024; // 5MB in bytes
+                    const maxFiles = 3;
+                    const files = Array.from(e.target.files || []);
+                    const rejectedFiles = [];
+                    const validFiles = [];
+
+                    files.forEach(function(file) {
+                        if (file.size > maxFileSize) {
+                            rejectedFiles.push(file.name + ' (' + (file.size / (1024 * 1024)).toFixed(2) + ' MB)');
+                        } else if (validFiles.length < maxFiles) {
+                            validFiles.push(file);
+                        }
+                    });
+
+                    if (rejectedFiles.length > 0) {
+                        alert('The following file(s) exceed the 5MB limit and were not added:\n\n' + rejectedFiles.join('\n') + '\n\nPlease choose files that are 5MB or smaller.');
+                        
+                        // Reset input to only valid files
+                        const dt = new DataTransfer();
+                        validFiles.forEach(f => dt.items.add(f));
+                        e.target.files = dt.files;
+                    }
+                });
+            }
         });
     </script>
 </x-guest-layout>

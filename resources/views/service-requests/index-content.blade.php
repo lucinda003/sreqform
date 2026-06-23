@@ -3,8 +3,8 @@
     $assignedFilterValue = trim((string) ($assignedFilter ?? ''));
     $receivedFilterValue = trim((string) ($receivedFilter ?? ''));
     $receiversFilterValue = trim((string) ($receiversFilter ?? ''));
-    $isExplicitStatusFilter = in_array($statusFilterValue, ['pending', 'checking', 'approved', 'archived'], true);
-    $isArchiveView = in_array($statusFilterValue, ['archived', 'approved'], true);
+    $isExplicitStatusFilter = in_array($statusFilterValue, ['pending', 'checking', 'approved', 'ongoing', 'archived'], true);
+    $isArchiveView = in_array($statusFilterValue, ['archived', 'approved', 'ongoing'], true);
     $isAssignedView = $assignedFilterValue === 'me';
     $isReceivedView = $receivedFilterValue === 'me';
     $isReceiversView = $receiversFilterValue === 'all';
